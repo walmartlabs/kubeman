@@ -1,0 +1,10 @@
+.DS_Store
+dist/
+node_modules/
+.vscode/
+*.code-workspace
+*.sh
+*.lock
+.yarnclean
+package-lock.json
+thumbs.db

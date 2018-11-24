@@ -1,0 +1,18 @@
+{
+  "extends": "./node_modules/electron-webpack/tsconfig-base.json",
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "allowJs": true,
+    "jsx": "react",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "noImplicitAny": false,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": false,
+    "sourceMap": true,
+    "target": "es2017",
+    "outDir": "./ts"
+},
+"exclude": ["node_modules"]
+}

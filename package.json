@@ -1,0 +1,77 @@
+{
+  "name": "kubeman",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-webpack dev",
+    "compile": "electron-webpack",
+    "dist": "yarn compile && electron-builder",
+    "dist:dir": "yarn dist --dir -c.compression=store -c.mac.identity=null",
+    "flow": "flow",
+    "build-css": "cd node_modules/semantic-ui && gulp build",
+    "storybook": "start-storybook -p 6006",
+    "build-storybook": "build-storybook"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.1.5",
+    "@material-ui/core": "^3.4.0",
+    "@material-ui/icons": "^3.0.1",
+    "classnames": "^2.2.6",
+    "default-shell": "^1.0.1",
+    "electron-devtools-installer": "^2.2.4",
+    "immutable": "^4.0.0-rc.12",
+    "jsonpath": "^1.0.0",
+    "kubernetes-client": "^6.4.0",
+    "lodash": "^4.17.11",
+    "node-pty": "^0.7.8",
+    "react": "^16.6.1",
+    "react-dom": "^16.6.1",
+    "react-router-dom": "^4.3.1",
+    "roboto-fontface": "^0.10.0",
+    "rxjs": "^6.3.3",
+    "source-map-support": "^0.5.9",
+    "typeface-roboto": "^0.0.54",
+    "xterm": "^3.7.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.1.5",
+    "@babel/plugin-proposal-class-properties": "^7.1.0",
+    "@babel/plugin-syntax-dynamic-import": "^7.0.0",
+    "@babel/preset-react": "^7.0.0",
+    "@types/electron-devtools-installer": "^2.2.0",
+    "@types/react": "^16.7.3",
+    "@types/react-dom": "^16.0.9",
+    "@types/xterm": "^3.0.0",
+    "electron": "^2.0.13",
+    "electron-builder": "^20.31.2",
+    "electron-rebuild": "^1.8.2",
+    "electron-webpack": "^2.4.0",
+    "electron-webpack-ts": "^3.0.0",
+    "flow-bin": "^0.86.0",
+    "js-yaml": "^3.12.0",
+    "react-dev-utils": "^6.1.1",
+    "react-devtools-core": "^3.4.2",
+    "typescript": "^3.1.6",
+    "webpack": "^4.24.0"
+  },
+  "electronWebpack": {
+    "title": "Kubeman",
+    "main": {
+      "sourceDirectory": "src/main",
+      "webpackConfig": "webpack.addon.js"
+    },
+    "renderer": {
+      "sourceDirectory": "src/app",
+      "webpackConfig": "webpack.addon.js"
+    }
+  },
+  "babel": {
+    "presets": [
+      "@babel/preset-env",
+      "@babel/preset-react"
+    ],
+    "plugins": [
+      "@babel/plugin-proposal-class-properties"
+    ]
+  }
+}
