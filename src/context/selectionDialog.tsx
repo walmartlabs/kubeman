@@ -48,9 +48,15 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   tableWrapper: {
     overflowX: 'auto',
   },
-  expansionHead: {
+  heading: {
     fontSize: typography.pxToRem(15),
     fontWeight: typography.fontWeightRegular,
+  },
+  secondaryHeading: {
+    fontSize: typography.pxToRem(12),
+    color: palette.text.secondary,
+    marginLeft: 10,
+    marginTop: 2,
   },
   loading: {
     display: 'block',
@@ -67,36 +73,34 @@ interface ItemsListProps extends WithStyles<typeof styles> {
   handleChange: (KubeComponent) => any
 }
 const ItemsList = ({classes, list, newSelections, handleChange, disbleSelection} : ItemsListProps) =>
-  <FormControl component="fieldset" className={classes.formControl}>
-    <FormGroup>
-      <Table className={classes.table} aria-labelledby="tableTitle">
-        <TableBody>
-        {list.map((item, index) => 
-          <TableRow key={index} hover>
-            <TableCell>
-              <FormControlLabel
-                control={
-                  <Checkbox checked={!isNullOrUndefined(newSelections.get(item.text()))} 
-                            value={item.text()}
-                            indeterminate={isNullOrUndefined(newSelections.get(item.text())) && disbleSelection}
-                            onChange={() => handleChange(item)} />
-                }
-                label={item.name}
-              />
-            </TableCell>
-          </TableRow>
-        )}
-        </TableBody>
-      </Table>  
-    </FormGroup>
-  </FormControl>
+    <Table className={classes.table} aria-labelledby="tableTitle">
+      <TableBody>
+      {list.map((item, index) => 
+        <TableRow key={index} hover>
+          <TableCell>
+            <FormControlLabel
+              control={
+                <Checkbox checked={!isNullOrUndefined(newSelections.get(item.text()))} 
+                          value={item.text()}
+                          disabled={isNullOrUndefined(newSelections.get(item.text())) && disbleSelection}
+                          indeterminate={isNullOrUndefined(newSelections.get(item.text())) && disbleSelection}
+                          onChange={() => handleChange(item)} />
+              }
+              label={item.name}
+            />
+          </TableCell>
+        </TableRow>
+      )}
+      </TableBody>
+    </Table>  
 
 
 interface SelectionTableProps extends WithStyles<typeof styles> {
   table: {[group: string]: KubeComponent[]}
   selections: Map<string, KubeComponent>
   title: string
-  maxSelect: number,
+  maxSelect: number
+  grouped: boolean
   onSelection: (KubeComponent) => void
 }
 
@@ -166,12 +170,10 @@ const SelectionTable = withStyles(styles)(
 
     render() {
       const {table, newSelections, countSelected, collapsedGroups} = this.state;
-      const { title, classes, maxSelect } = this.props;
+      const {title, classes, maxSelect, grouped} = this.props;
       const groups = Object.keys(table)
       const hasData = groups && groups.length > 0 && table[groups[0]] && table[groups[0]].length > 0
-      const openFirst = groups && groups.length == 1
       const disbleSelection=countSelected >= maxSelect
-
 
       if(!hasData) {
         return <FormHelperText>No {title} found</FormHelperText>
@@ -180,35 +182,41 @@ const SelectionTable = withStyles(styles)(
           <div>
             <FormHelperText>Select up to 2 {title}</FormHelperText>
             {
-            groups.map((group, index) =>
-              openFirst ? 
-              <Table key={index} className={classes.table} aria-labelledby="tableTitle">
-                <TableBody>
-                  <TableRow>
-                    <TableCell>
-                      <ItemsList classes={classes} 
-                                newSelections={newSelections}
-                                list={table[group]} 
-                                disbleSelection={disbleSelection}
-                                handleChange={this.handleChange} />
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>  
+            grouped ? 
+              groups.map((group, index) => {
+                const list = table[group]
+                const tableSelected = list.filter(item => !isNullOrUndefined(newSelections.get(item.text()))).length
+                return (
+                <ExpansionPanel key={index} defaultExpanded={groups.length===1}>
+                  <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography className={classes.heading}>{group}</Typography>
+                    <Typography className={classes.secondaryHeading}>({list.length} items, {tableSelected} selected)</Typography>
+                  </ExpansionPanelSummary>
+                  <ExpansionPanelDetails>
+                    <ItemsList classes={classes} 
+                                  newSelections={newSelections}
+                                  list={list} 
+                                  disbleSelection={disbleSelection}
+                                  handleChange={this.handleChange} />
+                  </ExpansionPanelDetails>
+                </ExpansionPanel>
+                )
+              })
               :
-              <ExpansionPanel key={index}>
-                <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography className={classes.expansionHead}>{group}</Typography>
-                </ExpansionPanelSummary>
-                <ExpansionPanelDetails>
-                  <ItemsList classes={classes} 
-                                newSelections={newSelections}
-                                list={table[group]} 
-                                disbleSelection={disbleSelection}
-                                handleChange={this.handleChange} />
-                </ExpansionPanelDetails>
-              </ExpansionPanel>
-            )}
+                <Table className={classes.table} aria-labelledby="tableTitle">
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>
+                        <ItemsList classes={classes} 
+                                  newSelections={newSelections}
+                                  list={table[groups[0]]} 
+                                  disbleSelection={disbleSelection}
+                                  handleChange={this.handleChange} />
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>  
+            }
           </div>
         )
       }
@@ -242,14 +250,17 @@ interface SelectionDialogProps extends WithStyles<typeof styles> {
 }
 interface SelectionDialogState {
   activeTab: number
-  clusterInfo: Map<string, [Cluster, Map<string, [Namespace, Pod[]]>]>
+  clusterInfo: Map<string, [Cluster, Map<string, [Namespace, Map<string, Pod>]>]>
+  clustersInError: string[]
+  namespacesInError: string[]
+  reportClusterError: boolean
+  reportNamespaceError: boolean
   clusters: {[group: string]: Cluster[]}
   namespaces: {[group: string]: Namespace[]}
   pods: {[group: string]: Pod[]}
   selectedClusters: Map<string, Cluster>
   selectedNamespaces: Map<string, Namespace>
   selectedPods: Map<string, Pod>
-  loading: boolean,
 }
 interface SelectionDialogRefs {
   [k: string]: any
@@ -270,13 +281,16 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
   state: SelectionDialogState = {
     activeTab: 0,
     clusterInfo: new Map,
+    clustersInError: [],
+    namespacesInError: [],
+    reportClusterError: false,
+    reportNamespaceError: false,
     clusters: {},
     namespaces: {},
     pods: {},
     selectedClusters: new Map,
     selectedNamespaces: new Map,
     selectedPods: new Map,
-    loading: true,
   }
   refs: SelectionDialogRefs = {
     clusterSelector: undefined,
@@ -284,9 +298,20 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     podSelector: undefined,
   }
   loadTimerHandle: any
+  closed: boolean = false
+  clusterLoadingQueue: Set<string> = new Set
+  loadingCounter: number = 0
 
   componentDidMount() {
+    this.closed = false
     this.componentWillReceiveProps(this.props)
+  }
+
+  componentWillUnmount() {
+    if(this.loadTimerHandle) {
+      clearTimeout(this.loadTimerHandle)
+    }
+    this.closed = true
   }
 
   componentWillReceiveProps(nextProps: SelectionDialogProps) {
@@ -299,7 +324,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     nextProps.selectedClusters.forEach(item => selectedClusters.set(item.text(), item))
     nextProps.selectedNamespaces.forEach(item => selectedNamespaces.set(item.text(), item))
     nextProps.selectedPods.forEach(item => selectedPods.set(item.text(), item))
-
+    this.loadSelectedClustersData(selectedClusters)
     const {selection} = nextProps
     switch(selection) {
       case SelectionType.Clusters:
@@ -334,33 +359,88 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     this.setState({ activeTab: tabIndex });
   }
 
-  loadClusterData(selectedClusters: Map<string, Cluster>) {
-    const {clusterInfo} = this.state
-    console.log("loadClusterData: started loading for " + Array.from(selectedClusters.values()))
-    this.setState({loading: true})
-    selectedClusters.forEach(c => {
-      const namespaceMap : Map<string, [Namespace, Pod[]]> = new Map
-      clusterInfo.set(c.text(), [c, namespaceMap])
-      k8s.getNamespacesForCluster(c)
+  loadSelectedClustersData(selectedClusters: Map<string, Cluster>) {
+    const clustersToLoad : Cluster[] = []
+    selectedClusters.forEach(cluster => {
+      if(!this.clusterLoadingQueue.has(cluster.text())) {
+        clustersToLoad.push(cluster)
+        this.clusterLoadingQueue.add(cluster.text())
+      }
+    })
+
+    if(clustersToLoad.length > 0) {
+      this.loadingCounter++
+      Promise.all(
+        clustersToLoad.map(cluster => 
+          this.loadClusterData(cluster))
+      )
+      .then(result => {
+        this.loadingCounter--
+        clustersToLoad.forEach(cluster => this.clusterLoadingQueue.delete(cluster.text()))
+        if(!this.closed) {
+          this.loadNamespaces()
+          this.loadPods()
+        }
+      })
+      .catch(error => {
+        this.loadingCounter--
+        clustersToLoad.forEach(cluster => this.clusterLoadingQueue.delete(cluster.text()))
+        console.log("[Loading %s] Loading cluster data failed for selected clusters: %s", 
+            this.loadingCounter, clustersToLoad)
+      })
+    }
+  }
+
+  loadClusterData(cluster: Cluster) {
+    return new Promise((resolve, reject) => {
+      const namespaceMap : Map<string, [Namespace, Map<string, Pod>]> = new Map
+      k8s.getNamespacesForCluster(cluster)
         .then(namespaces => {
-          namespaces.forEach(ns => 
-            k8s.getPodsForNamespace(ns)
-            .then(pods => {
-              console.log("loadClusterData: finished loading for " + Array.from(selectedClusters.values()))
-              namespaceMap.set(ns.text(), [ns, pods.sort((p1,p2) => p1.name.localeCompare(p2.name))])
-              this.setState({clusterInfo, loading: false})
-              this.loadNamespaces()
-              this.loadPods()
-            })
-            .catch(error => {
-              console.log("Error while loading pods: " + error)
-              this.setState({clusterInfo, loading: false})
-            }))
+          Promise.all(
+            namespaces.map(ns => this.loadNamespaceData(ns, namespaceMap))
+          )
+          .then(result => {
+            const {clusterInfo} = this.state
+            clusterInfo.set(cluster.text(), [cluster, namespaceMap])
+            this.setState({clusterInfo})
+            resolve(true)
+          })
+          .catch(err => {
+            console.log("Failed to load pods for some namespaces: " + err)
+            reject(false)
+          })
         })
         .catch(error => {
-          console.log("Error while loading namespaces: " + error)
-          this.setState({clusterInfo, loading: false})
+          if(!this.closed) {
+            const {clustersInError} = this.state
+            clustersInError.push(cluster.text())
+            this.setState({clustersInError})
+          }
+          console.log("Error while loading namespaces for cluster %s: %s", cluster.text(), error)
+          reject(false)
         })
+    })
+  }
+
+  loadNamespaceData(namespace: Namespace, 
+                    namespaceMap : Map<string, [Namespace, Map<string, Pod>]>) : Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      k8s.getPodsForNamespace(namespace)
+      .then(pods => {
+        const podMap : Map<string, Pod> = new Map
+        pods.forEach(pod => podMap.set(pod.text(), pod))
+        namespaceMap.set(namespace.text(), [namespace, podMap])
+        resolve(true)
+      })
+      .catch(error => {
+        if(!this.closed) {
+          const {namespacesInError} = this.state
+          namespacesInError.push(namespace.text())
+          this.setState({namespacesInError})
+        }
+        console.log("Error while loading pods for namespace %s: %s", namespace.name, error)
+        reject(false)
+      })
     })
   }
 
@@ -369,7 +449,6 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     const allClusters = k8s.getAllClusters()
     clusters[''] = []
     allClusters.forEach(c => {
-      clusterInfo.set(c.text(), [c, new Map])
       clusters[''].push(c)
     })
     selectedClusters.forEach(c => {
@@ -388,15 +467,21 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
 
   loadNamespaces() {
     this.setState((state) => {
-      const {clusterInfo, selectedClusters, selectedNamespaces} = state
-      const clusterNamespaces : {[group: string]: Namespace[]} = {}
+      const {clusterInfo, clustersInError, selectedClusters, selectedNamespaces} = state
+      const namespaces : {[group: string]: Namespace[]} = {}
+      let reportClusterError = false
+
       selectedClusters.forEach(cluster => {
-        const clusterRec = clusterInfo.get(cluster.text())
-        if(clusterRec) {
-          clusterNamespaces[cluster.text()] = Array.from(clusterRec[1].values())
-              .map(rec => rec[0]).sort((c1,c2) => c1.name.localeCompare(c2.name))
+        if(clustersInError.includes(cluster.text())) {
+          reportClusterError = true
         } else {
-          clusterNamespaces[cluster.text()] = []
+          const clusterRec = clusterInfo.get(cluster.text())
+          if(clusterRec) {
+            namespaces[cluster.text()] = Array.from(clusterRec[1].values())
+                .map(rec => rec[0]).sort((n1,n2) => n1.name.localeCompare(n2.name))
+          } else {
+            namespaces[cluster.text()] = []
+          }
         }
       })
       selectedNamespaces.forEach(ns => {
@@ -406,11 +491,16 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
         const clusterRec = clusterInfo.get(ns.cluster.text())
         if(!clusterRec || !clusterRec[1].has(ns.text())) {
           selectedNamespaces.delete(ns.text())
+        } else {
+          const nsRec = clusterRec[1].get(ns.text())
+          nsRec && selectedNamespaces.set(ns.text(), nsRec[0])
         }
       })
+
       Object.assign(state, {
-        namespaces: clusterNamespaces, 
+        namespaces, 
         selectedNamespaces, 
+        reportClusterError,
         pods: {}, 
       })
       return state
@@ -419,15 +509,23 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
 
   loadPods() {
     this.setState((state) => {
-      const {clusterInfo, selectedNamespaces, selectedPods} = state
+      let reportNamespaceError = false
+      const {clusterInfo, clustersInError, namespacesInError, selectedNamespaces, selectedPods} = state
       const pods : {[group: string]: Pod[]} = {}
       selectedNamespaces.forEach(namespace => {
-        const clusterRec = clusterInfo.get(namespace.cluster.text())
-        const nsRec = clusterRec && clusterRec[1].get(namespace.text())
-        if(nsRec) {
-          pods[namespace.text()] = nsRec[1]
+        const cluster = namespace.cluster
+        if(clustersInError.includes(cluster.text()) ||
+            namespacesInError.includes(namespace.text())) {
+          reportNamespaceError = true
         } else {
-          pods[namespace.text()] = []
+          const clusterRec = clusterInfo.get(cluster.text())
+          const nsRec = clusterRec && clusterRec[1].get(namespace.text())
+          if(nsRec) {
+            pods[namespace.text()] = Array.from(nsRec[1].values())
+                                .sort((p1,p2) => p1.name.localeCompare(p2.name))
+          } else {
+            pods[namespace.text()] = []
+          }
         }
       })
       const podNames = _.flatten(_.values(pods)).map(pod => pod.text())
@@ -441,11 +539,15 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
           selectedPods.delete(pod.text())
         } else if(!podNames.includes(pod.text())) {
           selectedPods.delete(pod.text())
+        } else {
+          const newPod = nsRec[1].get(pod.text())
+          newPod && selectedPods.set(pod.text(), newPod)
         }
       })
       Object.assign(state, {
         pods, 
-        selectedPods, 
+        selectedPods,
+        reportNamespaceError,
       })
       return state
     })
@@ -455,7 +557,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     if(this.loadTimerHandle) {
       clearTimeout(this.loadTimerHandle)
     }
-    this.loadTimerHandle = setTimeout(this.loadClusterData.bind(this, selectedClusters), 1000)
+    this.loadTimerHandle = setTimeout(this.loadSelectedClustersData.bind(this, selectedClusters), 300)
   }
 
   onSelectComponent(selectionStore: SelectionStore, item: KubeComponent) {
@@ -467,7 +569,6 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
       selectedItems.delete(item.text())
     }
     if(selectionStore === SelectionStore.selectedClusters) {
-      this.setState({loading: true})
       this.delayedLoadClusterData(selectedItems as Map<string, Cluster>)
     }
     this.setState(state => {
@@ -490,12 +591,14 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
 
   render() {
     const { classes, open, forced, useDarkTheme } = this.props;
-    const { activeTab, loading,
-      clusters, selectedClusters,
-      namespaces, selectedNamespaces,
-      pods, selectedPods
+    const { activeTab, 
+      reportClusterError, clustersInError,
+      reportNamespaceError, namespacesInError,
+      clusters, selectedClusters, 
+      namespaces, selectedNamespaces, 
+      pods, selectedPods,
     } = this.state
-
+    const loading = this.loadingCounter > 0
 
 
     const theme = createMuiTheme({
@@ -508,6 +611,9 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
             height: '80vh',
             minHeight: '80vh',
             maxHeight: '80vh',
+            width: '60vh',
+            minWidth: '60vh',
+            maxWidth: '60vh',
           }
         },
         MuiTabs: {
@@ -519,6 +625,8 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
         MuiExpansionPanelSummary: {
           root: {
             backgroundColor: expansionClosedColor[useDarkTheme ? 800 : 200],
+            height: 64,
+            marginTop: 17,
           },
           expanded: {
             backgroundColor: expansionOpenColor[useDarkTheme ? 800 : 200],
@@ -551,29 +659,46 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                     title="Clusters" 
                     table={clusters}
                     selections={selectedClusters}
+                    grouped={false}
                     onSelection={this.onSelectComponent.bind(this, SelectionStore.selectedClusters)}
                 />
               </div>}
             {loading && activeTab !== 0 && <CircularProgress className={classes.loading} />}
             {!loading && activeTab === 1 &&  
               <div>
+                {reportClusterError && 
+                <FormHelperText style={{fontSize: 14, marginTop: 20, color: 'red'}}>
+                  Failed to load data for the following cluster(s): {clustersInError}
+                </FormHelperText>
+                }
+                {!reportClusterError && 
                 <SelectionTable 
                     innerRef={this.refs.namespaceSelector}
                     title="Namespaces" 
                     table={namespaces}
                     selections={selectedNamespaces}
+                    grouped={true}
                     onSelection={this.onSelectComponent.bind(this, SelectionStore.selectedNamespaces)}
                 />
+                }
               </div>}
             {!loading && activeTab === 2 &&  
               <div>
-                <SelectionTable 
-                    innerRef={this.refs.podSelector}
-                    title="Pods" 
-                    table={pods}
-                    selections={selectedPods}
-                    onSelection={this.onSelectComponent.bind(this, SelectionStore.selectedPods)}
-                />
+                {reportNamespaceError && 
+                <FormHelperText style={{fontSize: 14, verticalAlign: 'middle'}}>
+                  Failed to load data for the following namespace(s): {namespacesInError}
+                </FormHelperText>
+                }
+                {!reportNamespaceError && 
+                  <SelectionTable 
+                      innerRef={this.refs.podSelector}
+                      title="Pods" 
+                      table={pods}
+                      selections={selectedPods}
+                      grouped={true}
+                      onSelection={this.onSelectComponent.bind(this, SelectionStore.selectedPods)}
+                  />
+                }
               </div>}
           </DialogContent>
           <DialogActions>
