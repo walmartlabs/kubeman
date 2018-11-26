@@ -1,29 +1,15 @@
 import React from 'react';
 import _ from 'lodash'
-import { isNullOrUndefined } from 'util';
 
 import { withStyles, WithStyles, createStyles, withTheme, WithTheme, Theme, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
 import AppBar from '@material-ui/core/AppBar';
 import Button from '@material-ui/core/Button';
-import FormControl from '@material-ui/core/FormControl';
-import FormGroup from '@material-ui/core/FormGroup';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
 import FormHelperText from '@material-ui/core/FormHelperText';
-import Checkbox from '@material-ui/core/Checkbox';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogActions from '@material-ui/core/DialogActions';
 import Dialog from '@material-ui/core/Dialog';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableRow from '@material-ui/core/TableRow';
 import Tabs from '@material-ui/core/Tabs'
 import Tab from '@material-ui/core/Tab'
-import ExpansionPanel from '@material-ui/core/ExpansionPanel';
-import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
-import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import Typography from '@material-ui/core/Typography';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import expansionClosedColor from '@material-ui/core/colors/blueGrey';
 import expansionOpenColor from '@material-ui/core/colors/blue';
@@ -32,31 +18,15 @@ import expansionOpenColor from '@material-ui/core/colors/blue';
 import {Cluster, Namespace, Pod, Item, KubeComponent} from "../k8s/k8sTypes";
 import * as k8s from '../k8s/k8sClient'
 import Context from "./contextStore";
-
+import SelectionTable from './selectionTable'
+import {selectionDialogTheme} from '../theme/theme'
+import PodFilter from './podFilter'
+import TestFilter from './testFilter'
 
 const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   root: {
     padding: spacing.unit,
     color: palette.primary.main,
-  },
-  formControl: {
-    margin: spacing.unit * 3,
-  },
-  table: {
-    minWidth: 400,
-  },
-  tableWrapper: {
-    overflowX: 'auto',
-  },
-  heading: {
-    fontSize: typography.pxToRem(15),
-    fontWeight: typography.fontWeightRegular,
-  },
-  secondaryHeading: {
-    fontSize: typography.pxToRem(12),
-    color: palette.text.secondary,
-    marginLeft: 10,
-    marginTop: 2,
   },
   loading: {
     display: 'block',
@@ -66,169 +36,17 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
 });
 
-interface ItemsListProps extends WithStyles<typeof styles> {
-  list: KubeComponent[]
-  newSelections: Map<string, KubeComponent>
-  disbleSelection: boolean
-  handleChange: (KubeComponent) => any
-}
-const ItemsList = ({classes, list, newSelections, handleChange, disbleSelection} : ItemsListProps) =>
-    <Table className={classes.table} aria-labelledby="tableTitle">
-      <TableBody>
-      {list.map((item, index) => 
-        <TableRow key={index} hover>
-          <TableCell>
-            <FormControlLabel
-              control={
-                <Checkbox checked={!isNullOrUndefined(newSelections.get(item.text()))} 
-                          value={item.text()}
-                          disabled={isNullOrUndefined(newSelections.get(item.text())) && disbleSelection}
-                          indeterminate={isNullOrUndefined(newSelections.get(item.text())) && disbleSelection}
-                          onChange={() => handleChange(item)} />
-              }
-              label={item.name}
-            />
-          </TableCell>
-        </TableRow>
-      )}
-      </TableBody>
-    </Table>  
-
-
-interface SelectionTableProps extends WithStyles<typeof styles> {
-  table: {[group: string]: KubeComponent[]}
-  selections: Map<string, KubeComponent>
-  title: string
-  maxSelect: number
-  grouped: boolean
-  onSelection: (KubeComponent) => void
-}
-
-interface SelectionTableState {
-  table: {[group: string]: KubeComponent[]}
-  newSelections: Map<string, KubeComponent>
-  collapsedGroups: {}
-  countSelected: number,
-}
-
-const SelectionTable = withStyles(styles)(
-  class extends React.Component<SelectionTableProps, SelectionTableState> {
-    static defaultProps = {
-      maxSelect: 2
-    }
-
-    state: SelectionTableState = {
-      table: {},
-      newSelections: new Map(),
-      collapsedGroups: {},
-      countSelected: 0,
-    }
-
-    componentDidMount() {
-      this.handleChange = this.handleChange.bind(this)
-      this.componentWillReceiveProps(this.props)
-    }
-
-    componentWillReceiveProps(nextProps: SelectionTableProps) {
-      const {title, table, selections} = nextProps
-      const newSelections = new Map();
-      Array.from(selections.values()).forEach(item => newSelections.set(item.text(), item))
-      this.setState({
-        newSelections: newSelections, 
-        countSelected: selections.size, 
-        table
-      })
-    }
-
-    getSelections() : Array<KubeComponent> {
-      const {newSelections} = this.state
-      return Array.from(newSelections.values())
-    }
-
-    handleChange(item: KubeComponent) {
-      const {newSelections} = this.state;
-      const {maxSelect, onSelection} = this.props
-      let countSelected : number = newSelections.size
-
-      const exists = newSelections.get(item.text())
-      if(exists) {
-        newSelections.delete(item.text())
-        countSelected--
-      } else if(countSelected < maxSelect) {
-        newSelections.set(item.text(), item)
-        countSelected++
-      }
-      this.setState({newSelections, countSelected});
-      onSelection(item)
-    };
-
-    handleCollapse(group: string) {
-      const {collapsedGroups} = this.state
-      collapsedGroups[group] = !collapsedGroups[group]
-      this.setState({collapsedGroups});
-    }
-
-    render() {
-      const {table, newSelections, countSelected, collapsedGroups} = this.state;
-      const {title, classes, maxSelect, grouped} = this.props;
-      const groups = Object.keys(table)
-      const hasData = groups && groups.length > 0 && table[groups[0]] && table[groups[0]].length > 0
-      const disbleSelection=countSelected >= maxSelect
-
-      if(!hasData) {
-        return <FormHelperText>No {title} found</FormHelperText>
-      } else {
-        return (
-          <div>
-            <FormHelperText>Select up to 2 {title}</FormHelperText>
-            {
-            grouped ? 
-              groups.map((group, index) => {
-                const list = table[group]
-                const tableSelected = list.filter(item => !isNullOrUndefined(newSelections.get(item.text()))).length
-                return (
-                <ExpansionPanel key={index} defaultExpanded={groups.length===1}>
-                  <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography className={classes.heading}>{group}</Typography>
-                    <Typography className={classes.secondaryHeading}>({list.length} items, {tableSelected} selected)</Typography>
-                  </ExpansionPanelSummary>
-                  <ExpansionPanelDetails>
-                    <ItemsList classes={classes} 
-                                  newSelections={newSelections}
-                                  list={list} 
-                                  disbleSelection={disbleSelection}
-                                  handleChange={this.handleChange} />
-                  </ExpansionPanelDetails>
-                </ExpansionPanel>
-                )
-              })
-              :
-                <Table className={classes.table} aria-labelledby="tableTitle">
-                  <TableBody>
-                    <TableRow>
-                      <TableCell>
-                        <ItemsList classes={classes} 
-                                  newSelections={newSelections}
-                                  list={table[groups[0]]} 
-                                  disbleSelection={disbleSelection}
-                                  handleChange={this.handleChange} />
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>  
-            }
-          </div>
-        )
-      }
-    }
-  }
-)
-
-
 export enum SelectionType {
   Clusters = "Clusters",
+  Pattern = "Pattern",
   Namespaces = "Namespaces",
   Pods = "Pods",
+}
+enum SelectionTabs {
+  Clusters = 0,
+  Pattern = 1,
+  Namespaces = 2,
+  Pods = 3,
 }
 
 enum SelectionStore {
@@ -244,8 +62,10 @@ interface SelectionDialogProps extends WithStyles<typeof styles> {
   selectedClusters: Map<string, Cluster>
   selectedNamespaces: Map<string, Namespace>
   selectedPods: Map<string, Pod>
+  filter: string,
   useDarkTheme: boolean
-  onSelection: (clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, pods: Map<string, Pod>) => any
+  onSelection: (clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, 
+              pods: Map<string, Pod>, filter: string) => any
   onCancel: () => any
 }
 interface SelectionDialogState {
@@ -260,7 +80,8 @@ interface SelectionDialogState {
   pods: {[group: string]: Pod[]}
   selectedClusters: Map<string, Cluster>
   selectedNamespaces: Map<string, Namespace>
-  selectedPods: Map<string, Pod>
+  selectedPods: Map<string, Pod>,
+  filter: string,
 }
 interface SelectionDialogRefs {
   [k: string]: any
@@ -291,6 +112,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     selectedClusters: new Map,
     selectedNamespaces: new Map,
     selectedPods: new Map,
+    filter: '',
   }
   refs: SelectionDialogRefs = {
     clusterSelector: undefined,
@@ -301,6 +123,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
   closed: boolean = false
   clusterLoadingQueue: Set<string> = new Set
   loadingCounter: number = 0
+  activeTabIndex: number = 0
 
   componentDidMount() {
     this.closed = false
@@ -324,20 +147,24 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     nextProps.selectedClusters.forEach(item => selectedClusters.set(item.text(), item))
     nextProps.selectedNamespaces.forEach(item => selectedNamespaces.set(item.text(), item))
     nextProps.selectedPods.forEach(item => selectedPods.set(item.text(), item))
+
     this.loadSelectedClustersData(selectedClusters)
     const {selection} = nextProps
     switch(selection) {
       case SelectionType.Clusters:
-      this.setTab(0)
+        this.setTab(SelectionTabs.Clusters)
+        break
+      case SelectionType.Pattern:
+        this.setTab(SelectionTabs.Pattern)
         break
       case SelectionType.Namespaces:
-        this.setTab(1)
+        this.setTab(SelectionTabs.Namespaces)
         break
       case SelectionType.Pods:
-        this.setTab(2)
+        this.setTab(SelectionTabs.Pods)
         break
-  }
-    this.setState({selectedClusters, selectedNamespaces, selectedPods})
+    }
+    this.setState({selectedClusters, selectedNamespaces, selectedPods, filter: nextProps.filter})
   }
 
   onTabChange(event, tabIndex) {
@@ -346,16 +173,20 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
 
   setTab(tabIndex: number) {
     switch(tabIndex) {
-      case 0:
+      case SelectionTabs.Clusters:
         this.loadClusters()
         break
-      case 1:
+      case SelectionTabs.Pattern:
+        this.loadPodsForFilter()
+        break
+      case SelectionTabs.Namespaces:
         this.loadNamespaces()
         break
-      case 2:  
+      case SelectionTabs.Pods:  
         this.loadPods()
         break
     }
+    this.activeTabIndex = tabIndex
     this.setState({ activeTab: tabIndex });
   }
 
@@ -378,8 +209,8 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
         this.loadingCounter--
         clustersToLoad.forEach(cluster => this.clusterLoadingQueue.delete(cluster.text()))
         if(!this.closed) {
-          this.loadNamespaces()
-          this.loadPods()
+          this.removeInvalidItems()
+          this.setTab(this.activeTabIndex)
         }
       })
       .catch(error => {
@@ -400,9 +231,11 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
             namespaces.map(ns => this.loadNamespaceData(ns, namespaceMap))
           )
           .then(result => {
-            const {clusterInfo} = this.state
-            clusterInfo.set(cluster.text(), [cluster, namespaceMap])
-            this.setState({clusterInfo})
+            if(!this.closed) {
+              const {clusterInfo} = this.state
+              clusterInfo.set(cluster.text(), [cluster, namespaceMap])
+              this.setState({clusterInfo})
+            }
             resolve(true)
           })
           .catch(err => {
@@ -420,6 +253,46 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
           reject(false)
         })
     })
+  }
+
+  removeInvalidItems() {
+    const {clusterInfo, selectedClusters, selectedNamespaces, selectedPods} = this.state
+    selectedClusters.forEach(c => {
+      if(!clusterInfo.has(c.text())) {
+        selectedClusters.delete(c.text())
+      }
+    })
+    selectedNamespaces.forEach(ns => {
+      if(!selectedClusters.get(ns.cluster.text())) {
+        selectedNamespaces.delete(ns.text())
+      }
+      const clusterRec = clusterInfo.get(ns.cluster.text())
+      if(!clusterRec || !clusterRec[1].has(ns.text())) {
+        selectedNamespaces.delete(ns.text())
+      } else {
+        const nsRec = clusterRec[1].get(ns.text())
+        nsRec && selectedNamespaces.set(ns.text(), nsRec[0])
+      }
+    })
+    selectedPods.forEach(pod => {
+      if(!selectedNamespaces.get(pod.namespace.text())) {
+        selectedPods.delete(pod.text())
+      }
+      const clusterRec = clusterInfo.get(pod.namespace.cluster.text())
+      const nsRec = clusterRec && clusterRec[1].get(pod.namespace.text())
+      if(!clusterRec || !nsRec) {
+        selectedPods.delete(pod.text())
+      } else {
+        const newPod = nsRec[1].get(pod.text())
+        if(!newPod) {
+          selectedPods.delete(pod.text())
+        } else {
+          newPod && selectedPods.set(pod.text(), newPod)
+        }
+      }
+    })
+
+    this.setState({selectedClusters, selectedNamespaces, selectedPods})
   }
 
   loadNamespaceData(namespace: Namespace, 
@@ -451,11 +324,6 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     allClusters.forEach(c => {
       clusters[''].push(c)
     })
-    selectedClusters.forEach(c => {
-      if(!clusterInfo.has(c.text())) {
-        selectedClusters.delete(c.text())
-      }
-    })
     this.setState({
       clusters,
       selectedClusters,
@@ -465,90 +333,85 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     })
   }
 
-  loadNamespaces() {
-    this.setState((state) => {
-      const {clusterInfo, clustersInError, selectedClusters, selectedNamespaces} = state
-      const namespaces : {[group: string]: Namespace[]} = {}
-      let reportClusterError = false
+  loadNamespacesIntoState(state: SelectionDialogState) : SelectionDialogState {
+    const {clusterInfo, clustersInError, selectedClusters, selectedNamespaces} = state
+    const namespaces : {[group: string]: Namespace[]} = {}
+    let reportClusterError = false
 
-      selectedClusters.forEach(cluster => {
-        if(clustersInError.includes(cluster.text())) {
-          reportClusterError = true
+    selectedClusters.forEach(cluster => {
+      if(clustersInError.includes(cluster.text())) {
+        reportClusterError = true
+      } else {
+        const clusterRec = clusterInfo.get(cluster.text())
+        if(clusterRec) {
+          namespaces[cluster.text()] = Array.from(clusterRec[1].values())
+              .map(rec => rec[0]).sort((n1,n2) => n1.name.localeCompare(n2.name))
         } else {
-          const clusterRec = clusterInfo.get(cluster.text())
-          if(clusterRec) {
-            namespaces[cluster.text()] = Array.from(clusterRec[1].values())
-                .map(rec => rec[0]).sort((n1,n2) => n1.name.localeCompare(n2.name))
-          } else {
-            namespaces[cluster.text()] = []
-          }
+          namespaces[cluster.text()] = []
         }
-      })
-      selectedNamespaces.forEach(ns => {
-        if(!selectedClusters.get(ns.cluster.text())) {
-          selectedNamespaces.delete(ns.text())
-        }
-        const clusterRec = clusterInfo.get(ns.cluster.text())
-        if(!clusterRec || !clusterRec[1].has(ns.text())) {
-          selectedNamespaces.delete(ns.text())
-        } else {
-          const nsRec = clusterRec[1].get(ns.text())
-          nsRec && selectedNamespaces.set(ns.text(), nsRec[0])
-        }
-      })
-
-      Object.assign(state, {
-        namespaces, 
-        selectedNamespaces, 
-        reportClusterError,
-        pods: {}, 
-      })
-      return state
+      }
     })
+    Object.assign(state, {
+      namespaces, 
+      selectedNamespaces, 
+      reportClusterError,
+      pods: {}, 
+    })
+    return state
+  }
+
+  loadNamespaces() {
+    this.setState(this.loadNamespacesIntoState.bind(this))
+  }
+
+  loadPodsIntoState(allNamespaces: boolean, state: SelectionDialogState) : SelectionDialogState {
+    let reportNamespaceError = false
+    const {clusterInfo, clustersInError, namespacesInError, namespaces, selectedNamespaces, selectedPods} = state
+    const pods : {[group: string]: Pod[]} = {}
+    const namespacesToLoad : Namespace[] = allNamespaces ? 
+            _.flatten(_.values(namespaces))
+            : 
+            Array.from(selectedNamespaces.values())
+    namespacesToLoad.forEach(namespace => {
+      const cluster = namespace.cluster
+      if(clustersInError.includes(cluster.text()) ||
+        namespacesInError.includes(namespace.text())) {
+        reportNamespaceError = true
+      } else {
+        const clusterRec = clusterInfo.get(cluster.text())
+        const nsRec = clusterRec && clusterRec[1].get(namespace.text())
+        if(nsRec) {
+          pods[namespace.text()] = Array.from(nsRec[1].values())
+                              .sort((p1,p2) => p1.name.localeCompare(p2.name))
+        } else {
+          pods[namespace.text()] = []
+        }
+      }
+    })
+    Object.assign(state, {
+      pods, 
+      selectedPods,
+      reportNamespaceError,
+    })
+    return state
   }
 
   loadPods() {
+    this.setState(this.loadPodsIntoState.bind(this, false))
+  }
+
+  loadPodsForFilter() {
     this.setState((state) => {
-      let reportNamespaceError = false
-      const {clusterInfo, clustersInError, namespacesInError, selectedNamespaces, selectedPods} = state
-      const pods : {[group: string]: Pod[]} = {}
-      selectedNamespaces.forEach(namespace => {
-        const cluster = namespace.cluster
-        if(clustersInError.includes(cluster.text()) ||
-            namespacesInError.includes(namespace.text())) {
-          reportNamespaceError = true
-        } else {
-          const clusterRec = clusterInfo.get(cluster.text())
-          const nsRec = clusterRec && clusterRec[1].get(namespace.text())
-          if(nsRec) {
-            pods[namespace.text()] = Array.from(nsRec[1].values())
-                                .sort((p1,p2) => p1.name.localeCompare(p2.name))
-          } else {
-            pods[namespace.text()] = []
-          }
-        }
-      })
-      const podNames = _.flatten(_.values(pods)).map(pod => pod.text())
-      selectedPods.forEach(pod => {
-        if(!selectedNamespaces.get(pod.namespace.text())) {
-          selectedPods.delete(pod.text())
-        }
-        const clusterRec = clusterInfo.get(pod.namespace.cluster.text())
-        const nsRec = clusterRec && clusterRec[1].get(pod.namespace.text())
-        if(!clusterRec || !nsRec) {
-          selectedPods.delete(pod.text())
-        } else if(!podNames.includes(pod.text())) {
-          selectedPods.delete(pod.text())
-        } else {
-          const newPod = nsRec[1].get(pod.text())
-          newPod && selectedPods.set(pod.text(), newPod)
-        }
-      })
-      Object.assign(state, {
-        pods, 
-        selectedPods,
-        reportNamespaceError,
-      })
+      state = this.loadNamespacesIntoState(state)
+      const {reportClusterError} = state
+      if(reportClusterError) {
+        return state
+      }
+      state = this.loadPodsIntoState(true, state)
+      const {reportNamespaceError, selectedPods, pods} = state
+      if(reportNamespaceError) {
+        return state
+      }
       return state
     })
   }
@@ -577,6 +440,21 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     })
   }
 
+  onApplyFilter = (filter: string, pods: Pod[]) => {
+    const {selectedNamespaces, selectedPods} = this.state
+    selectedNamespaces.clear()
+    selectedPods.clear()
+    pods.forEach(pod => {
+      selectedNamespaces.set(pod.namespace.text(), pod.namespace)
+      selectedPods.set(pod.text(), pod)
+    })
+    this.setState({
+      filter,
+      selectedNamespaces,
+      selectedPods
+    })
+  }
+
   handleEntering() {
   };
 
@@ -585,8 +463,8 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
   };
 
   handleOk() {
-    const {selectedClusters, selectedNamespaces, selectedPods} = this.state
-    this.props.onSelection(selectedClusters, selectedNamespaces, selectedPods)
+    const {selectedClusters, selectedNamespaces, selectedPods, filter} = this.state
+    this.props.onSelection(selectedClusters, selectedNamespaces, selectedPods, filter)
   };
 
   render() {
@@ -596,44 +474,11 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
       reportNamespaceError, namespacesInError,
       clusters, selectedClusters, 
       namespaces, selectedNamespaces, 
-      pods, selectedPods,
+      pods, selectedPods, filter,
     } = this.state
     const loading = this.loadingCounter > 0
 
-
-    const theme = createMuiTheme({
-      palette: {
-        type: useDarkTheme?'dark':'light'
-      },
-      overrides: {
-        MuiDialog: {
-          paper: {
-            height: '80vh',
-            minHeight: '80vh',
-            maxHeight: '80vh',
-            width: '60vh',
-            minWidth: '60vh',
-            maxWidth: '60vh',
-          }
-        },
-        MuiTabs: {
-          indicator: {
-            borderBottom: '3px solid #1890ff',
-            backgroundColor: '#1890ff',
-          },
-        },
-        MuiExpansionPanelSummary: {
-          root: {
-            backgroundColor: expansionClosedColor[useDarkTheme ? 800 : 200],
-            height: 64,
-            marginTop: 17,
-          },
-          expanded: {
-            backgroundColor: expansionOpenColor[useDarkTheme ? 800 : 200],
-          }
-        }
-      }
-    });
+    const theme = createMuiTheme(selectionDialogTheme.getTheme(useDarkTheme));
     
     return (
       <MuiThemeProvider theme={theme}>
@@ -648,11 +493,12 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
               <Tabs value={activeTab}
                   onChange={this.onTabChange.bind(this)} >
                 <Tab label="Clusters" />
+                <Tab label="Select by Pattern" disabled={selectedClusters.size === 0} />
                 <Tab label="Namespaces" disabled={selectedClusters.size === 0} />
                 <Tab label="Pods" disabled={selectedNamespaces.size === 0} />
               </Tabs>
             </AppBar>  
-            {activeTab === 0 &&  
+            {activeTab === SelectionTabs.Clusters &&  
               <div>
                 <SelectionTable 
                     innerRef={this.refs.clusterSelector}
@@ -660,11 +506,17 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                     table={clusters}
                     selections={selectedClusters}
                     grouped={false}
+                    maxSelect={2}
                     onSelection={this.onSelectComponent.bind(this, SelectionStore.selectedClusters)}
                 />
               </div>}
-            {loading && activeTab !== 0 && <CircularProgress className={classes.loading} />}
-            {!loading && activeTab === 1 &&  
+            {loading && activeTab !== SelectionTabs.Clusters && <CircularProgress className={classes.loading} />}
+            {!loading && activeTab === SelectionTabs.Pattern &&
+              <PodFilter pods={pods} filter={filter}
+                onApplyFilter={this.onApplyFilter}
+              />
+            }
+            {!loading && activeTab === SelectionTabs.Namespaces &&  
               <div>
                 {reportClusterError && 
                 <FormHelperText style={{fontSize: 14, marginTop: 20, color: 'red'}}>
@@ -678,11 +530,12 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                     table={namespaces}
                     selections={selectedNamespaces}
                     grouped={true}
+                    maxSelect={2}
                     onSelection={this.onSelectComponent.bind(this, SelectionStore.selectedNamespaces)}
                 />
                 }
               </div>}
-            {!loading && activeTab === 2 &&  
+            {!loading && activeTab === SelectionTabs.Pods &&  
               <div>
                 {reportNamespaceError && 
                 <FormHelperText style={{fontSize: 14, verticalAlign: 'middle'}}>

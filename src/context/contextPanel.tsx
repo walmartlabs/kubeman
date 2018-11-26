@@ -17,7 +17,7 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
   },
   textfieldInput: {
     fontSize: '0.8em',
-    overflow: 'hidden'
+    overflow: 'scroll'
   },
   button: {
     verticalAlign: 'bottom',
@@ -56,7 +56,7 @@ class ContextPanel extends React.Component<IProps, IState> {
         }
       })
     }
-    return clusterSelections.join("\n\n")
+    return clusterSelections.join("\n")
   }
 
   render() {

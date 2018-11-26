@@ -22,6 +22,7 @@ interface IState {
   selectedClusters: Map<string, Cluster>
   selectedNamespaces: Map<string, Namespace>
   selectedPods: Map<string, Pod>
+  filter: string
 }
 
 export default class ContextSelector extends React.Component<IProps, IState> {
@@ -37,6 +38,7 @@ export default class ContextSelector extends React.Component<IProps, IState> {
     selectedClusters: new Map,
     selectedNamespaces: new Map,
     selectedPods: new Map,
+    filter: '',
   }
 
   componentDidMount() {
@@ -48,7 +50,8 @@ export default class ContextSelector extends React.Component<IProps, IState> {
   }
 
   
-  onSelection(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, pods: Map<string, Pod>) {
+  onSelection(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, 
+              pods: Map<string, Pod>, filter: string) {
     const {context} = this.state
     context.store(clusters, namespaces, pods)
     this.props.onUpdateContext(context)
@@ -57,6 +60,7 @@ export default class ContextSelector extends React.Component<IProps, IState> {
       selectedClusters: clusters,
       selectedNamespaces: namespaces,
       selectedPods: pods,
+      filter,
       showClusters: false, 
       showNamespaces: false, 
       showPods: false, 
@@ -121,10 +125,11 @@ export default class ContextSelector extends React.Component<IProps, IState> {
     const {useDarkTheme} = this.props
     const { context, showClusters, showNamespaces, showPods,
             forcedClusterSelection, forcedNamespaceSelection, forcedPodSelection,
-            selectedClusters, selectedNamespaces, selectedPods } = this.state;
+            selectedClusters, selectedNamespaces, selectedPods, filter } = this.state;
     const showDialog = showClusters || showNamespaces || showPods
     const selection = showClusters ? SelectionType.Clusters :
                         showNamespaces ? SelectionType.Namespaces : SelectionType.Pods
+    
     return (
       <div>
         {showDialog && 
@@ -133,6 +138,7 @@ export default class ContextSelector extends React.Component<IProps, IState> {
           selectedClusters={selectedClusters}
           selectedNamespaces={selectedNamespaces}
           selectedPods={selectedPods}
+          filter={filter}
           open={showDialog}
           useDarkTheme={useDarkTheme}
           forced={forcedClusterSelection||forcedNamespaceSelection||forcedPodSelection}

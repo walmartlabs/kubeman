@@ -90,7 +90,8 @@ export class Workspace extends React.PureComponent<IProps, IState, IRefs> {
     return (
       <Paper className={classes.root} 
             tabIndex={0}
-            onKeyPress={this.onKeyPress.bind(this)}>
+            //onKeyPress={this.onKeyPress.bind(this)}
+      >
         <Table className={classes.table}>
           <TableBody>
             <TableRow className={classes.tr}>

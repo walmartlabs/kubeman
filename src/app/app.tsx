@@ -14,22 +14,13 @@ import FormControlLabel from '@material-ui/core/FormControlLabel';
 import '../logger/client'
 import StyledWorkspace, {Workspace} from '../workspace'
 import log from '../logger/client';
+import {appTheme} from '../theme/theme'
 
 window["__MUI_USE_NEXT_TYPOGRAPHY_VARIANTS__"] = true
 
 
-const darkTheme = createMuiTheme({
-  palette: {
-    type: 'dark',
-    primary: primaryColor,
-  },
-})
-const lightTheme = createMuiTheme({
-  palette: {
-    type: 'light',
-    primary: primaryColor,
-  },
-})
+const darkTheme = createMuiTheme(appTheme.darkTheme)
+const lightTheme = createMuiTheme(appTheme.lightTheme)
 
 const TabContainer = (props) =>
     <Typography component="div" style={{ padding: 8 * 3, color: 'white'  }}>
@@ -65,8 +56,10 @@ class extends Component<IProps, IState> {
   }
 
   onChangeTheme() {
-    const {useDarkTheme} = this.state
-    this.setState({useDarkTheme: !useDarkTheme})
+    let {useDarkTheme} = this.state
+    useDarkTheme = !useDarkTheme
+    appTheme.setActiveTheme(useDarkTheme)
+    this.setState({useDarkTheme})
   }
 
   onKeyPress(event: KeyboardEvent) {
@@ -77,8 +70,8 @@ class extends Component<IProps, IState> {
   render() {
     const {useDarkTheme} = this.state
     return (
-      <MuiThemeProvider theme={useDarkTheme?darkTheme:lightTheme}>
-        <div onKeyPress={this.onKeyPress.bind(this)}>
+      <MuiThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
+        <div> {/* onKeyPress={this.onKeyPress.bind(this)} */}
           <AppBar position="static">
             <Toolbar>
               <FormControlLabel
