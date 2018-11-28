@@ -21,8 +21,22 @@ import expansionOpenColor from '@material-ui/core/colors/blue';
 class AppTheme {
   darkTheme: ThemeOptions = {
     palette: {
-      type: 'dark'
+      type: 'dark',
     },
+    typography: {
+      fontFamily: [
+        '-apple-system',
+        'BlinkMacSystemFont',
+        '"Segoe UI"',
+        'Roboto',
+        '"Helvetica Neue"',
+        'Arial',
+        'sans-serif',
+        '"Apple Color Emoji"',
+        '"Segoe UI Emoji"',
+        '"Segoe UI Symbol"',
+      ].join(','),
+    }
   }
   lightTheme: ThemeOptions = {
     palette: {
@@ -54,6 +68,9 @@ class SelectionDialogTheme {
           }
         },
         MuiTabs: {
+          root: {
+            backgroundColor: '#4b6082'
+          },
           indicator: {
             borderBottom: '3px solid #1890ff',
             backgroundColor: '#1890ff',

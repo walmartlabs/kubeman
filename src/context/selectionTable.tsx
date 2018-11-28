@@ -99,7 +99,7 @@ interface SelectionTableState {
 
 class SelectionTable extends React.Component<SelectionTableProps, SelectionTableState> {
   static defaultProps = {
-    maxSelect: 5
+    maxSelect: -1
   }
 
   state: SelectionTableState = {
@@ -139,7 +139,7 @@ class SelectionTable extends React.Component<SelectionTableProps, SelectionTable
     if(exists) {
       newSelections.delete(item.text())
       countSelected--
-    } else if(countSelected < maxSelect) {
+    } else if(maxSelect > 0 && countSelected < maxSelect) {
       newSelections.set(item.text(), item)
       countSelected++
     }
@@ -158,14 +158,15 @@ class SelectionTable extends React.Component<SelectionTableProps, SelectionTable
     const {title, classes, maxSelect, grouped} = this.props;
     const groups = Object.keys(table)
     const hasData = _.flatten(_.values(table)).length > 0
-    const disbleSelection=countSelected >= maxSelect
+    const disbleSelection = maxSelect > 0 && countSelected >= maxSelect
 
     if(!hasData) {
       return <FormHelperText>No {title} found</FormHelperText>
     } else {
       return (
         <div>
-          <FormHelperText>Select up to {maxSelect} {title}</FormHelperText>
+          {maxSelect > 0 && 
+          <FormHelperText>Select up to {maxSelect} {title}</FormHelperText>}
           {
           grouped ? 
             groups.map((group, index) => {

@@ -70,6 +70,10 @@ export default class ContextSelector extends React.Component<IProps, IState> {
     })
   }
 
+  onContextUpdate(context: Context) {
+    this.setState({context})
+  }
+
   onCancelSelection() {
     this.setState({
       showClusters: false, 

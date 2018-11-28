@@ -5,9 +5,7 @@ import ReactDOM from 'react-dom'
 import { withStyles, createStyles, Theme, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
 import primaryColor from '@material-ui/core/colors/indigo';
 
-import AppBar from '@material-ui/core/AppBar';
 import Typography from '@material-ui/core/Typography';
-import Toolbar from '@material-ui/core/Toolbar';
 import Switch from '@material-ui/core/Switch';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 
@@ -55,14 +53,14 @@ class extends Component<IProps, IState> {
   componentDidMount() {
   }
 
-  onChangeTheme() {
+  onChangeTheme = () => {
     let {useDarkTheme} = this.state
     useDarkTheme = !useDarkTheme
     appTheme.setActiveTheme(useDarkTheme)
     this.setState({useDarkTheme})
   }
 
-  onKeyPress(event: KeyboardEvent) {
+  onKeyPress = (event: KeyboardEvent) => {
     console.log(event)
     this.workspace && this.workspace.onKeyPress(event)
   }
@@ -71,22 +69,12 @@ class extends Component<IProps, IState> {
     const {useDarkTheme} = this.state
     return (
       <MuiThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
-        <div> {/* onKeyPress={this.onKeyPress.bind(this)} */}
-          <AppBar position="static">
-            <Toolbar>
-              <FormControlLabel
-              control={
-                <Switch
-                  checked={useDarkTheme}
-                  onChange={this.onChangeTheme.bind(this)}
-                  value="Dark"
-                />
-              }
-              label="Dark Theme"
-            />
-            </Toolbar>
-          </AppBar>
-          <StyledWorkspace innerRef={ref => this.workspace=ref} useDarkTheme={useDarkTheme}/>
+        <div> {/* onKeyPress={this.onKeyPress} */}
+          <StyledWorkspace 
+              innerRef={ref => this.workspace=ref} 
+              useDarkTheme={useDarkTheme}
+              onChangeTheme={this.onChangeTheme}
+          />
         </div>  
       </MuiThemeProvider>
     )

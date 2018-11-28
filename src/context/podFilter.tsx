@@ -5,7 +5,6 @@ import Autosuggest from 'react-autosuggest'
 import match from 'autosuggest-highlight/match';
 import parse from 'autosuggest-highlight/parse';
 import { withStyles, WithStyles, createStyles, withTheme, WithTheme, Theme, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
-import TextField from '@material-ui/core/TextField';
 import MenuItem from '@material-ui/core/MenuItem';
 import Paper from '@material-ui/core/Paper';
 import FormHelperText from '@material-ui/core/FormHelperText';
@@ -123,6 +122,7 @@ class PodFilter extends React.Component<PodFilterProps, PodFilterState> {
           fullWidth
           {...other}
           className={classes.input}
+          autoFocus
           inputProps={{
             'aria-label': 'Pod Filter',
           }}

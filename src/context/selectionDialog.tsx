@@ -11,17 +11,13 @@ import Dialog from '@material-ui/core/Dialog';
 import Tabs from '@material-ui/core/Tabs'
 import Tab from '@material-ui/core/Tab'
 import CircularProgress from '@material-ui/core/CircularProgress';
-import expansionClosedColor from '@material-ui/core/colors/blueGrey';
-import expansionOpenColor from '@material-ui/core/colors/blue';
 
 
 import {Cluster, Namespace, Pod, Item, KubeComponent} from "../k8s/k8sTypes";
 import * as k8s from '../k8s/k8sClient'
-import Context from "./contextStore";
 import SelectionTable from './selectionTable'
 import {selectionDialogTheme} from '../theme/theme'
 import PodFilter from './podFilter'
-import TestFilter from './testFilter'
 
 const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   root: {
@@ -82,6 +78,7 @@ interface SelectionDialogState {
   selectedNamespaces: Map<string, Namespace>
   selectedPods: Map<string, Pod>,
   filter: string,
+  initialLoading: boolean
 }
 interface SelectionDialogRefs {
   [k: string]: any
@@ -113,15 +110,14 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     selectedNamespaces: new Map,
     selectedPods: new Map,
     filter: '',
+    initialLoading: false,
   }
   refs: SelectionDialogRefs = {
     clusterSelector: undefined,
     namespaceSelector: undefined,
     podSelector: undefined,
   }
-  loadTimerHandle: any
   closed: boolean = false
-  clusterLoadingQueue: Set<string> = new Set
   loadingCounter: number = 0
   activeTabIndex: number = 0
 
@@ -131,9 +127,6 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
   }
 
   componentWillUnmount() {
-    if(this.loadTimerHandle) {
-      clearTimeout(this.loadTimerHandle)
-    }
     this.closed = true
   }
 
@@ -149,21 +142,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     nextProps.selectedPods.forEach(item => selectedPods.set(item.text(), item))
 
     this.loadSelectedClustersData(selectedClusters)
-    const {selection} = nextProps
-    switch(selection) {
-      case SelectionType.Clusters:
-        this.setTab(SelectionTabs.Clusters)
-        break
-      case SelectionType.Pattern:
-        this.setTab(SelectionTabs.Pattern)
-        break
-      case SelectionType.Namespaces:
-        this.setTab(SelectionTabs.Namespaces)
-        break
-      case SelectionType.Pods:
-        this.setTab(SelectionTabs.Pods)
-        break
-    }
+
     this.setState({selectedClusters, selectedNamespaces, selectedPods, filter: nextProps.filter})
   }
 
@@ -191,68 +170,27 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
   }
 
   loadSelectedClustersData(selectedClusters: Map<string, Cluster>) {
-    const clustersToLoad : Cluster[] = []
-    selectedClusters.forEach(cluster => {
-      if(!this.clusterLoadingQueue.has(cluster.text())) {
-        clustersToLoad.push(cluster)
-        this.clusterLoadingQueue.add(cluster.text())
-      }
-    })
+    const clustersToLoad : Cluster[] = Array.from(selectedClusters.values())
 
     if(clustersToLoad.length > 0) {
-      this.loadingCounter++
+      this.setState({initialLoading: true})
       Promise.all(
         clustersToLoad.map(cluster => 
           this.loadClusterData(cluster))
       )
       .then(result => {
-        this.loadingCounter--
-        clustersToLoad.forEach(cluster => this.clusterLoadingQueue.delete(cluster.text()))
         if(!this.closed) {
           this.removeInvalidItems()
+          //load data for the acctive tab by simply calling set tab
           this.setTab(this.activeTabIndex)
+          this.setState({initialLoading: false})
         }
       })
       .catch(error => {
-        this.loadingCounter--
-        clustersToLoad.forEach(cluster => this.clusterLoadingQueue.delete(cluster.text()))
         console.log("[Loading %s] Loading cluster data failed for selected clusters: %s", 
             this.loadingCounter, clustersToLoad)
       })
     }
-  }
-
-  loadClusterData(cluster: Cluster) {
-    return new Promise((resolve, reject) => {
-      const namespaceMap : Map<string, [Namespace, Map<string, Pod>]> = new Map
-      k8s.getNamespacesForCluster(cluster)
-        .then(namespaces => {
-          Promise.all(
-            namespaces.map(ns => this.loadNamespaceData(ns, namespaceMap))
-          )
-          .then(result => {
-            if(!this.closed) {
-              const {clusterInfo} = this.state
-              clusterInfo.set(cluster.text(), [cluster, namespaceMap])
-              this.setState({clusterInfo})
-            }
-            resolve(true)
-          })
-          .catch(err => {
-            console.log("Failed to load pods for some namespaces: " + err)
-            reject(false)
-          })
-        })
-        .catch(error => {
-          if(!this.closed) {
-            const {clustersInError} = this.state
-            clustersInError.push(cluster.text())
-            this.setState({clustersInError})
-          }
-          console.log("Error while loading namespaces for cluster %s: %s", cluster.text(), error)
-          reject(false)
-        })
-    })
   }
 
   removeInvalidItems() {
@@ -291,9 +229,53 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
         }
       }
     })
-
-    this.setState({selectedClusters, selectedNamespaces, selectedPods})
+    this.setState(state => Object.assign({}, state, 
+      {selectedClusters, selectedNamespaces, selectedPods}))
   }
+
+  loadClusterData(cluster: Cluster) {
+    this.loadingCounter++
+    return new Promise((resolve, reject) => {
+      const namespaceMap : Map<string, [Namespace, Map<string, Pod>]> = new Map
+      k8s.getNamespacesForCluster(cluster)
+        .then(namespaces => {
+          Promise.all(
+            namespaces.map(ns => this.loadNamespaceData(ns, namespaceMap))
+          )
+          .then(result => {
+            if(!this.closed) {
+              this.setState(state => {
+                const {clusterInfo} = state
+                clusterInfo.set(cluster.text(), [cluster, namespaceMap])
+                this.loadingCounter--
+                return Object.assign({}, state, clusterInfo)
+              })
+              //load data for the acctive tab by simply calling set tab
+              this.setTab(this.activeTabIndex)
+            }
+            resolve(true)
+          })
+          .catch(err => {
+            this.loadingCounter--
+            console.log("Failed to load pods for some namespaces: " + err)
+            reject(false)
+          })
+        })
+        .catch(error => {
+          if(!this.closed) {
+            this.setState(state => {
+              const {clustersInError} = state
+              clustersInError.push(cluster.text())
+              this.loadingCounter--
+              return Object.assign({}, state, clustersInError)
+            })
+          }
+          console.log("Error while loading namespaces for cluster %s: %s", cluster.text(), error)
+          reject(false)
+        })
+    })
+  }
+
 
   loadNamespaceData(namespace: Namespace, 
                     namespaceMap : Map<string, [Namespace, Map<string, Pod>]>) : Promise<boolean> {
@@ -416,14 +398,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     })
   }
 
-  delayedLoadClusterData(selectedClusters: Map<string, Cluster>) {
-    if(this.loadTimerHandle) {
-      clearTimeout(this.loadTimerHandle)
-    }
-    this.loadTimerHandle = setTimeout(this.loadSelectedClustersData.bind(this, selectedClusters), 300)
-  }
-
-  onSelectComponent(selectionStore: SelectionStore, item: KubeComponent) {
+  onSelectComponent(selectionStore: SelectionStore, item: KubeComponent) : boolean {
     const selectedItems: Map<string, KubeComponent> = this.state[selectionStore]
     const selected : boolean = !selectedItems.has(item.text())
     if(selected) {
@@ -431,13 +406,44 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     } else {
       selectedItems.delete(item.text())
     }
-    if(selectionStore === SelectionStore.selectedClusters) {
-      this.delayedLoadClusterData(selectedItems as Map<string, Cluster>)
-    }
     this.setState(state => {
       state[selectionStore.toString()] = selectedItems
       return state
     })
+    return selected
+  }
+
+  onClusterSelection = (cluster: Cluster) => {
+    const selected = this.onSelectComponent(SelectionStore.selectedClusters, cluster)
+    if(selected) {
+      this.loadClusterData(cluster)
+    } else {
+      const {selectedNamespaces, selectedPods} = this.state
+      selectedNamespaces.forEach(namespace => {
+        if(namespace.cluster.text() === cluster.text()) {
+          selectedPods.forEach(pod => {
+            if(pod.namespace.text() === namespace.text()) {
+              selectedPods.delete(pod.text())
+            }
+          })
+          selectedNamespaces.delete(namespace.text())
+        }
+      })
+      this.setState(state => Object.assign({}, state, {selectedNamespaces, selectedPods}))
+    }
+  }
+
+  onNamespaceSelection = (namespace: Namespace) => {
+    const selected = this.onSelectComponent(SelectionStore.selectedNamespaces, namespace)
+    if(!selected) {
+      const {selectedPods} = this.state
+      selectedPods.forEach(pod => {
+        if(pod.namespace.text() === namespace.text()) {
+          selectedPods.delete(pod.text())
+        }
+      })
+      this.setState(state => Object.assign({}, state, {selectedPods}))
+    }
   }
 
   onApplyFilter = (filter: string, pods: Pod[]) => {
@@ -455,21 +461,36 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     })
   }
 
-  handleEntering() {
-  };
+  handleEntering = () => {
+    const {selection} = this.props
+    switch(selection) {
+      case SelectionType.Clusters:
+        this.setTab(SelectionTabs.Clusters)
+        break
+      case SelectionType.Pattern:
+        this.setTab(SelectionTabs.Pattern)
+        break
+      case SelectionType.Namespaces:
+        this.setTab(SelectionTabs.Namespaces)
+        break
+      case SelectionType.Pods:
+        this.setTab(SelectionTabs.Pods)
+        break
+    }
+  }
 
-  handleCancel() {
+  handleCancel = () => {
     this.props.onCancel()
   };
 
-  handleOk() {
+  handleOk = () => {
     const {selectedClusters, selectedNamespaces, selectedPods, filter} = this.state
     this.props.onSelection(selectedClusters, selectedNamespaces, selectedPods, filter)
   };
 
   render() {
     const { classes, open, forced, useDarkTheme } = this.props;
-    const { activeTab, 
+    const { activeTab, initialLoading,
       reportClusterError, clustersInError,
       reportNamespaceError, namespacesInError,
       clusters, selectedClusters, 
@@ -497,8 +518,9 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                 <Tab label="Namespaces" disabled={selectedClusters.size === 0} />
                 <Tab label="Pods" disabled={selectedNamespaces.size === 0} />
               </Tabs>
-            </AppBar>  
-            {activeTab === SelectionTabs.Clusters &&  
+            </AppBar>
+            {initialLoading && <CircularProgress className={classes.loading} />}
+            {!initialLoading && activeTab === SelectionTabs.Clusters &&  
               <div>
                 <SelectionTable 
                     innerRef={this.refs.clusterSelector}
@@ -507,7 +529,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                     selections={selectedClusters}
                     grouped={false}
                     maxSelect={2}
-                    onSelection={this.onSelectComponent.bind(this, SelectionStore.selectedClusters)}
+                    onSelection={this.onClusterSelection}
                 />
               </div>}
             {loading && activeTab !== SelectionTabs.Clusters && <CircularProgress className={classes.loading} />}
@@ -530,8 +552,8 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                     table={namespaces}
                     selections={selectedNamespaces}
                     grouped={true}
-                    maxSelect={2}
-                    onSelection={this.onSelectComponent.bind(this, SelectionStore.selectedNamespaces)}
+                    maxSelect={5}
+                    onSelection={this.onNamespaceSelection}
                 />
                 }
               </div>}
@@ -555,10 +577,10 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
               </div>}
           </DialogContent>
           <DialogActions>
-            <Button onClick={this.handleCancel.bind(this)} >
+            <Button onClick={this.handleCancel} >
               Cancel
             </Button>
-            <Button onClick={this.handleOk.bind(this)}>
+            <Button onClick={this.handleOk}>
               Ok
             </Button>
           </DialogActions>

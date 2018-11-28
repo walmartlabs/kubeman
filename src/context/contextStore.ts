@@ -132,6 +132,10 @@ export default class Context {
     Array.from(this._clusters.values()).forEach(cc => cc.clearPods())
   }
 
+  addCluster(cluster: Cluster) {
+    this._clusters.set(cluster, new ClusterContext)
+  }
+
   addNamespace(namespace: Namespace) {
     const clusterContext = this._clusters.get(namespace.cluster)
     if(!clusterContext) {
@@ -174,11 +178,16 @@ export default class Context {
 
   
   hasNamespaces() : boolean {
-    return this.namespaces().length > 0
+    return this.allNamespaces().length > 0
   }
 
-  namespaces() : Namespace[] {
+  allNamespaces() : Namespace[] {
     return _.flatMap(Array.from(this._clusters.values()), cc => cc.namespaces())
+  }
+
+  namespacesForCluster(cluster: Cluster) : Namespace[] {
+    const clusterContext = this._clusters.get(cluster)
+    return clusterContext ? clusterContext.namespaces() : []
   }
   
   namespaceNames() : string[] {
@@ -188,11 +197,21 @@ export default class Context {
   pods() : Pod[] {
     return _.flatMap(Array.from(this._clusters.values()), cc => cc.pods())
   }
+
+  podsForNamespace(namespace: Namespace) : Pod[] {
+    const namespaceContext = this.namespaceContext(namespace)
+    return namespaceContext ? namespaceContext.pods() : []
+  }
   
   podNames() : string[] {
     return _.flatMap(Array.from(this._clusters.values()), cc => 
                 _.flatMap(Array.from(cc._namespaces.values()), 
                     nc => nc.pods())).map(pod => pod.text())
+  }
+
+  namespaceContext(namespace: Namespace) : NamespaceContext|undefined {
+    const clusterContext = this._clusters.get(namespace.cluster)
+    return clusterContext ? clusterContext.namespace(namespace):undefined
   }
 
   namespace(cluster: Cluster, namespace: Namespace) : NamespaceContext|undefined {

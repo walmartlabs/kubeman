@@ -7,6 +7,9 @@ import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Paper from '@material-ui/core/Paper';
+import Switch from '@material-ui/core/Switch';
+import FormControlLabel from '@material-ui/core/FormControlLabel';
+
 import Terminal from '../terminal'
 import Actions from '../actions/actions'
 import ContextPanel from '../context/contextPanel'
@@ -24,10 +27,12 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
     verticalAlign: 'top'
   },
   tr: {
-    verticalAlign: 'top'
+    verticalAlign: 'top',
+    border: 'none',
   },
   td: {
-    verticalAlign: 'top'
+    verticalAlign: 'top',
+    border: 'none',
   },
   button: {
     margin: spacing.unit,
@@ -35,6 +40,12 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
   input: {
     display: 'none',
   },
+  bottomRow: {
+    height: '50px !important',
+    border: 'none',
+    padding: 0,
+    margin: 0,
+  }
 });
 
 interface IState {
@@ -43,6 +54,7 @@ interface IState {
 
 interface IProps extends WithStyles<typeof styles> {
   useDarkTheme: boolean
+  onChangeTheme: (boolean) => void
 }
 interface IRefs {
   [k: string]: any
@@ -68,7 +80,7 @@ export class Workspace extends React.PureComponent<IProps, IState, IRefs> {
     this.commandHandler && this.commandHandler(command)
   }
 
-  onUpdateContext(context: Context) {
+  onUpdateContext = (context: Context) => {
     this.setState({context: context})
     this.forceUpdate()
   }
@@ -97,7 +109,8 @@ export class Workspace extends React.PureComponent<IProps, IState, IRefs> {
             <TableRow className={classes.tr}>
               <TableCell colSpan={2}>
                 <ContextPanel context={context} useDarkTheme={useDarkTheme}
-                    onSelectCluster={this.onSelectCluster.bind(this)} />
+                    onUpdateContext={this.onUpdateContext}
+                    onSelectContext={this.onSelectCluster.bind(this)} />
               </TableCell>
             </TableRow>
             <TableRow className={classes.tr}>
@@ -117,6 +130,20 @@ export class Workspace extends React.PureComponent<IProps, IState, IRefs> {
                   addons={['fit', 'fullscreen', 'search']}
                   connected={true}
                   registerCommandHandler={this.registerCommandHandler.bind(this)}
+                />
+              </TableCell>
+            </TableRow>
+            <TableRow className={classes.bottomRow}>
+              <TableCell className={classes.bottomRow}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={useDarkTheme}
+                      onChange={this.props.onChangeTheme}
+                      value="Dark"
+                    />
+                  }
+                  label="Dark Theme"
                 />
               </TableCell>
             </TableRow>
