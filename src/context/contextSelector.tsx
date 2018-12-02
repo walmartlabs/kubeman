@@ -1,14 +1,12 @@
 import React from "react";
 import _ from 'lodash'
 import Context from "./contextStore";
-import * as k8s from '../k8s/k8sClient'
-import {Cluster, Namespace, Pod, Item} from "../k8s/k8sTypes";
+import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
 import SelectionDialog, {SelectionType} from './selectionDialog'
 
 
 interface IProps extends React.DOMAttributes<{}> {
   context: Context
-  useDarkTheme: boolean
   onUpdateContext: (Context) => void
 }
 interface IState {
@@ -126,7 +124,6 @@ export default class ContextSelector extends React.Component<IProps, IState> {
   }
 
   render() {
-    const {useDarkTheme} = this.props
     const { context, showClusters, showNamespaces, showPods,
             forcedClusterSelection, forcedNamespaceSelection, forcedPodSelection,
             selectedClusters, selectedNamespaces, selectedPods, filter } = this.state;
@@ -144,7 +141,6 @@ export default class ContextSelector extends React.Component<IProps, IState> {
           selectedPods={selectedPods}
           filter={filter}
           open={showDialog}
-          useDarkTheme={useDarkTheme}
           forced={forcedClusterSelection||forcedNamespaceSelection||forcedPodSelection}
           onCancel={this.onCancelSelection.bind(this)}
           onSelection={this.onSelection.bind(this)} />}

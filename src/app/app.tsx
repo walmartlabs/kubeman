@@ -10,27 +10,29 @@ import Switch from '@material-ui/core/Switch';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 
 import '../logger/client'
-import StyledWorkspace, {Workspace} from '../workspace'
+import StyledWorkspace, {Workspace} from '../workspace/workspace'
 import log from '../logger/client';
 import {appTheme} from '../theme/theme'
 
-window["__MUI_USE_NEXT_TYPOGRAPHY_VARIANTS__"] = true
+import 'roboto-fontface/css/roboto/roboto-fontface.css'
+import 'typeface-roboto/index.css'
+import { CssBaseline } from '@material-ui/core';
 
+import styles from './app.styles'
+
+
+window["__MUI_USE_NEXT_TYPOGRAPHY_VARIANTS__"] = true
 
 const darkTheme = createMuiTheme(appTheme.darkTheme)
 const lightTheme = createMuiTheme(appTheme.lightTheme)
+global['useDarkTheme'] = false
+
 
 const TabContainer = (props) =>
     <Typography component="div" style={{ padding: 8 * 3, color: 'white'  }}>
       {props.children}
     </Typography>
 
-const styles = ({ palette, spacing }: Theme) => createStyles({
-  root: {
-    flexGrow: 1,
-    backgroundColor: palette.background.paper,
-  }
-});
 
 
 ipc.on('asynchronous-reply', (event: Electron.Event, arg: any) => {
@@ -57,6 +59,7 @@ class extends Component<IProps, IState> {
     let {useDarkTheme} = this.state
     useDarkTheme = !useDarkTheme
     appTheme.setActiveTheme(useDarkTheme)
+    global['useDarkTheme'] = useDarkTheme
     this.setState({useDarkTheme})
   }
 
@@ -69,10 +72,10 @@ class extends Component<IProps, IState> {
     const {useDarkTheme} = this.state
     return (
       <MuiThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
-        <div> {/* onKeyPress={this.onKeyPress} */}
+        <CssBaseline />
+        <div style={{width: '100%'}}> {/* onKeyPress={this.onKeyPress} */}
           <StyledWorkspace 
               innerRef={ref => this.workspace=ref} 
-              useDarkTheme={useDarkTheme}
               onChangeTheme={this.onChangeTheme}
           />
         </div>  
@@ -85,5 +88,5 @@ ReactDOM.render(<App/>, document.getElementById("app"));
 
 window.addEventListener('contextmenu', (event) => {
   event.preventDefault()
-  const response = ipc.sendSync('show-context-menu', {x: event.x, y: event.y})
+  ipc.send('show-context-menu', {x: event.x, y: event.y})
 })

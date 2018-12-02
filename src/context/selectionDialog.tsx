@@ -1,7 +1,7 @@
 import React from 'react';
 import _ from 'lodash'
 
-import { withStyles, WithStyles, createStyles, withTheme, WithTheme, Theme, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
+import { withStyles, WithStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
 import AppBar from '@material-ui/core/AppBar';
 import Button from '@material-ui/core/Button';
 import FormHelperText from '@material-ui/core/FormHelperText';
@@ -13,24 +13,14 @@ import Tab from '@material-ui/core/Tab'
 import CircularProgress from '@material-ui/core/CircularProgress';
 
 
-import {Cluster, Namespace, Pod, Item, KubeComponent} from "../k8s/k8sTypes";
-import * as k8s from '../k8s/k8sClient'
+import {Cluster, Namespace, Pod, Item, KubeComponent} from "../k8s/contextObjectTypes";
+import * as k8s from '../k8s/k8sContextClient'
 import SelectionTable from './selectionTable'
 import {selectionDialogTheme} from '../theme/theme'
 import PodFilter from './podFilter'
 
-const styles = ({ palette, spacing, typography }: Theme) => createStyles({
-  root: {
-    padding: spacing.unit,
-    color: palette.primary.main,
-  },
-  loading: {
-    display: 'block',
-    marginTop: '40%',
-    marginLeft: 'auto',
-    marginRight: 'auto',
-  },
-});
+import styles from './selectionDialog.styles'
+
 
 export enum SelectionType {
   Clusters = "Clusters",
@@ -59,7 +49,6 @@ interface SelectionDialogProps extends WithStyles<typeof styles> {
   selectedNamespaces: Map<string, Namespace>
   selectedPods: Map<string, Pod>
   filter: string,
-  useDarkTheme: boolean
   onSelection: (clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, 
               pods: Map<string, Pod>, filter: string) => any
   onCancel: () => any
@@ -489,7 +478,8 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
   };
 
   render() {
-    const { classes, open, forced, useDarkTheme } = this.props;
+    const { classes, open, forced } = this.props;
+    const useDarkTheme = global['useDarkTheme']
     const { activeTab, initialLoading,
       reportClusterError, clustersInError,
       reportNamespaceError, namespacesInError,

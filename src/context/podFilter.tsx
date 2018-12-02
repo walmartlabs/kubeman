@@ -4,51 +4,16 @@ import deburr from 'lodash/deburr';
 import Autosuggest from 'react-autosuggest'
 import match from 'autosuggest-highlight/match';
 import parse from 'autosuggest-highlight/parse';
-import { withStyles, WithStyles, createStyles, withTheme, WithTheme, Theme, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
+
+import { withStyles, WithStyles } from '@material-ui/core/styles'
 import MenuItem from '@material-ui/core/MenuItem';
 import Paper from '@material-ui/core/Paper';
 import FormHelperText from '@material-ui/core/FormHelperText';
-
-import {Pod, Item, KubeComponent} from "../k8s/k8sTypes";
 import { Button, Input, InputAdornment } from '@material-ui/core';
 
+import {Pod, Item, KubeComponent} from "../k8s/contextObjectTypes";
 
-const styles = ({ palette, spacing, typography }: Theme) => createStyles({
-  root: {
-    height: 250,
-    flexGrow: 1,
-  },
-  container: {
-    position: 'relative',
-  },
-  suggestionsContainerOpen: {
-    position: 'absolute',
-    zIndex: 1,
-    marginTop: spacing.unit,
-    left: 0,
-    right: 0,
-  },
-  suggestion: {
-    display: 'block',
-  },
-  suggestionsList: {
-    margin: 0,
-    padding: 0,
-    listStyleType: 'none',
-  },
-  suggestionItem: {
-    fontSize: '0.9em'
-  },
-  divider: {
-    height: spacing.unit * 2,
-  },
-  input: {
-    marginTop: 20,
-  },
-  button: {
-    marginBottom: 5,
-  }
-})
+import styles from './podFilter.styles'
 
 
 interface PodFilterProps extends WithStyles<typeof styles> {

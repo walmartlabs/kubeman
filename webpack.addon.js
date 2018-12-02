@@ -5,5 +5,10 @@ module.exports = {
   },
   resolve: {
     extensions: [".ts", ".tsx", ".js", ".jsx"]
+  },
+  module: {
+    rules: [
+      { test: /\.css$/, loader: "style-loader!css-loader?importLoaders=1" },
+    ]
   }
 }

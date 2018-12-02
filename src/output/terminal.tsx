@@ -117,10 +117,15 @@ export default class Terminal extends React.Component<IProps, IState> {
   onCommand(command) {
     this.resetCommand()
     this.command = command
-    this.props.connected && this.ptyProcess.write("echo 'kubeman_start'; " + command + "; echo 'kubeman_end';\n")
+    //this.props.connected && this.ptyProcess.write("echo 'kubeman_start'; " + command + "; echo 'kubeman_end';\n")
+    this.props.connected && this.ptyProcess.write(command + "\n")
   }
 
   showCommandOutput(data: string) {
+    this.write(data)
+  }
+
+  showCommandOutput2(data: string) {
     //console.log("pty data: %s", data)
     if(!this.isExecutionStarted) {
       //log.onClient("Execution not started yet. Data = %s", data)

@@ -1,8 +1,10 @@
 import React from "react";
-import Terminal from '.'
+import Terminal from './terminal'
 
 interface IProps {
-  output: string
+  output?: string
+  style?: {}
+  options?: {}
 }
 interface IState {
 }
@@ -17,6 +19,10 @@ export default class TerminalBox extends React.Component<IProps, IState> {
   state: IState = {
   }
 
+  componentDidMount() {
+    this.componentWillReceiveProps(this.props)
+  }
+
   componentWillReceiveProps(props: IProps) {
   }
 
@@ -29,13 +35,10 @@ export default class TerminalBox extends React.Component<IProps, IState> {
   }
 
   render() {
+    const {...others} = this.props
     return (
       <Terminal ref='terminal'
-      style={{
-        overflow: 'hidden',
-        position: 'relative',
-      }}
-      options={{cols:'100', rows:'4'}}
+      {...others}
       output={this.props.output}
       connected={false}
     />

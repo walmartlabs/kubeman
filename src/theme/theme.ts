@@ -1,27 +1,18 @@
-import { withStyles, createStyles, Theme, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
 import {ThemeOptions} from '@material-ui/core/styles/createMuiTheme'
 
-import { Breakpoints, BreakpointsOptions } from '@material-ui/core/styles/createBreakpoints';
-import { Mixins, MixinsOptions } from '@material-ui/core/styles/createMixins';
-import { Palette, PaletteOptions, dark } from '@material-ui/core/styles/createPalette';
-import { Typography, TypographyOptions } from '@material-ui/core/styles/createTypography';
-import { Shadows } from '@material-ui/core/styles/shadows';
-import { Shape, ShapeOptions } from '@material-ui/core/styles/shape';
-import { Spacing, SpacingOptions } from '@material-ui/core/styles/spacing';
-import { Transitions, TransitionsOptions } from '@material-ui/core/styles/transitions';
-import { ZIndex, ZIndexOptions } from '@material-ui/core/styles/zIndex';
-import { Overrides } from '@material-ui/core/styles/overrides';
-import { ComponentsProps } from '@material-ui/core/styles/props';
+import {indigo, blue, red, pink, purple} from '@material-ui/core/colors'
 
-
-import expansionClosedColor from '@material-ui/core/colors/blueGrey';
-import expansionOpenColor from '@material-ui/core/colors/blue';
+import expansionClosedColor from '@material-ui/core/colors/blueGrey'
+import expansionOpenColor from '@material-ui/core/colors/blue'
 
 
 class AppTheme {
   darkTheme: ThemeOptions = {
     palette: {
       type: 'dark',
+      primary: indigo,
+      secondary: blue,
+      error: red,
     },
     typography: {
       fontFamily: [
@@ -40,8 +31,23 @@ class AppTheme {
   }
   lightTheme: ThemeOptions = {
     palette: {
-      type: 'light'
+      type: 'light',
+      secondary: blue,
     },
+    typography: {
+      fontFamily: [
+        '-apple-system',
+        'BlinkMacSystemFont',
+        '"Segoe UI"',
+        'Roboto',
+        '"Helvetica Neue"',
+        'Arial',
+        'sans-serif',
+        '"Apple Color Emoji"',
+        '"Segoe UI Emoji"',
+        '"Segoe UI Symbol"',
+      ].join(','),
+    }
   }
   activeTheme: ThemeOptions = this.lightTheme
 
@@ -98,3 +104,78 @@ class SelectionDialogTheme {
 }
 
 export const selectionDialogTheme = new SelectionDialogTheme
+
+class ActionsTheme {
+  getTheme(useDarkTheme: boolean): ThemeOptions {
+    const panelClosedColor = useDarkTheme ? 'linear-gradient(45deg, #183BF0 20%, #3700B3 99%)' :
+                            'linear-gradient(45deg, #D0D7FB 50%, #3700B3 99%)'
+    const panelOpenColor = useDarkTheme ? 'linear-gradient(45deg, #183BF0 30%, #183BF0 99%)' :
+                            'linear-gradient(45deg, #3700B3 50%, #3d00cc 99%)'
+    return Object.assign({}, appTheme.activeTheme, {
+      overrides: {
+        MuiExpansionPanelSummary: {
+          root: {
+            background: panelClosedColor,
+            margin: 0,
+            minHeight: '40px !important',
+            height: '40px !important',
+            lineHeight: 1,
+          },
+          content: {
+            minHeight: '40px !important',
+            height: '40px !important',
+            lineHeight: 1,
+            margin: 0,
+            fontWeight: '800 !important',
+          },
+          expanded: {
+            color: 'white !important',
+            background: panelOpenColor,
+            minHeight: '40px !important',
+            height: '40px !important',
+            lineHeight: 1,
+            margin: '0px !important',
+          },
+          expandIcon: {
+            color: '#D8DDF3 !important',
+            top: '50%',
+            padding: 0,
+          },
+        },
+        MuiTouchRipple: {
+          root: {
+            height: 40,
+          }
+        },
+        MuiTypography: {
+          root: {
+            paddingTop: 9,
+          },
+          body2: {
+            color: 'inherit',
+          },
+        },
+        MuiExpansionPanelDetails: {
+          root: {
+            padding: 0,
+          }
+        },
+        MuiList: {
+          root: {
+            paddingTop: '0px !important',
+            paddingBottom: '5px !important',
+          }
+        },
+        MuiListItem: {
+          root: {
+            paddingTop: 0,
+            paddingBottom: 0,
+            paddingLeft: 10,
+          }
+        },
+      }
+    })
+  }
+}
+
+export const actionsTheme = new ActionsTheme

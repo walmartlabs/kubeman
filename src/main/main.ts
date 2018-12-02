@@ -3,12 +3,14 @@
 import { app, BrowserWindow, Menu } from 'electron'
 import installExtension, { REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS } from 'electron-devtools-installer';
 
-import * as path from 'path'
+import fs from 'fs'
+import path from 'path'
 import { format as formatUrl } from 'url'
 
 import appMenu from './menu'
 import './main.ipc'
 import '../logger/server'
+
 
 const installExtensions = async () => {
   return Promise.all(

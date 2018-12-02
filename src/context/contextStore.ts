@@ -1,5 +1,5 @@
 import _ from 'lodash'
-import {Cluster, Namespace, Pod, Item} from "../k8s/k8sTypes";
+import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
 
 
 export class NamespaceContext {

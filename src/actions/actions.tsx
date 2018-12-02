@@ -1,6 +1,8 @@
+import fs from 'fs'
+import path from 'path'
+
 import React from "react";
-import { withStyles, WithStyles, createStyles, Theme } from '@material-ui/core/styles'
-import Button from '@material-ui/core/Button';
+import { withStyles, WithStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
 import ExpansionPanel from '@material-ui/core/ExpansionPanel';
 import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
 import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
@@ -12,88 +14,103 @@ import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
 
 import Context from "../context/contextStore";
-import ClusterActions from './clusterActions'
-import NamespaceActions from './namespaceActions'
+import {ActionLoader} from './actionLoader'
 
-const styles = ({ palette, spacing, typography }: Theme) => createStyles({
-  root: {
-    display: 'flex',
-    flexDirection: 'row',
-    padding: spacing.unit,
-    backgroundColor: palette.background.default,
-    color: palette.primary.main,
-  },
-  button: {
-    margin: spacing.unit,
-  },
-  expansion: {
-    width: '200px',
-  },
-  expansionHead: {
-    fontSize: typography.pxToRem(15),
-    fontWeight: typography.fontWeightRegular,
-  },
-  expansionDetails: {
-    display: 'block',
-  },
-  listText: {
-    fontSize: typography.pxToRem(10),
-  }
-});
+import {ActionOutput, ActionOutputStyle, ActionGroupSpecs, ActionSpec, ActionGroupSpec} from './actionSpec'
+
+import styles from './actions.styles'
+import {actionsTheme} from '../theme/theme'
+
+const actionPluginFolder = "plugins"
 
 interface IState {
+  actionGroupSpecs: ActionGroupSpecs,
 }
 
 interface IProps extends WithStyles<typeof styles> {
   context: Context,
-  onCommand?: (string) => void
+  onCommand: (string) => void
+  onOutput: (ActionOutput, ActionOutputStyle) => void
 }
 
-class Actions extends React.PureComponent<IProps, IState> {
+class Actions extends React.Component<IProps, IState> {
+  state: IState = {
+    actionGroupSpecs: [],
+  }
 
-  clear() {
+  componentDidMount() {
+    this.loadActionPlugins()
+    this.componentWillReceiveProps(this.props)
+  }
+
+  componentWillReceiveProps(props: IProps) {
+    const {context} = props
+    ActionLoader.setOnOutput(props.onOutput)
+    ActionLoader.setContext(context)
+  }
+
+  loadActionPlugins() {
+    ActionLoader.setOnLoad(actionGroupSpecs => this.setState({actionGroupSpecs}))
+    ActionLoader.loadActionPlugins()
+  }
+
+  clear = () => {
     this.props.onCommand && this.props.onCommand("clear")
   }
 
-  getNamespaces() {
-    this.props.onCommand && this.props.onCommand("kubectl get ns")
+  onAction = (actionContext: string, action: ActionSpec) => {
+    const {context} = this.props;
+    const {act, execute, render} = action
+    if(execute) {
+      execute(undefined)
+    }
+    if(act) {
+      act(context)
+    }
+    if(render) {
+      const output : string[][] = render()
+      this.props.onOutput(output, action.outputStyle || ActionOutputStyle.Text)
+    }
   }
 
-  getIstioPods() {
-    this.props.onCommand && this.props.onCommand("kubectl get pods -n istio-system")
-  }
+  renderExpansionPanel(actionGroupSpec: ActionGroupSpec) {
+    const { classes } = this.props;
+    const {context, actions} = actionGroupSpec
 
-  grepIstioLogsFor503() {
-    this.props.onCommand && this.props.onCommand('kubectl logs -n istio-system $(kubectl get po -l istio=ingressgateway -n istio-system -o jsonpath="{.items[0]..metadata.name}") -c istio-proxy | grep "HTTP/1.1.*503 -"')
-  }
 
-  commonActions() {
-    const { context, classes } = this.props;
-    return <ExpansionPanel className={classes.expansion}>
-      <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />} className={classes.expansionHead}>
-        <Typography>Common Actions</Typography>
-      </ExpansionPanelSummary>
-      <ExpansionPanelDetails className={classes.expansionDetails}>
-        <List component="nav">
-          <ListItem button>
-            <ListItemText className={classes.listText}
-                  onClick={this.clear.bind(this)}>
-              <Typography>Clear</Typography>
-            </ListItemText>
-          </ListItem>
-        </List>
-      </ExpansionPanelDetails>
-    </ExpansionPanel>
-}
+    return (
+      <ExpansionPanel key={context} className={classes.expansion}>
+        <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />} className={classes.expansionHead}>
+          <Typography>{context} Actions</Typography>
+        </ExpansionPanelSummary>
+        <ExpansionPanelDetails className={classes.expansionDetails}>
+          <List component="nav">
+            {actions.map(action => 
+              <ListItem key={action.name} button disableGutters>
+                <ListItemText className={classes.listText}
+                      onClick={this.onAction.bind(this, context, action)}>
+                  <Typography>{action.name}</Typography>
+                </ListItemText>
+              </ListItem>
+          )}
+          </List>
+        </ExpansionPanelDetails>
+      </ExpansionPanel>
+    )
+  }
 
   render() {
     const { context, classes } = this.props;
+    const {actionGroupSpecs} = this.state
+    const useDarkTheme = global['useDarkTheme']
+    const theme = createMuiTheme(actionsTheme.getTheme(useDarkTheme));
+
     return (
-      <div>
-        {this.commonActions()}
-        <ClusterActions context={context} onCommand={this.props.onCommand}/>
-        <NamespaceActions context={context} onCommand={this.props.onCommand}/>
-      </div>
+      <MuiThemeProvider theme={theme}>
+        {actionGroupSpecs.map(actionGroupSpec => 
+          this.renderExpansionPanel(actionGroupSpec)
+        )}
+      </MuiThemeProvider>  
     )
   }
 }

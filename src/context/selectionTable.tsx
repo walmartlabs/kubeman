@@ -2,7 +2,7 @@ import React from 'react';
 import _ from 'lodash'
 import { isNullOrUndefined } from 'util';
 
-import { withStyles, WithStyles, createStyles, withTheme, WithTheme, Theme, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
+import { withStyles, WithStyles } from '@material-ui/core/styles'
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import FormHelperText from '@material-ui/core/FormHelperText';
 import Checkbox from '@material-ui/core/Checkbox';
@@ -16,36 +16,10 @@ import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import Typography from '@material-ui/core/Typography';
 
-import {Cluster, Namespace, Pod, Item, KubeComponent} from "../k8s/k8sTypes";
+import {Cluster, Namespace, Pod, Item, KubeComponent} from "../k8s/contextObjectTypes";
 
+import styles from './selectionTable.styles'
 
-const styles = ({ palette, spacing, typography }: Theme) => createStyles({
-  root: {
-    padding: spacing.unit,
-    color: palette.primary.main,
-  },
-  formControl: {
-    margin: spacing.unit * 0.9,
-    padding: spacing.unit * 0.7,
-  },
-  table: {
-    minWidth: 400,
-  },
-  tableCell: {
-    margin: 0,
-    padding: 0,
-  },
-  heading: {
-    fontSize: typography.pxToRem(15),
-    fontWeight: typography.fontWeightRegular,
-  },
-  secondaryHeading: {
-    fontSize: typography.pxToRem(12),
-    color: palette.text.secondary,
-    marginLeft: 10,
-    marginTop: 2,
-  },
-})
 
 interface ItemsListProps extends WithStyles<typeof styles> {
   title: string

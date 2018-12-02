@@ -1,97 +1,16 @@
 import React from 'react'
 import _ from 'lodash'
 
-import { withStyles, WithStyles, createStyles, withTheme, WithTheme, Theme, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
+import { withStyles, WithStyles } from '@material-ui/core/styles'
 import { Paper, Tabs, Tab, Grid, Button } from '@material-ui/core';
-import List from '@material-ui/core/List';
-import ListSubheader from '@material-ui/core/ListSubheader';
-import ListItem from '@material-ui/core/ListItem';
-import ListItemText from '@material-ui/core/ListItemText';
+import {List, ListSubheader, ListItem, ListItemText}  from '@material-ui/core';
+import {Card, CardContent, CardActions, Typography} from '@material-ui/core';
 
-import {Cluster, Namespace, Pod, Item} from "../k8s/k8sTypes";
+import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
 import Context from "./contextStore";
+import * as scratch from '../scratch'
 
-const styles = ({ palette, spacing, typography }: Theme) => createStyles({
-  root: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-    overflow: 'hidden',
-    backgroundColor: palette.background.paper,
-  },
-  list: {
-    maxHeight: 200,
-    backgroundColor: palette.background.paper,
-    overflow: 'auto',
-    boxShadow: '0px 1px 5px 0px rgba(0, 0, 0, 0.2), 0px 2px 2px 0px rgba(0, 0, 0, 0.14), 0px 3px 1px -2px rgba(0, 0, 0, 0.12)',
-  },
-  listHeader: {
-    padding: 0,
-    paddingLeft: 5,
-    backgroundColor: '#4b6082',
-    color: 'white',
-    lineHeight: 2,
-  },
-  listItem: {
-    paddingLeft: 5,
-  },
-  listInfoText: {
-    fontSize: '0.9em',
-    marginRight: 5,
-    float: 'right',
-  },
-  panel: {
-    maxHeight: 300, 
-    overflowX: 'auto',
-    overflowY: 'hidden',
-  },
-  grid: {
-    height: 200,
-  },
-  gridItem: {
-    minWidth: 250,
-  },
-  tabsRoot: {
-    borderBottom: '1px solid #e8e8e8',
-  },
-  tabsIndicator: {
-    backgroundColor: '#1890ff',
-  },
-  tabRoot: {
-    textTransform: 'initial',
-    minWidth: 72,
-    fontWeight: typography.fontWeightRegular,
-    marginRight: spacing.unit * 4,
-    fontFamily: [
-      '-apple-system',
-      'BlinkMacSystemFont',
-      '"Segoe UI"',
-      'Roboto',
-      '"Helvetica Neue"',
-      'Arial',
-      'sans-serif',
-      '"Apple Color Emoji"',
-      '"Segoe UI Emoji"',
-      '"Segoe UI Symbol"',
-    ].join(','),
-    '&:hover': {
-      color: '#40a9ff',
-      opacity: 1,
-    },
-    '&$tabSelected': {
-      color: '#1890ff',
-      fontWeight: typography.fontWeightMedium,
-    },
-    '&:focus': {
-      color: '#40a9ff',
-    },
-  },
-  tabSelected: {},
-  tabButton: {
-    background: 'linear-gradient(45deg, #1890ff 40%, #0656d8 95%)',
-  },
-});
-
+import styles from './contextPanel.styles'
 
 interface IState {
   context: Context
@@ -99,7 +18,6 @@ interface IState {
 }
 
 interface IProps extends WithStyles<typeof styles> {
-  useDarkTheme: boolean,
   context: Context,
   onUpdateContext: (Context) => void
   onSelectContext: () => void
@@ -112,12 +30,17 @@ class ContextPanel extends React.Component<IProps, IState> {
   }
 
   componentDidMount() {
+    this.setState({context: scratch.setupRealContext(this.props.context)})
     this.componentWillReceiveProps(this.props)
   }
 
   componentWillReceiveProps(props: IProps) {
     const {context} = props;
-    //this.createTestData(context)
+    const {activeTab} = this.state
+    const clusters = context.clusters()
+    if(activeTab === clusters.length) {
+      this.setState({ activeTab: 0});
+    }
   }
 
   onTabChange = (event, value) => {
@@ -135,7 +58,7 @@ class ContextPanel extends React.Component<IProps, IState> {
         className={classes.list}
         subheader={
           <ListSubheader classes={{root: classes.listHeader}}>
-            Namespace: {namespace.name}
+            <span className={classes.listHeader}>{namespace.name}</span>
             <span className={classes.listInfoText}>{pods.length} Pod(s)</span>
           </ListSubheader>
         }>
@@ -161,6 +84,8 @@ class ContextPanel extends React.Component<IProps, IState> {
             value={activeTab}
             onChange={this.onTabChange}
             classes={{ root: classes.tabsRoot, indicator: classes.tabsIndicator }}
+            scrollable={true}
+            scrollButtons="auto"
           >
           {
             clusters.map((cluster, index) => 
@@ -171,27 +96,39 @@ class ContextPanel extends React.Component<IProps, IState> {
               />
             )
           }
-          <Tab label={context.hasClusters() ? "Change Selections" : "Select a Cluster"} 
+          <Tab label={context.hasClusters() ? "Update Context" : "Select Cluster"} 
               classes={{labelContainer: classes.tabButton}}
               onClick={onSelectContext} />
         </Tabs>
         {
         <Paper className={classes.panel}>
           <Grid container direction='column' spacing={8}
-                className={classes.grid}  >
-          {      
-            clusters.map((cluster, index) => {
-              if(activeTab === index) {
-                const namespaces = context.namespacesForCluster(cluster)
-                return namespaces && namespaces.map(namespace => 
-                    <Grid key={namespace.name+index} item xs={12} md={12} className={classes.gridItem}>
-                      {this.renderNamespace(namespace)}
-                    </Grid>
-                )
-              } else {
-                return ""
-              }
-            })
+                className={classes.grid} >
+          {
+            clusters.length > 0 &&
+              clusters.map((cluster, index) => {
+                if(activeTab === index) {
+                  const namespaces = context.namespacesForCluster(cluster)
+                  return namespaces && namespaces.map(namespace => 
+                      <Grid key={namespace.name+index} item xs={12} md={12} className={classes.gridItem}>
+                        {this.renderNamespace(namespace)}
+                      </Grid>
+                  )
+                } else {
+                  return ""
+                }
+              })
+          }
+          {
+            clusters.length === 0 && 
+              <Grid item xs={12} md={12} className={classes.gridItem}>
+                <Card className={classes.card}>
+                  <CardContent>
+                    Select clusters, namespaces and pods to build the context to work with.
+                  </CardContent>
+                </Card>
+              </Grid>
+
           }
           </Grid>  
         </Paper>
