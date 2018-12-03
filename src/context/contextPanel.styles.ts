@@ -18,7 +18,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   listHeader: {
     padding: 0,
     paddingLeft: 5,
-    backgroundColor: '#1A237E',
+    backgroundColor: '#283593',
     color: 'white',
     lineHeight: 2,
   },

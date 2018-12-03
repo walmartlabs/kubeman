@@ -11,9 +11,25 @@ interface IState {
 
 interface IProps extends WithStyles<typeof styles> {
   output: string[][],
+  compare?: boolean
 }
 
-const TableBox = withStyles(styles)(({classes, output} : IProps) => {
+
+interface ITableCellProps extends WithStyles<typeof styles> {
+  key: string,
+  text: string,
+  highlight?: boolean,
+}
+
+const TextCell = withStyles(styles)(({key, text, highlight, classes}: ITableCellProps) => {
+  return (
+    <TableCell key={key} component="th" scope="row" className={classes.tableCell}>
+      {text}
+    </TableCell>
+  )
+})
+
+const TableBox = withStyles(styles)(({classes, output, compare} : IProps) => {
   if(output.length < 1)
     return <div/>
   const headers = output.slice(0, 1)[0]
@@ -30,15 +46,22 @@ const TableBox = withStyles(styles)(({classes, output} : IProps) => {
         </TableHead>
         <TableBody>
           {rows.map((row, index) => {
-            const lastField = row[row.length-1]
-            const isGroup = lastField.includes("---")
+            const lastField = row.length > 0 ? row[row.length-1] : undefined
+            const isGroup = lastField ? lastField.includes("---") : true
+            let highlight = false
+            if(compare && row.length > 2) {
+              const secondLastField = row[row.length-2]
+              highlight = lastField ? secondLastField.localeCompare(lastField) !== 0 : false
+            }
             return (
-              <TableRow key={index} className={isGroup?classes.tableGroupRow:classes.tableRow}>
-              {row.map((field, ci) =>
-                  <TableCell key={"col"+ci} component="th" scope="row" className={classes.tableCell}>
-                    {isGroup && ci>0 ? "" : field}
-                  </TableCell>
-              )}
+              <TableRow key={index} className={isGroup?classes.tableGroupRow :
+                                      highlight? classes.tableRowHighlight : classes.tableRow}>
+              {row.map((field, ci) => {
+                return <TextCell key={"col"+ci} 
+                        text={isGroup && ci>0 ? "" : field} 
+                        highlight={highlight}
+                        />
+              })}
               </TableRow>
             )
           })}

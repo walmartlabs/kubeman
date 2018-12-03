@@ -1,14 +1,18 @@
 import Context from "../context/contextStore";
 import {K8sClient} from '../k8s/k8sClient'
+import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
 
 export type ActionOutput = string[][]
 export type ActionGroupSpecs = ActionGroupSpec[]
 
 export type ActionOutputCollector = (output: string[]) => void
 
-export type methodGetClusters = () => string[]
+export type methodGetClusters = () => Cluster[]
 export type methodGetK8sClients = () => K8sClient[]
+export type methodGetNamespaces = () => Namespace[]
+
 type ClusterActionMethod = (methodGetClusters, methodGetK8sClients) => void
+type NamespaceActionMethod = (methodGetClusters, methodGetK8sClients, methodGetNamespaces) => void
 
 export enum ActionCategory {
   Common = "Common",
@@ -20,7 +24,8 @@ export enum ActionCategory {
 export enum ActionOutputStyle {
   Text = "Text",
   Table = "Table",
-  Health = "Health"
+  Compare = "Compare",
+  Health = "Health",
 }
 
 export interface ActionSpec {
@@ -33,6 +38,10 @@ export interface ActionSpec {
 
 export interface ClusterActionSpec extends ActionSpec {
   act: ClusterActionMethod
+}
+
+export interface NamespaceActionSpec extends ActionSpec {
+  act: NamespaceActionMethod
 }
 
 export interface ActionGroupSpec {
@@ -52,7 +61,13 @@ export function isClusterActionSpec(obj: any) : obj is ClusterActionSpec {
          && obj.act.length === 3
 }
 
-export function isActionsSpec(obj: any) : obj is ActionGroupSpec {
+export function isNamespaceActionSpec(obj: any) : obj is NamespaceActionSpec {
+  return isActionSpec(obj) 
+         && obj.act instanceof Function
+         && obj.act.length === 4
+}
+
+export function isActionGroupSpec(obj: any) : obj is ActionGroupSpec {
   if(obj && obj.context && obj.actions && obj.actions.length > 0) {
     return obj.actions.filter(action => !isActionSpec(action)).length == 0
   }

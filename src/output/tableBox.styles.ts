@@ -33,6 +33,11 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     padding: 0,
     height: 24,
   },
+  tableRowHighlight: {
+    padding: 0,
+    height: 24,
+    backgroundColor: palette.type ==='dark' ? "#DD2C00" : "#FFE0B2"
+  },
   tableCell: {
     padding: 0,
     paddingLeft: 5,

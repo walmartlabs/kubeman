@@ -83,6 +83,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     const { context, output, outputStyle } = this.state;
     const showBlackBox = outputStyle === ActionOutputStyle.Text
     const showTableBox = outputStyle === ActionOutputStyle.Table
+    const showComparison = outputStyle === ActionOutputStyle.Compare
     const showHealthStatusBox = outputStyle === ActionOutputStyle.Health
 
     return (
@@ -108,7 +109,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
               </TableCell>
               <TableCell className={classes.outputCell}>
                 {showBlackBox && <BlackBox output={output} />}
-                {showTableBox && <TableBox output={output} />}
+                {(showTableBox || showComparison) && <TableBox output={output} compare={showComparison} />}
                 {showHealthStatusBox && <HealthStatusBox output={output} />}
                 
                 {/* <TerminalBox 

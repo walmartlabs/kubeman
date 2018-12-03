@@ -6,12 +6,8 @@ module.exports = {
   actions: [
     {
       name: "List Secrets",
-      act() {
+      async act(getClusters, getK8sClients, getNamespaces, onOutput) {
       },
-      render(pod) {
-        const output = []
-        return output
-      }
     }
   ]
 }

@@ -1,10 +1,11 @@
 import fs from 'fs'
 import path from 'path'
 
-import {ActionCategory, ActionGroupSpec, ActionGroupSpecs, isActionsSpec, 
-        methodGetClusters, methodGetK8sClients, isClusterActionSpec,
+import {ActionCategory, ActionGroupSpec, ActionGroupSpecs, isActionGroupSpec, 
+        methodGetClusters, methodGetK8sClients, isClusterActionSpec, isNamespaceActionSpec,
         ActionOutput, ActionOutputStyle, } from './actionSpec'
 import Context from "../context/contextStore";
+import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
 import * as k8s from '../k8s/k8sClient'
 import actions from './actions';
 
@@ -13,7 +14,7 @@ const actionPluginFolder = "plugins"
 
 export class ActionLoader {
 
-  static onLoad: (ActionsSpecs) => void
+  static onLoad: (ActionGroupSpecs) => void
   static onOutput: (ActionOutput, ActionOutputStyle) => void
   static context: Context
 
@@ -21,7 +22,7 @@ export class ActionLoader {
     this.context = context
   }
 
-  static setOnLoad(callback: (ActionsSpecs) => void) {
+  static setOnLoad(callback: (ActionGroupSpecs) => void) {
     this.onLoad = callback
   }
 
@@ -30,7 +31,9 @@ export class ActionLoader {
   }
 
   static loadActionPlugins() {
-    let actionsSpecs : ActionGroupSpecs = []
+    let actionGroupsMap : Map<string, ActionGroupSpec> = new Map
+    this.addReloadAction(actionGroupsMap)
+
     const modulePath = path.join(__dirname, actionPluginFolder)
 
     fs.readdir(modulePath, (err, files) => {
@@ -41,67 +44,85 @@ export class ActionLoader {
           const filePath =  path.join(path.resolve(__dirname), actionPluginFolder, filename)
           const globalRequire = global['require']
           delete globalRequire.cache[globalRequire.resolve(filePath)]
-          const actionsSpec = globalRequire(filePath)
-          if(isActionsSpec(actionsSpec)) {
-            ActionLoader.configureActions(actionsSpec)
-            actionsSpecs.push(actionsSpec)
+          const actionGroupSpec = globalRequire(filePath)
+          if(isActionGroupSpec(actionGroupSpec)) {
+            ActionLoader.configureActions(actionGroupSpec)
+            const existingSpec = actionGroupsMap.get(actionGroupSpec.context)
+            if(existingSpec) {
+              existingSpec.actions = existingSpec.actions.concat(actionGroupSpec.actions)
+            } else {actionGroupSpec
+              actionGroupsMap.set(actionGroupSpec.context, actionGroupSpec)
+            }
           } else {
-            console.log("Invalid ActionSpec: " + JSON.stringify(actionsSpec))
+            console.log("Invalid ActionGroupSpec: " + JSON.stringify(actionGroupSpec))
           }
         })
         if(this.onLoad) {
-          actionsSpecs.sort((i1,i2) => (i1.order || 100) - (i2.order || 100))
-          this.onLoad(actionsSpecs)
+          const actionGroups : ActionGroupSpecs = Array.from(actionGroupsMap.values())
+          actionGroups.sort((i1,i2) => (i1.order || 100) - (i2.order || 100))
+          this.onLoad(actionGroups)
         }
       }
     })
   }
 
-  static configureActions(actionsSpec: ActionGroupSpec) {
-    switch(actionsSpec.context) {
-      case ActionCategory.Common:
-        this.configureCommonActions(actionsSpec)
-        break
+  static configureActions(actionGroupSpec: ActionGroupSpec) {
+    switch(actionGroupSpec.context) {
       case ActionCategory.Cluster:
-        this.configureClusterActions(actionsSpec)
+        this.configureClusterActions(actionGroupSpec)
         break
       case ActionCategory.Namespace:
-        this.configureNamespaceActions(actionsSpec)
+        this.configureNamespaceActions(actionGroupSpec)
         break
     }
   }
 
-  static configureCommonActions(actionsSpec: ActionGroupSpec) {
-    actionsSpec.actions.unshift({
-      name: "Reload Actions",
-      execute() {
-        ActionLoader.loadActionPlugins()
-      },
-      render() {
-        return [["Actions Reloaded"]]
-      }
-    })
+  static addReloadAction(actionGroupsMap : Map<string, ActionGroupSpec>) {
+    const reloadAction = {
+      order: 1,
+      context: "Common",
+      actions: [
+        {
+          name: "Reload Actions",
+          execute() {
+            ActionLoader.loadActionPlugins()
+          },
+          render() {
+            return [["Actions Reloaded"]]
+          }
+        },
+      ]
+    }
+    actionGroupsMap.set(reloadAction.context, reloadAction)
   }
 
-  static configureClusterActions(actionsSpec: ActionGroupSpec) {
-    const getClusters : methodGetClusters = () => this.context ? this.context.clusterNames() : []
+  static configureClusterActions(actionGroupSpec: ActionGroupSpec) {
+    const getClusters : methodGetClusters = () => this.context ? this.context.clusters() : []
     const getK8sClients : methodGetK8sClients = () => {
       return this.context.clusters().map(k8s.getClientForCluster)
     }
 
-    actionsSpec.actions.forEach(action => {
+    actionGroupSpec.actions.forEach(action => {
       if(!isClusterActionSpec(action)) {
-        console.log("Not ClusterActionSpec: " + action)
+        console.log("Not ClusterActionSpec: " + JSON.stringify(action))
       } else {
         action.act = action.act.bind(null, getClusters, getK8sClients, this.onOutput)
       }
     })
   }
 
-  static configureNamespaceActions(actionsSpec: ActionGroupSpec) {
-    actionsSpec.actions.forEach(action => {
-      if(action.act) {
-        action.act = action.act.bind(null, this.context)
+  static configureNamespaceActions(actionGroupSpec: ActionGroupSpec) {
+    const getClusters : methodGetClusters = () => this.context ? this.context.clusters() : []
+    const getK8sClients : methodGetK8sClients = () => {
+      return this.context.clusters().map(k8s.getClientForCluster)
+    }
+    const getNamespaces = () => this.context ? this.context.allNamespaces() : []
+
+    actionGroupSpec.actions.forEach(action => {
+      if(!isNamespaceActionSpec(action)) {
+        console.log("Not NamespaceActionSpec: " + JSON.stringify(action))
+      } else {
+        action.act = action.act.bind(null, getClusters, getK8sClients, getNamespaces, this.onOutput)
       }
     })
   }
