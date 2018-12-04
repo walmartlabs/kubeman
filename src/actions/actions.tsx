@@ -39,8 +39,8 @@ class Actions extends React.Component<IProps, IState> {
   }
 
   componentDidMount() {
-    this.loadActionPlugins()
     this.componentWillReceiveProps(this.props)
+    this.loadActionPlugins()
   }
 
   componentWillReceiveProps(props: IProps) {
@@ -59,17 +59,8 @@ class Actions extends React.Component<IProps, IState> {
   }
 
   onAction = (actionContext: string, action: ActionSpec) => {
-    const {context} = this.props;
-    const {act, execute, render} = action
-    if(execute) {
-      execute(undefined)
-    }
-    if(act) {
-      act(context)
-    }
-    if(render) {
-      const output : string[][] = render()
-      this.props.onOutput(output, action.outputStyle || ActionOutputStyle.Text)
+    if(action.act) {
+      action.act(this.props.context)
     }
   }
 

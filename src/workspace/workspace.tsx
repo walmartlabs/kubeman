@@ -12,7 +12,6 @@ import Terminal from '../output/terminal'
 import TerminalBox from "../output/terminalBox";
 import BlackBox from '../output/blackbox'
 import TableBox from '../output/tableBox'
-import HealthStatusBox from '../output/healthStatusBox'
 import {ActionOutput, ActionOutputStyle} from '../actions/actionSpec'
 
 import styles from './workspace.styles'
@@ -110,7 +109,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
               <TableCell className={classes.outputCell}>
                 {showBlackBox && <BlackBox output={output} />}
                 {(showTableBox || showComparison) && <TableBox output={output} compare={showComparison} />}
-                {showHealthStatusBox && <HealthStatusBox output={output} />}
+                {showHealthStatusBox && <TableBox health={true} output={output} />}
                 
                 {/* <TerminalBox 
                   ref='terminal' 

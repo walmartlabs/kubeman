@@ -178,10 +178,10 @@ export default class Context {
 
   
   hasNamespaces() : boolean {
-    return this.allNamespaces().length > 0
+    return this.namespaces().length > 0
   }
 
-  allNamespaces() : Namespace[] {
+  namespaces() : Namespace[] {
     return _.flatMap(Array.from(this._clusters.values()), cc => cc.namespaces())
   }
 

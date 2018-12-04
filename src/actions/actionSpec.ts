@@ -2,18 +2,6 @@ import Context from "../context/contextStore";
 import {K8sClient} from '../k8s/k8sClient'
 import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
 
-export type ActionOutput = string[][]
-export type ActionGroupSpecs = ActionGroupSpec[]
-
-export type ActionOutputCollector = (output: string[]) => void
-
-export type methodGetClusters = () => Cluster[]
-export type methodGetK8sClients = () => K8sClient[]
-export type methodGetNamespaces = () => Namespace[]
-
-type ClusterActionMethod = (methodGetClusters, methodGetK8sClients) => void
-type NamespaceActionMethod = (methodGetClusters, methodGetK8sClients, methodGetNamespaces) => void
-
 export enum ActionCategory {
   Common = "Common",
   Cluster = "Cluster",
@@ -28,11 +16,26 @@ export enum ActionOutputStyle {
   Health = "Health",
 }
 
+export type ActionOutput = string[][]
+export type ActionGroupSpecs = ActionGroupSpec[]
+
+export type ActionOutputCollector = (output: string[]) => void
+
+export type methodGetClusters = () => Cluster[]
+export type methodGetK8sClients = () => K8sClient[]
+export type methodGetNamespaces = () => Namespace[]
+export type methodGetPods = () => Pod[]
+export type outputMethod = (ActionOutput) => void
+
+
+type ClusterActionMethod = (methodGetClusters, methodGetK8sClients, outputMethod) => void
+type NamespaceActionMethod = (methodGetClusters, methodGetNamespaces, methodGetK8sClients, outputMethod) => void
+type PodActionMethod = (methodGetPods, outputMethod) => void
+
 export interface ActionSpec {
   name: string
-  act?: (...any) => void
-  execute?: (executor?: Function) => void
-  render?: (any?) => string[][]
+  order?: number
+  act: (...any) => void
   outputStyle?: ActionOutputStyle
 }
 
@@ -44,6 +47,10 @@ export interface NamespaceActionSpec extends ActionSpec {
   act: NamespaceActionMethod
 }
 
+export interface PodActionSpec extends ActionSpec {
+  act: PodActionMethod
+}
+
 export interface ActionGroupSpec {
   order: number
   context: string
@@ -51,20 +58,22 @@ export interface ActionGroupSpec {
 }
 
 export function isActionSpec(obj: any) : obj is ActionSpec {
-  const func = obj.act || obj.execute || obj.render
-  return obj && obj.name && func && func instanceof Function
+  return obj && obj.name && obj.act && obj.act instanceof Function
 }
 
 export function isClusterActionSpec(obj: any) : obj is ClusterActionSpec {
   return isActionSpec(obj) 
-         && obj.act instanceof Function
          && obj.act.length === 3
 }
 
 export function isNamespaceActionSpec(obj: any) : obj is NamespaceActionSpec {
   return isActionSpec(obj) 
-         && obj.act instanceof Function
          && obj.act.length === 4
+}
+
+export function isPodActionSpec(obj: any) : obj is PodActionSpec {
+  return isActionSpec(obj) 
+         && obj.act.length === 2
 }
 
 export function isActionGroupSpec(obj: any) : obj is ActionGroupSpec {

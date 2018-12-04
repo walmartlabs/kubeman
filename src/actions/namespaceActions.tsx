@@ -55,7 +55,7 @@ class NamespaceActions extends React.Component<IProps, IState> {
   getPodStatuses = () => {
     const { context, onOutput } = this.props;
     let output: string[][] = []
-    Promise.all(context.allNamespaces().map(namespace => k8s.getPodsForNamespace(namespace)))
+    Promise.all(context.namespaces().map(namespace => k8s.getPodsForNamespace(namespace)))
       .then(results => {
         _.flatten(results).forEach(pod => {
         })

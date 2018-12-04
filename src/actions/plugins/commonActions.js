@@ -4,8 +4,8 @@ module.exports = {
   actions: [
     {
       name: "Clear",
-      render() {
-        return []
+      act(onOutput) {
+        onOutput([])
       }
     },
   ]

@@ -6,7 +6,7 @@ module.exports = {
   actions: [
     {
       name: "List Secrets",
-      async act(getClusters, getK8sClients, getNamespaces, onOutput) {
+      async act(getClusters, getNamespaces, getK8sClients, onOutput) {
       },
     }
   ]

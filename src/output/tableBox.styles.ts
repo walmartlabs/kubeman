@@ -20,14 +20,24 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     padding: 0,
     height: 36,
     backgroundBlendMode: 'multiply',
-    backgroundColor: palette.type ==='dark' ? '#3700B3' : '#D0D7FB',
+    backgroundColor: palette.type ==='dark' ? '#3700B3' : '#283593',
+  },
+  tableHeaderText: {
+    color: '#ffffff !important',
   },
   tableGroupRow: {
     padding: 0,
     height: 24,
     background: palette.type ==='dark' ? 
               'linear-gradient(45deg, #183BF0 20%, #3700B3 99%)' :
-              'linear-gradient(45deg, #D0D7FB 20%, #183BF0 99%)',
+              'linear-gradient(45deg, #82B1FF 20%, #2962FF 99%)',
+  },
+  tableSubgroupRow: {
+    padding: 0,
+    height: 24,
+    background: palette.type ==='dark' ? 
+              'linear-gradient(45deg, #183BF0 20%, #3700B3 99%)' :
+              'linear-gradient(45deg, #CFD8DC 20%, #455A64 99%)',
   },
   tableRow: {
     padding: 0,
@@ -36,11 +46,16 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   tableRowHighlight: {
     padding: 0,
     height: 24,
-    backgroundColor: palette.type ==='dark' ? "#DD2C00" : "#FFE0B2"
+    backgroundColor: palette.type ==='dark' ? "#FF5722" : "#FFCCBC"
   },
   tableCell: {
     padding: 0,
     paddingLeft: 5,
+  },
+  tableCellHighlight: {
+    padding: 0,
+    paddingLeft: 5,
+    backgroundColor: palette.type ==='dark' ? "#FF5722" : "#FFCCBC"
   },
   tableCellHealthGood: {
     backgroundColor: palette.type ==='dark' ? '#2E7D32' : '#81C784',
