@@ -1,4 +1,4 @@
-const CommonFunctions = require('../../k8s/common')
+const CommonFunctions = require('../../k8s/commonFunctions')
 
 async function compareClusterNamespaces(cluster1, k8sClient1, cluster2, k8sClient2, output) {
   const namespaces1 = await CommonFunctions.getNamespacesForCluster(cluster1, k8sClient1)
@@ -30,7 +30,7 @@ module.exports = {
         } else {
           const cluster1 = clusters[0].name
           const cluster2 = clusters[1].name
-          output.push(["Namespaces", "In " + cluster1, "In " + cluster2])
+          output.push(["Namespaces", "Cluster: " + cluster1, "Cluster: " + cluster2])
           await compareClusterNamespaces(cluster1, k8sClients[0], cluster2, k8sClients[1], output)
           onOutput(output, 'Compare')
         }

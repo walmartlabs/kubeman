@@ -2,15 +2,9 @@ import React from 'react';
 import _ from 'lodash'
 
 import { withStyles, WithStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
-import AppBar from '@material-ui/core/AppBar';
-import Button from '@material-ui/core/Button';
-import FormHelperText from '@material-ui/core/FormHelperText';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogActions from '@material-ui/core/DialogActions';
-import Dialog from '@material-ui/core/Dialog';
-import Tabs from '@material-ui/core/Tabs'
-import Tab from '@material-ui/core/Tab'
-import CircularProgress from '@material-ui/core/CircularProgress';
+import {AppBar, Button, FormHelperText,} from '@material-ui/core';
+import {Dialog, DialogContent, DialogActions, } from '@material-ui/core';
+import {Tab, Tabs, CircularProgress} from '@material-ui/core'
 
 
 import {Cluster, Namespace, Pod, Item, KubeComponent} from "../k8s/contextObjectTypes";

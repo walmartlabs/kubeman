@@ -1,4 +1,4 @@
-const CommonFunctions = require('../../k8s/common')
+const CommonFunctions = require('../../k8s/commonFunctions')
 
 
 function generateServiceComparisonOutput(clusters, namespaces, clusterServices) {
@@ -28,14 +28,19 @@ function generateServiceComparisonOutput(clusters, namespaces, clusterServices) 
   Object.keys(nsServiceToClusterMap).forEach(namespace => {
     output.push(["Namespace: " + namespace, "---", "---"])
     const serviceToClusterMap = nsServiceToClusterMap[namespace]
-    Object.keys(serviceToClusterMap).forEach(service => {
-      const clusterMap = serviceToClusterMap[service]
-      const serviceRow = [service]
-      clusters.forEach(cluster => {
-        serviceRow.push(clusterMap[cluster.name] ? "Yes" : "No")
+    const services = Object.keys(serviceToClusterMap)
+    if(services.length === 0) {
+      output.push(["No Services", "", ""])
+    } else {
+      services.forEach(service => {
+        const clusterMap = serviceToClusterMap[service]
+        const serviceRow = [service]
+        clusters.forEach(cluster => {
+          serviceRow.push(clusterMap[cluster.name] ? "Yes" : "No")
+        })
+        output.push(serviceRow)
       })
-      output.push(serviceRow)
-    })
+    }
   })
   return output
 }

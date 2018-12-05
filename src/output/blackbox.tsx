@@ -4,6 +4,7 @@ import _ from 'lodash'
 import { withStyles, WithStyles } from '@material-ui/core/styles'
 import {Card, CardContent, CardActions, Typography} from '@material-ui/core';
 import { Table, TableBody, TableRow, TableCell } from "@material-ui/core";
+import { ActionOutput } from "../actions/actionSpec";
 
 import styles from './blackbox.styles'
 
@@ -11,7 +12,7 @@ interface IState {
 }
 
 interface IProps extends WithStyles<typeof styles> {
-  output: string[][],
+  output: ActionOutput,
 }
 
 const BlackBox = withStyles(styles)(
@@ -35,11 +36,11 @@ class extends React.Component<IProps, IState> {
     )
   }
 
-  writeLines = (output: string[][]) => {
+  writeLines = (output: ActionOutput) => {
     return _.flatten(output).map(this.writeLine)
   }
 
-  writeFlatTable(output: string[][]) {
+  writeFlatTable(output: ActionOutput) {
     const {classes, ...others} = this.props
     return (
       <Table className={classes.table}>
@@ -68,7 +69,7 @@ class extends React.Component<IProps, IState> {
     )  
   }
 
-  writeTable(output: string[][]) {
+  writeTable(output: ActionOutput) {
     const {classes, ...others} = this.props
     return (
     <Table className={classes.table}>

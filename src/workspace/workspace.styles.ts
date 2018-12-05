@@ -42,6 +42,7 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
   actionCell: {
     verticalAlign: 'top',
     width: '25%',
+    minWidth: '200px',
     height: '100%',
     padding: 0,
     margin: 0,
@@ -64,6 +65,12 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
   },
   input: {
     display: 'none',
+  },
+  loading: {
+    display: 'block',
+    marginTop: '40%',
+    marginLeft: 'auto',
+    marginRight: 'auto',
   },
 })
 

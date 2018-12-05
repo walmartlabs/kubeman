@@ -1,4 +1,4 @@
-const CommonFunctions = require('../../k8s/common')
+const CommonFunctions = require('../../k8s/commonFunctions')
 
 async function listNamespaces(getClusters, getK8sClients, onOutput) {
   const clusters = getClusters()
@@ -9,7 +9,7 @@ async function listNamespaces(getClusters, getK8sClients, onOutput) {
     "Created",
     "Status"
   ])
-  for(let i = 0; i < clusters.length; i++) {
+  for(const i in clusters) {
     const cluster = clusters[i].name
     output.push(["Cluster: " + cluster, "---", "---"])
     const namespaces = await CommonFunctions.getNamespacesForCluster(cluster, k8sClients[i])

@@ -10,13 +10,14 @@ export enum ActionCategory {
 }
 
 export enum ActionOutputStyle {
+  None = "None",
   Text = "Text",
   Table = "Table",
   Compare = "Compare",
   Health = "Health",
 }
 
-export type ActionOutput = string[][]
+export type ActionOutput = any[][]
 export type ActionGroupSpecs = ActionGroupSpec[]
 
 export type ActionOutputCollector = (output: string[]) => void

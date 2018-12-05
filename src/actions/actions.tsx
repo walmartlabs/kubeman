@@ -29,6 +29,7 @@ interface IState {
 
 interface IProps extends WithStyles<typeof styles> {
   context: Context,
+  showLoading: () => void
   onCommand: (string) => void
   onOutput: (ActionOutput, ActionOutputStyle) => void
 }
@@ -60,7 +61,8 @@ class Actions extends React.Component<IProps, IState> {
 
   onAction = (actionContext: string, action: ActionSpec) => {
     if(action.act) {
-      action.act(this.props.context)
+      this.props.showLoading()
+      action.act()
     }
   }
 

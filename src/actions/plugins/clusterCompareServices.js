@@ -1,5 +1,5 @@
-const CommonFunctions = require('../../k8s/common')
-const generateServiceComparisonOutput = require('./compareNamespaceServices').generateServiceComparisonOutput
+const CommonFunctions = require('../../k8s/commonFunctions')
+const generateServiceComparisonOutput = require('./namespaceCompareServices').generateServiceComparisonOutput
 
 module.exports = {
   order: 2,
@@ -7,6 +7,7 @@ module.exports = {
   actions: [
     {
       name: "Compare Services",
+      order: 5,
       async act(getClusters, getK8sClients, onOutput) {
         const clusters = getClusters()
         const k8sClients = getK8sClients()

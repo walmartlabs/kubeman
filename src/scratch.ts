@@ -2,9 +2,10 @@ import {Cluster, Namespace, Pod, Item} from "./k8s/contextObjectTypes";
 import Context from "./context/contextStore";
 import * as k8s from './k8s/k8sClient'
 import * as jp from 'jsonpath'
+import jpExtract from './util/jpExtract'
 
 
-export function setupRealContext(context: Context) : Context {
+export async function setupRealContext(context: Context) : Promise<Context> {
   const c1 = new Cluster("eastus2/dev/af1")
   const c2 = new Cluster("eastus2/dev/af2")
   context.addCluster(c1)
@@ -22,58 +23,25 @@ export function setupRealContext(context: Context) : Context {
   context.addNamespace(ns21)
   context.addNamespace(ns22)
 
-  const pod1101 = new Pod("istio-ingressgateway-f9c84c4c-xg9fv", ns11)
-  const pod1102 = new Pod("istio-pilot-795bb47bdd-tc8ck", ns11)
-  const pod1103 = new Pod("istio-citadel-7b4c4cf8f9-g5hzp", ns11)
-  const pod1104 = new Pod("istio-policy-6c6669dcb8-57rfc", ns11)
-  const pod1105 = new Pod("istio-policy-6c6669dcb8-58scb", ns11)
-  const pod1106 = new Pod("istio-egressgateway-5c6655946d-cwd4w", ns11)
-  
-  const pod1201 = new Pod("kube-apiserver-cpeasf4e4000000", ns12)
-  const pod1202 = new Pod("kube-controller-manager-cpeasf4e4000000", ns12)
-  const pod1203 = new Pod("kube-controller-manager-cpeasf4e4000001", ns12)
-  const pod1204 = new Pod("kube-controller-manager-cpeasf4e4000002", ns12)
+  let pods = await k8s.getPodsForNamespace(ns11)
+  pods.forEach(pod => {
+    const meta = jpExtract.extract(pod, "$.metadata", "name")
+    context.addPod(new Pod(meta.name, ns11))
+  })
 
-  const pod1301 = new Pod("fortio1-658d599d47-57l87", ns13)
-  const pod1302 = new Pod("fortio2-65cbd67948-5grn9", ns13)
-  const pod1303 = new Pod("testcurl-7fbcdd4c57-gnd75", ns13)
-  
-  context.addPod(pod1101)
-  context.addPod(pod1102)
-  context.addPod(pod1103)
-  context.addPod(pod1104)
-  context.addPod(pod1105)
-  context.addPod(pod1201)
-  context.addPod(pod1202)
-  context.addPod(pod1203)
-  context.addPod(pod1204)
-  context.addPod(pod1301)
-  context.addPod(pod1302)
-  context.addPod(pod1303)
+  pods = await k8s.getPodsForNamespace(ns12)
+  pods.forEach(pod => {
+    const meta = jpExtract.extract(pod, "$.metadata", "name")
+    context.addPod(new Pod(meta.name, ns12))
+  })
 
-  const pod2101 = new Pod("istio-ingressgateway-78b69894d6-t4c84", ns21)
-  const pod2102 = new Pod("istio-pilot-6f4df78944-6dhmm", ns21)
-  const pod2103 = new Pod("istio-citadel-56b98b8d8b-2l7j4", ns21)
-  const pod2104 = new Pod("istio-policy-96f8fbbc4-56rdb", ns21)
-  const pod2105 = new Pod("istio-egressgateway-66cb87fb49-9mkwk", ns21)
+  pods = await k8s.getPodsForNamespace(ns13)
+  pods.forEach(pod => {
+    const meta = jpExtract.extract(pod, "$.metadata", "name")
+    context.addPod(new Pod(meta.name, ns13))
+  })
 
-  const pod2201 = new Pod("kube-apiserver-cpeas01fd000000", ns22)
-  const pod2202 = new Pod("kube-controller-manager-cpeas01fd000000", ns22)
-  const pod2203 = new Pod("kube-controller-manager-cpeas01fd000001", ns22)
-  const pod2204 = new Pod("kube-controller-manager-cpeas01fd000002", ns22)
-
-  context.addPod(pod2101)
-  context.addPod(pod2102)
-  context.addPod(pod2103)
-  context.addPod(pod2104)
-  context.addPod(pod2105)
-  context.addPod(pod2201)
-  context.addPod(pod2202)
-  context.addPod(pod2203)
-  context.addPod(pod2204)
-
-  return context
-
+  return Promise.resolve(context)
 }
 
 export function createTestData(context: Context) : Context {

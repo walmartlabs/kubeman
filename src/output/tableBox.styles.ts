@@ -30,7 +30,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     height: 24,
     background: palette.type ==='dark' ? 
               'linear-gradient(45deg, #183BF0 20%, #3700B3 99%)' :
-              'linear-gradient(45deg, #82B1FF 20%, #2962FF 99%)',
+              'linear-gradient(45deg, #9E9E9E 20%, #2962FF 99%)',
   },
   tableSubgroupRow: {
     padding: 0,
@@ -46,7 +46,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   tableRowHighlight: {
     padding: 0,
     height: 24,
-    backgroundColor: palette.type ==='dark' ? "#FF5722" : "#FFCCBC"
+    backgroundColor: palette.type ==='dark' ? "#827717" : "#FFF9C4"
   },
   tableCell: {
     padding: 0,
@@ -55,7 +55,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   tableCellHighlight: {
     padding: 0,
     paddingLeft: 5,
-    backgroundColor: palette.type ==='dark' ? "#FF5722" : "#FFCCBC"
+    backgroundColor: palette.type ==='dark' ? "#827717" : "#FFF9C4"
   },
   tableCellHealthGood: {
     backgroundColor: palette.type ==='dark' ? '#2E7D32' : '#81C784',
@@ -63,6 +63,12 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   tableCellHealthBad: {
     backgroundColor: palette.type ==='dark' ? '#AD1457' : '#EC407A',
   },
+  grid: {
+    
+  },
+  gridCell: {
+
+  }
 })
 
 export default styles

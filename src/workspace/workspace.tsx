@@ -1,8 +1,9 @@
 import React from "react";
 import { withStyles, WithStyles } from '@material-ui/core/styles'
-import { Table, TableBody, TableRow, TableCell } from "@material-ui/core";
+import { Table, TableBody, TableRow, TableCell, CircularProgress } from "@material-ui/core";
 import Switch from '@material-ui/core/Switch';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
+import SplitPane from 'react-split-pane'
 
 import Actions from '../actions/actions'
 import ContextPanel from '../context/contextPanel'
@@ -20,6 +21,7 @@ interface IState {
   context: Context
   output: ActionOutput
   outputStyle: ActionOutputStyle
+  loading: boolean
 }
 
 interface IProps extends WithStyles<typeof styles> {
@@ -39,7 +41,8 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   state: IState = {
     context: new Context,
     output: [],
-    outputStyle: ActionOutputStyle.Table
+    outputStyle: ActionOutputStyle.Table,
+    loading: false,
   }
   commandHandler?: ((string) => void) = undefined
 
@@ -60,7 +63,11 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   showOutput = (output: ActionOutput, outputStyle: ActionOutputStyle) => {
     //this.refs.terminal && this.refs.terminal.write(output)
-    this.setState({output, outputStyle: outputStyle || ActionOutputStyle.Text})
+    this.setState({output, outputStyle: outputStyle || ActionOutputStyle.Text, loading: false})
+  }
+
+  showLoading = () => {
+    this.setState({loading: true, outputStyle: ActionOutputStyle.None})
   }
 
   onUpdateContext = (context: Context) => {
@@ -79,7 +86,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   render() {
     const { classes } = this.props;
-    const { context, output, outputStyle } = this.state;
+    const { context, output, outputStyle, loading, } = this.state;
     const showBlackBox = outputStyle === ActionOutputStyle.Text
     const showTableBox = outputStyle === ActionOutputStyle.Table
     const showComparison = outputStyle === ActionOutputStyle.Compare
@@ -102,11 +109,13 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
             <TableRow className={classes.lowerRow}>
               <TableCell className={classes.actionCell}>
                 <Actions context={context}
+                        showLoading={this.showLoading}
                         onCommand={this.onCommand}
                         onOutput={this.showOutput}
                         />
               </TableCell>
               <TableCell className={classes.outputCell}>
+                {loading && <CircularProgress className={classes.loading} />}
                 {showBlackBox && <BlackBox output={output} />}
                 {(showTableBox || showComparison) && <TableBox output={output} compare={showComparison} />}
                 {showHealthStatusBox && <TableBox health={true} output={output} />}
