@@ -98,20 +98,32 @@ export class ClusterContext {
 
 export default class Context {
   private _clusters: Map<Cluster, ClusterContext> = new Map()
+  hasClusters: boolean = false
+  hasNamespaces: boolean = false
+  hasPods: boolean = false
+
+  updateFlags() {
+    this.hasClusters = this._clusters.size > 0
+    this.hasNamespaces = this.namespaces().length > 0
+    this.hasPods = this.pods().length > 0
+  }
 
   storeClusters(clusters: Map<string, Cluster>) {
     this.clearClusters()
     clusters.forEach(cluster => this._clusters.set(cluster, new ClusterContext))
+    this.updateFlags()
   }
 
   storeNamespaces(namespaces: Map<string, Namespace>) {
     this.clearNamespaces()
     namespaces.forEach(this.addNamespace.bind(this))
+    this.updateFlags()
   }
 
   storePods(pods: Map<string, Pod>) {
     this.clearPods()
     pods.forEach(this.addPod.bind(this))
+    this.updateFlags()
   }
 
   store(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, pods: Map<string, Pod>) {
@@ -122,18 +134,22 @@ export default class Context {
 
   clearClusters() {
     this._clusters.clear()
+    this.updateFlags()
   }
 
   clearNamespaces() {
     Array.from(this._clusters.values()).forEach(cc => cc.clearNamespaces())
+    this.updateFlags()
   }
 
   clearPods() {
     Array.from(this._clusters.values()).forEach(cc => cc.clearPods())
+    this.updateFlags()
   }
 
   addCluster(cluster: Cluster) {
     this._clusters.set(cluster, new ClusterContext)
+    this.updateFlags()
   }
 
   addNamespace(namespace: Namespace) {
@@ -143,6 +159,7 @@ export default class Context {
       throw new ReferenceError("Cluster not found: " + namespace.cluster)
     }
     clusterContext.addNamespace(namespace)
+    this.updateFlags()
   }
   
   addPod(pod: Pod) {
@@ -151,16 +168,13 @@ export default class Context {
       throw new ReferenceError("Cluster not found: " + pod.namespace.cluster)
     }
     clusterContext.addPod(pod)
+    this.updateFlags()
   }
   
   * getClusters() {
     for(let c of this._clusters.keys()) {
       yield c
     }
-  }
-  
-  hasClusters() : boolean {
-    return this._clusters.size >0
   }
 
   clusters() : Cluster[] {
@@ -174,11 +188,6 @@ export default class Context {
 
   clusterContext(cluster: Cluster) : ClusterContext|undefined {
     return this._clusters.get(cluster)
-  }
-
-  
-  hasNamespaces() : boolean {
-    return this.namespaces().length > 0
   }
 
   namespaces() : Namespace[] {

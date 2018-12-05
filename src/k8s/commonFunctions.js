@@ -1,7 +1,7 @@
 const jpExtract = require('../util/jpExtract')
 module.exports = {
 
-  async getNodesForCluster(cluster, k8sClient) {
+  async getClusterNodes(cluster, k8sClient) {
     const nodes = []
     const result = await k8sClient.nodes.get()
     if(result && result.body) {
@@ -32,7 +32,7 @@ module.exports = {
     }
   },
   
-  async getNamespacesForCluster(cluster, k8sClient) {
+  async getClusterNamespaces(cluster, k8sClient) {
     const namespaceList = []
     const result = await k8sClient.namespaces.get()
     if(result && result.body) {
@@ -50,8 +50,7 @@ module.exports = {
     return namespaceList
   },
 
-
-  async getServicesForNamespace(namespace, k8sClient) {
+  async getNamespaceServices(namespace, k8sClient) {
     const services = []
     const result = await k8sClient.namespaces(namespace).services.get()
     if(result && result.body) {
@@ -64,36 +63,94 @@ module.exports = {
     return services
   },
 
-
-  async getServicesForCluster(cluster, k8sClient) {
-    const namespaces = await this.getNamespacesForCluster(cluster, k8sClient)
+  async getClusterServices(cluster, k8sClient) {
+    const namespaces = await this.getClusterNamespaces(cluster, k8sClient)
     const services = {}
     for(const i in namespaces) {
-      services[namespaces[i].name] = await this.getServicesForNamespace(namespaces[i].name, k8sClient)
+      services[namespaces[i].name] = await this.getNamespaceServices(namespaces[i].name, k8sClient)
     }
     return services
   },
 
-
   async getServicesGroupedByClusterNamespace(clusters, namespaces, k8sClients) {
-    const clusterServices = {}
+    const services = {}
     for(const i in clusters) {
       const cluster = clusters[i].name
       const k8sClient = k8sClients[i]
-      clusterServices[cluster] = {}
+      services[cluster] = {}
 
       if(!namespaces || namespaces.length === 0) {
-        clusterServices[cluster] = await this.getServicesForCluster(cluster, k8sClient)
+        services[cluster] = await this.getClusterServices(cluster, k8sClient)
       } else {
         for(const j in namespaces) {
           if(namespaces[j].cluster.name === cluster) {
             const namespace = namespaces[j].name
-            clusterServices[cluster][namespace] = await this.getServicesForNamespace(namespace, k8sClient)
+            services[cluster][namespace] = await this.getNamespaceServices(namespace, k8sClient)
           }
         }
       }
     }
-    return clusterServices
+    return services
+  },
+
+  async getDeploymentsForNamespace(namespace, k8sClient) {
+    const deployments = []
+    const result = await k8sClient.namespaces(namespace).deployments.get()
+    if(result && result.body) {
+      const items = result.body.items
+      const meta = jpExtract.extractMulti(items, "$[*].metadata", "name", "creationTimestamp")
+      meta.forEach((item, index) => {
+        deployments.push(item.name)
+      })
+    }
+    return deployments
+  },
+
+  async getDeploymentsForCluster(cluster, k8sClient) {
+    const namespaces = await this.getClusterNamespaces(cluster, k8sClient)
+    const deployments = {}
+    for(const i in namespaces) {
+      deployments[namespaces[i].name] = await this.getDeploymentsForNamespace(namespaces[i].name, k8sClient)
+    }
+    return deployments
+  },
+
+  async getDeploymentsGroupedByClusterNamespace(clusters, namespaces, k8sClients) {
+    const deployments = {}
+    for(const i in clusters) {
+      const cluster = clusters[i].name
+      const k8sClient = k8sClients[i]
+      deployments[cluster] = {}
+
+      if(!namespaces || namespaces.length === 0) {
+        deployments[cluster] = await this.getDeploymentsForCluster(cluster, k8sClient)
+      } else {
+        for(const j in namespaces) {
+          if(namespaces[j].cluster.name === cluster) {
+            const namespace = namespaces[j].name
+            deployments[cluster][namespace] = await this.getDeploymentsForNamespace(namespace, k8sClient)
+          }
+        }
+      }
+    }
+    return deployments
+  },
+
+  async getNamespaceSecrets(namespace, k8sClient) {
+    const secrets = []
+    const result = await k8sClient.namespaces(namespace).secrets.get()
+    if(result && result.body) {
+      const items = result.body.items
+      const meta = jpExtract.extractMulti(items, "$[*].metadata", "name", "creationTimestamp")
+      meta.forEach((item, index) => {
+        secrets.push({
+          name: item.name,
+          creationTimestamp: item.creationTimestamp,
+          type: items[index].type,
+        })
+      })
+    }
+    return secrets
   },
 
   processEventsData(result) {

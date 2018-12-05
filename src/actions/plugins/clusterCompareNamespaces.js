@@ -1,8 +1,8 @@
 const CommonFunctions = require('../../k8s/commonFunctions')
 
 async function compareClusterNamespaces(cluster1, k8sClient1, cluster2, k8sClient2, output) {
-  const namespaces1 = await CommonFunctions.getNamespacesForCluster(cluster1, k8sClient1)
-  const namespaces2 = await CommonFunctions.getNamespacesForCluster(cluster2, k8sClient2)
+  const namespaces1 = await CommonFunctions.getClusterNamespaces(cluster1, k8sClient1)
+  const namespaces2 = await CommonFunctions.getClusterNamespaces(cluster2, k8sClient2)
   const allNamespaces = {}
 
   namespaces1.forEach(ns => allNamespaces[ns.name]=["Yes", "No"])

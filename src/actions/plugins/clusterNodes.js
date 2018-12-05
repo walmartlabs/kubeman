@@ -19,7 +19,7 @@ module.exports = {
         for(const i in clusters) {
           const cluster = clusters[i].name
           output.push(["Cluster: " + cluster, "---", "---"])
-          const nodes = await CommonFunctions.getNodesForCluster(cluster, k8sClients[i])
+          const nodes = await CommonFunctions.getClusterNodes(cluster, k8sClients[i])
           nodes.forEach(node => output.push([
             node.name + " <br/> (" + node.creationTimestamp + ")", 
             Object.keys(node.network).map(key => key+":"+JSON.stringify(node.network[key]))

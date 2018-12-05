@@ -2,7 +2,7 @@ import React, { ChangeEvent } from "react";
 
 import { withStyles, WithStyles } from '@material-ui/core/styles'
 import { Table, TableHead, TableBody, TableRow, TableCell } from "@material-ui/core";
-import { Grid, Paper, Typography, TextField } from '@material-ui/core';
+import { Grid, Paper, Typography, Input } from '@material-ui/core';
 
 import styles from './tableBox.styles'
 import { ActionOutput } from "../actions/actionSpec";
@@ -25,12 +25,10 @@ interface ITableCellProps extends WithStyles<typeof styles> {
 }
 
 const TextCell = withStyles(styles)(({index, content, colSpan, highlight, classes}: ITableCellProps) => {
-  content = content.split("<br/>")
   return (
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
-              className={(highlight && index !==0) ? classes.tableCellHighlight : classes.tableCell}>
-      {content.map((text,i) => <span key={"CellContent"+i}>{text}<br/></span>)}
-    </TableCell>
+              className={(highlight && index !==0) ? classes.tableCellHighlight : classes.tableCell}
+              dangerouslySetInnerHTML={{__html:content}} />
   )
 })
 
@@ -58,12 +56,10 @@ const HealthCell = withStyles(styles)(({index, content, colSpan, isHealthField, 
   const className = !isHealthField ? classes.tableCell :
         healthGood ? classes.tableCellHealthGood : 
         healthBad ? classes.tableCellHealthBad : classes.tableCell
-  content = content.split("<br/>")
   return (
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
-               className={className}>
-      {content.map((text,i) => <span key={"CellContent"+i}>{text}<br/></span>)}
-    </TableCell>
+               className={className} 
+               dangerouslySetInnerHTML={{__html:content}} />
   )
 })
 
@@ -135,12 +131,10 @@ class TableBox extends React.Component<IProps, IState> {
     
     return (
       <Paper className={classes.root}>
-        <TextField  fullWidth
-                    placeholder="Type here to filter data from the results" 
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
-                    onChange={this.onFilter}
+        <Input  fullWidth
+                placeholder="Type here to filter data from the results" 
+                onChange={this.onFilter}
+                className={classes.filterInput}
         />
         <Table className={classes.table}>
           <TableHead>

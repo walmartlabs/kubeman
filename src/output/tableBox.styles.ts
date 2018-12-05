@@ -68,7 +68,10 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
   gridCell: {
 
-  }
+  },
+  filterInput: {
+    fontSize: '0.9rem',
+  },
 })
 
 export default styles

@@ -30,8 +30,7 @@ class ContextPanel extends React.Component<IProps, IState> {
   }
 
   componentDidMount() {
-    scratch.setupRealContext(this.props.context)
-    .then(context => this.setState({context}))
+    scratch.setupRealContext(this.props.context).then(context => {this.setState({context}); this.props.onUpdateContext(context)})
     this.componentWillReceiveProps(this.props)
   }
 
@@ -97,7 +96,7 @@ class ContextPanel extends React.Component<IProps, IState> {
               />
             )
           }
-          <Tab label={context.hasClusters() ? "Update Context" : "Select Cluster"} 
+          <Tab label={context.hasClusters ? "Update Context" : "Select Cluster"} 
               classes={{labelContainer: classes.tabButton}}
               onClick={onSelectContext} />
         </Tabs>

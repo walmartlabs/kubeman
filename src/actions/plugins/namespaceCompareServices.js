@@ -5,14 +5,16 @@ function generateServiceComparisonOutput(clusters, namespaces, clusterServices) 
   const output = []
   const headers = ["Namespace/Service"]
   clusters.forEach(cluster => {
-    headers.push("In " + cluster.name)
+    headers.push("Cluster: " + cluster.name)
   })
   output.push(headers)
 
   const nsServiceToClusterMap = {}
   namespaces.forEach(ns => {
     const namespace = ns.name
-    nsServiceToClusterMap[namespace] = {}
+    if(!nsServiceToClusterMap[namespace]) {
+      nsServiceToClusterMap[namespace] = {}
+    }
     Object.keys(clusterServices).forEach(cluster => {
       const clusterNSServices = clusterServices[cluster][namespace]
       clusterNSServices && 
@@ -28,17 +30,17 @@ function generateServiceComparisonOutput(clusters, namespaces, clusterServices) 
   Object.keys(nsServiceToClusterMap).forEach(namespace => {
     output.push(["Namespace: " + namespace, "---", "---"])
     const serviceToClusterMap = nsServiceToClusterMap[namespace]
-    const services = Object.keys(serviceToClusterMap)
+    const services = serviceToClusterMap ? Object.keys(serviceToClusterMap) : []
     if(services.length === 0) {
       output.push(["No Services", "", ""])
     } else {
       services.forEach(service => {
         const clusterMap = serviceToClusterMap[service]
-        const serviceRow = [service]
+        const row = [service]
         clusters.forEach(cluster => {
-          serviceRow.push(clusterMap[cluster.name] ? "Yes" : "No")
+          row.push(clusterMap[cluster.name] ? "Yes" : "No")
         })
-        output.push(serviceRow)
+        output.push(row)
       })
     }
   })
@@ -52,6 +54,7 @@ module.exports = {
   actions: [
     {
       name: "Compare Services",
+      order: 1,
       async act(getClusters, getNamespaces, getK8sClients, onOutput) {
         const clusters = getClusters()
         const k8sClients = getK8sClients()

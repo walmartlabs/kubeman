@@ -16,7 +16,7 @@ import ListItemText from '@material-ui/core/ListItemText';
 import Context from "../context/contextStore";
 import {ActionLoader} from './actionLoader'
 
-import {ActionOutput, ActionOutputStyle, ActionGroupSpecs, ActionSpec, ActionGroupSpec} from './actionSpec'
+import {ActionOutput, ActionOutputStyle, ActionGroupSpecs, ActionSpec, ActionGroupSpec, ActionContext} from './actionSpec'
 
 import styles from './actions.styles'
 import {actionsTheme} from '../theme/theme'
@@ -98,10 +98,18 @@ class Actions extends React.Component<IProps, IState> {
     const useDarkTheme = global['useDarkTheme']
     const theme = createMuiTheme(actionsTheme.getTheme(useDarkTheme));
 
+    const actionShowNoShow : Map<ActionContext, boolean> = new Map
+    actionShowNoShow.set(ActionContext.Common, true)
+    actionShowNoShow.set(ActionContext.Cluster, context.hasClusters)
+    actionShowNoShow.set(ActionContext.Namespace, context.hasNamespaces)
+    actionShowNoShow.set(ActionContext.Pod, context.hasPods)
+    actionShowNoShow.set(ActionContext.Other, context.hasClusters)
+
     return (
       <MuiThemeProvider theme={theme}>
         {actionGroupSpecs.map(actionGroupSpec => 
-          this.renderExpansionPanel(actionGroupSpec)
+          actionShowNoShow.get(actionGroupSpec.context || ActionContext.Other) &&
+            this.renderExpansionPanel(actionGroupSpec)
         )}
       </MuiThemeProvider>  
     )

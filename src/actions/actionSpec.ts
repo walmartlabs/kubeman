@@ -2,11 +2,12 @@ import Context from "../context/contextStore";
 import {K8sClient} from '../k8s/k8sClient'
 import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
 
-export enum ActionCategory {
+export enum ActionContext {
   Common = "Common",
   Cluster = "Cluster",
   Namespace = "Namespace",
   Pod = "Pod",
+  Other = "Other",
 }
 
 export enum ActionOutputStyle {
@@ -54,7 +55,7 @@ export interface PodActionSpec extends ActionSpec {
 
 export interface ActionGroupSpec {
   order: number
-  context: string
+  context: ActionContext
   actions: ActionSpec[]
 }
 

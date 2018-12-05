@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import * as ts from "typescript";
 
-import {ActionCategory, ActionGroupSpec, ActionGroupSpecs, isActionGroupSpec, 
+import {ActionContext, ActionGroupSpec, ActionGroupSpecs, isActionGroupSpec, 
         methodGetClusters, methodGetK8sClients, 
         isClusterActionSpec, isNamespaceActionSpec, isPodActionSpec,
         ActionOutput, ActionOutputStyle, } from './actionSpec'
@@ -99,16 +99,16 @@ export class ActionLoader {
 
   static configureActions(actionGroupSpec: ActionGroupSpec) {
     switch(actionGroupSpec.context) {
-      case ActionCategory.Common:
+      case ActionContext.Common:
         this.configureCommonActions(actionGroupSpec)
         break
-      case ActionCategory.Cluster:
+      case ActionContext.Cluster:
         this.configureClusterActions(actionGroupSpec)
         break
-      case ActionCategory.Namespace:
+      case ActionContext.Namespace:
         this.configureNamespaceActions(actionGroupSpec)
         break
-      case ActionCategory.Pod:
+      case ActionContext.Pod:
         this.configurePodActions(actionGroupSpec)
         break
     }
@@ -117,7 +117,7 @@ export class ActionLoader {
   static addReloadAction(actionGroupsMap : Map<string, ActionGroupSpec>) {
     const reloadAction = {
       order: 1,
-      context: "Common",
+      context: ActionContext.Common,
       actions: [
         {
           name: "Reload Actions",

@@ -12,7 +12,7 @@ async function listNamespaces(getClusters, getK8sClients, onOutput) {
   for(const i in clusters) {
     const cluster = clusters[i].name
     output.push(["Cluster: " + cluster, "---", "---"])
-    const namespaces = await CommonFunctions.getNamespacesForCluster(cluster, k8sClients[i])
+    const namespaces = await CommonFunctions.getClusterNamespaces(cluster, k8sClients[i])
     namespaces.forEach(ns => output.push([ns.name, ns.creationTimestamp, ns.status]))
   }
   onOutput(output, 'Health')

@@ -3,7 +3,6 @@ import { withStyles, WithStyles } from '@material-ui/core/styles'
 import { Table, TableBody, TableRow, TableCell, CircularProgress } from "@material-ui/core";
 import Switch from '@material-ui/core/Switch';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
-import SplitPane from 'react-split-pane'
 
 import Actions from '../actions/actions'
 import ContextPanel from '../context/contextPanel'
