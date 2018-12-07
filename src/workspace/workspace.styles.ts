@@ -3,7 +3,7 @@ import { createStyles, Theme } from '@material-ui/core/styles'
 const styles = ({ palette, spacing }: Theme) => createStyles({
   root: {
     padding: spacing.unit,
-    backgroundColor: palette.background.default,
+    backgroundColor: palette.type === 'dark' ? palette.background.default : '#edeef8',
     color: palette.primary.main,
     width: '100%',
     position: 'absolute',

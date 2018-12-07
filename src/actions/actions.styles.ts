@@ -21,6 +21,11 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   expansionDetails: {
     display: 'block',
   },
+  selectedAction: {
+    backgroundColor: palette.type === 'dark' ? '#b3003e' : '#b6dcfb',
+    fontStyle: 'bold',
+    fontWeight: 800,
+  },
   listText: {
     fontSize: typography.pxToRem(10),
   }

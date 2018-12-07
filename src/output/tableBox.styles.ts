@@ -9,10 +9,12 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     overflowX: 'auto',
     padding: 0,
     paddingLeft: 5,
+    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
   },
   table: {
     padding: 0,
     paddingLeft: 5,
+    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
   },
   tableBody: {
   },
@@ -20,7 +22,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     padding: 0,
     height: 36,
     backgroundBlendMode: 'multiply',
-    backgroundColor: palette.type ==='dark' ? '#3700B3' : '#283593',
+    backgroundColor: palette.type ==='dark' ? '#3700B3' : '#3141b4',
   },
   tableHeaderText: {
     color: '#ffffff !important',
@@ -30,14 +32,12 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     height: 24,
     background: palette.type ==='dark' ? 
               'linear-gradient(45deg, #183BF0 20%, #3700B3 99%)' :
-              'linear-gradient(45deg, #9E9E9E 20%, #2962FF 99%)',
+              'linear-gradient(45deg, #90CAF9 20%, #2962FF 99%)',
   },
   tableSubgroupRow: {
     padding: 0,
     height: 24,
-    background: palette.type ==='dark' ? 
-              'linear-gradient(45deg, #183BF0 20%, #3700B3 99%)' :
-              'linear-gradient(45deg, #CFD8DC 20%, #455A64 99%)',
+    backgroundColor: palette.type ==='dark' ? '#455A64' : '#CFD8DC',
   },
   tableRow: {
     padding: 0,
@@ -49,16 +49,16 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     backgroundColor: palette.type ==='dark' ? "#827717" : "#FFF9C4"
   },
   tableCell: {
-    padding: 0,
-    paddingLeft: 5,
+    padding: '0px !important',
+    paddingLeft: '1px !important',
   },
   tableCellHighlight: {
-    padding: 0,
-    paddingLeft: 5,
+    padding: '0px !important',
+    paddingLeft: '1px !important',
     backgroundColor: palette.type ==='dark' ? "#827717" : "#FFF9C4"
   },
   tableCellHealthGood: {
-    backgroundColor: palette.type ==='dark' ? '#2E7D32' : '#81C784',
+    backgroundColor: palette.type ==='dark' ? '#2E7D32' : '#DCEDC8',
   },
   tableCellHealthBad: {
     backgroundColor: palette.type ==='dark' ? '#AD1457' : '#EC407A',

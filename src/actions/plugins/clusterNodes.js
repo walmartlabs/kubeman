@@ -12,7 +12,7 @@ module.exports = {
         const k8sClients = getK8sClients()
         const output = []
         output.push([
-          "Node (Created)",
+          "Node <br/> (Creation Time)",
           "Info",
           "Conditions",
         ])

@@ -25,6 +25,7 @@ module.exports = {
           
           const secrets = await CommonFunctions.getNamespaceSecrets(namespace.name, k8sClient)
           secrets.forEach(secret => {
+            secret.name = secret.name.slice(0, secret.name.lastIndexOf('-'))
             if(!secretsMap[namespace.name][secret.name]) {
               secretsMap[namespace.name][secret.name] = {}
             }

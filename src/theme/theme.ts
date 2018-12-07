@@ -11,7 +11,6 @@ class AppTheme {
     palette: {
       type: 'dark',
       primary: indigo,
-      secondary: blue,
       error: red,
     },
     typography: {
@@ -107,16 +106,15 @@ export const selectionDialogTheme = new SelectionDialogTheme
 
 class ActionsTheme {
   getTheme(useDarkTheme: boolean): ThemeOptions {
-    const panelClosedColor = useDarkTheme ? 'linear-gradient(45deg, #558B2F 20%, #33691E 99%)' :
-                            'linear-gradient(45deg, #D0D7FB 50%, #002984 99%)'
-    const panelOpenColor = useDarkTheme ? 'linear-gradient(45deg, #1B5E20 30%, #1B5E20 99%)' :
-                            'linear-gradient(45deg, #002984 50%, #3d00cc 99%)'
+    const panelColor = useDarkTheme ? 'linear-gradient(45deg, #0039b3 30%, #0049e6 99%)' :
+                            'linear-gradient(45deg, #0039b3 50%, #3d00cc 99%)'
 
     return Object.assign({}, appTheme.activeTheme, {
       overrides: {
         MuiExpansionPanelSummary: {
           root: {
-            background: panelClosedColor,
+            background: panelColor,
+            color: 'white !important',
             margin: 0,
             minHeight: '40px !important',
             height: '40px !important',
@@ -134,7 +132,6 @@ class ActionsTheme {
           },
           expanded: {
             color: 'white !important',
-            background: panelOpenColor,
             minHeight: '40px !important',
             height: '40px !important',
             lineHeight: 1,
@@ -162,7 +159,7 @@ class ActionsTheme {
         MuiExpansionPanelDetails: {
           root: {
             padding: 0,
-          }
+          },
         },
         MuiList: {
           root: {
@@ -175,6 +172,8 @@ class ActionsTheme {
             paddingTop: 0,
             paddingBottom: 0,
             paddingLeft: 10,
+            backgroundColor: useDarkTheme ? '#404fa5'  : '#daddf1',
+            borderBottom: '1px solid #9c9c9c',
           }
         },
       }

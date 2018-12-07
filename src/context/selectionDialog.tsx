@@ -493,7 +493,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
           onClose={this.handleCancel.bind(this)}
           open={open}
         >
-          <DialogContent>
+          <DialogContent className={classes.dialogContent}>
             <AppBar position="static">
               <Tabs value={activeTab}
                   onChange={this.onTabChange.bind(this)} >
@@ -536,7 +536,6 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                     table={namespaces}
                     selections={selectedNamespaces}
                     grouped={true}
-                    maxSelect={5}
                     onSelection={this.onNamespaceSelection}
                 />
                 }
@@ -560,11 +559,11 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                 }
               </div>}
           </DialogContent>
-          <DialogActions>
-            <Button onClick={this.handleCancel} >
+          <DialogActions className={classes.dialogActions}>
+            <Button onClick={this.handleCancel} className={classes.dialogButton} >
               Cancel
             </Button>
-            <Button onClick={this.handleOk}>
+            <Button onClick={this.handleOk} className={classes.dialogButton} >
               Ok
             </Button>
           </DialogActions>

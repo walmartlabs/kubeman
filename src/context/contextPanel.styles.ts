@@ -6,7 +6,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     flexWrap: 'wrap',
     justifyContent: 'space-around',
     overflow: 'hidden',
-    backgroundColor: palette.background.paper,
+    backgroundColor: palette.type === 'dark' ? palette.background.paper : '#edeef8',
   },
   list: {
     maxHeight: '92%',
@@ -18,7 +18,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   listHeader: {
     padding: 0,
     paddingLeft: 5,
-    backgroundColor: '#283593',
+    backgroundColor: palette.type === 'dark' ? '#3141b4' : '#283593',
     color: 'white',
     lineHeight: 2,
   },
@@ -35,6 +35,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   panel: {
     overflowX: 'auto',
     overflowY: 'hidden',
+    backgroundColor: palette.type === 'dark' ? palette.background.paper : '#daddf1',
   },
   grid: {
     height: 230,
@@ -79,12 +80,14 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
   tabSelected: {},
   tabButton: {
-    backgroundColor: '#339cff',
+    color: 'white !important',
+    backgroundColor: '#0041cc',
   },
   card: {
     width: '100%',
     height: '100%',
-    fontSize: '1.1em'
+    fontSize: '1.1em',
+    backgroundColor: palette.type === 'dark' ? palette.background.paper : '#daddf1',
   },
 })
 

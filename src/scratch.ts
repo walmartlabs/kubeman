@@ -6,41 +6,39 @@ import jpExtract from './util/jpExtract'
 
 
 export async function setupRealContext(context: Context) : Promise<Context> {
-  const c1 = new Cluster("eastus2/dev/af1")
-  const c2 = new Cluster("eastus2/dev/af2")
-  context.addCluster(c1)
-  context.addCluster(c2)
+  const clusters = [
+    new Cluster("eastus2/dev/af1"), 
+    new Cluster("eastus2/dev/af2"),
+  ]
+  clusters.forEach(c => context.addCluster(c))
 
-  const ns11 = new Namespace("istio-system", c1)
-  const ns12 = new Namespace("kube-system", c1)
-  const ns13 = new Namespace("fortio", c1)
-  context.addNamespace(ns11)
-  context.addNamespace(ns12)
-  context.addNamespace(ns13)
+  const namespaces = [
+    new Namespace("istio-system", clusters[0]), 
+    new Namespace("kube-system", clusters[0]), 
+    // new Namespace("kube-public", clusters[0]), 
+    // new Namespace("test-istio", clusters[0]), 
+    // new Namespace("test-non-istio", clusters[0])
+    // new Namespace("istio-system", clusters[1]), 
+    // new Namespace("kube-system", clusters[1]), 
+    // new Namespace("client", clusters[1]), 
+    // new Namespace("one", clusters[1]), 
+    // new Namespace("two", clusters[1])
+  ]
+  namespaces.forEach(ns => context.addNamespace(ns))
 
-  const ns21 = new Namespace("istio-system", c2)
-  const ns22 = new Namespace("kube-system", c2)
-  context.addNamespace(ns21)
-  context.addNamespace(ns22)
 
-  let pods = await k8s.getPodsForNamespace(ns11)
-  pods.forEach(pod => {
-    const meta = jpExtract.extract(pod, "$.metadata", "name")
-    context.addPod(new Pod(meta.name, ns11))
-  })
-
-  pods = await k8s.getPodsForNamespace(ns12)
-  pods.forEach(pod => {
-    const meta = jpExtract.extract(pod, "$.metadata", "name")
-    context.addPod(new Pod(meta.name, ns12))
-  })
-
-  pods = await k8s.getPodsForNamespace(ns13)
-  pods.forEach(pod => {
-    const meta = jpExtract.extract(pod, "$.metadata", "name")
-    context.addPod(new Pod(meta.name, ns13))
-  })
-
+  let maxPods = 3
+  for(const i in namespaces) {
+    const ns = namespaces[i]
+    const pods = await k8s.getPodsForNamespace(ns)
+    maxPods > 1 ? maxPods-- : maxPods++
+    pods.forEach((pod,i) => {
+      if(i < maxPods) {
+        const meta = jpExtract.extract(pod, "$.metadata", "name")
+        context.addPod(new Pod(meta.name, ns))
+      }
+    })
+  }
   return Promise.resolve(context)
 }
 

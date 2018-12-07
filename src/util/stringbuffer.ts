@@ -13,8 +13,6 @@ export default class StringBuffer {
 
   append(s: string) : this {
     this.buffer.push(s);
-    console.log("Added: %s, Length: %s, Buffer: %s", 
-        s, this.buffer.length, this.buffer.join(""))
     return this;
   }
 

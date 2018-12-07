@@ -25,6 +25,7 @@ const actionPluginFolder = "plugins"
 
 interface IState {
   actionGroupSpecs: ActionGroupSpecs,
+  selectedAction: string,
 }
 
 interface IProps extends WithStyles<typeof styles> {
@@ -37,6 +38,7 @@ interface IProps extends WithStyles<typeof styles> {
 class Actions extends React.Component<IProps, IState> {
   state: IState = {
     actionGroupSpecs: [],
+    selectedAction: '',
   }
 
   componentDidMount() {
@@ -60,6 +62,7 @@ class Actions extends React.Component<IProps, IState> {
   }
 
   onAction = (actionContext: string, action: ActionSpec) => {
+    this.setState({selectedAction: action.name})
     if(action.act) {
       this.props.showLoading()
       action.act()
@@ -68,6 +71,7 @@ class Actions extends React.Component<IProps, IState> {
 
   renderExpansionPanel(actionGroupSpec: ActionGroupSpec) {
     const { classes } = this.props;
+    const {selectedAction} = this.state
     const {context, actions} = actionGroupSpec
 
 
@@ -79,7 +83,8 @@ class Actions extends React.Component<IProps, IState> {
         <ExpansionPanelDetails className={classes.expansionDetails}>
           <List component="nav">
             {actions.map(action => 
-              <ListItem key={action.name} button disableGutters>
+              <ListItem key={action.name} button disableGutters
+              className={action.name === selectedAction ? classes.selectedAction : ''}>
                 <ListItemText className={classes.listText}
                       onClick={this.onAction.bind(this, context, action)}>
                   <Typography>{action.name}</Typography>

@@ -6,14 +6,7 @@ import { Grid, Paper, Typography, Input } from '@material-ui/core';
 
 import styles from './tableBox.styles'
 import { ActionOutput } from "../actions/actionSpec";
-
-const healthyKeywords : string[] = [
-  "active", "healthy", "good", "green", "up", "run"
-]
-const unhealthyKeywords : string[] = [
-  "inactive", "unhealthy", "bad", "red", "down", "stop", "terminat"
-]
-
+import OutputManager from './outputManager'
 
 
 interface ITableCellProps extends WithStyles<typeof styles> {
@@ -22,6 +15,7 @@ interface ITableCellProps extends WithStyles<typeof styles> {
   colSpan?: number,
   highlight?: boolean,
   isHealthField?: boolean,
+  outputManager: OutputManager,
 }
 
 const TextCell = withStyles(styles)(({index, content, colSpan, highlight, classes}: ITableCellProps) => {
@@ -38,9 +32,9 @@ const GridCell = withStyles(styles)(({index, content, colSpan, highlight, classe
               className={(highlight && index !==0) ? classes.tableCellHighlight : classes.tableCell}>
       <Grid container direction='column' spacing={8} className={classes.grid} >
         {(content as string[]).map((item, i) => 
-          <Grid key={"GridItem"+i} item xs={12} md={12} className={classes.gridCell}>
-            {item}
-          </Grid>
+          <Grid key={"GridItem"+i} item xs={12} md={12} 
+                className={classes.gridCell}
+                dangerouslySetInnerHTML={{__html:item}} />
         )}
       </Grid>
       
@@ -48,11 +42,10 @@ const GridCell = withStyles(styles)(({index, content, colSpan, highlight, classe
   )
 })
 
-const HealthCell = withStyles(styles)(({index, content, colSpan, isHealthField, classes}: ITableCellProps) => {
+const HealthCell = withStyles(styles)(({index, content, colSpan, isHealthField, classes, outputManager}: ITableCellProps) => {
   const health = content ? content.toLowerCase() : ""
-  const healthGood = healthyKeywords.filter(word => health.includes(word)).length > 0
-                      && unhealthyKeywords.filter(word => health.includes(word)).length == 0
-  const healthBad = unhealthyKeywords.filter(word => health.includes(word)).length > 0
+  const healthGood = outputManager.isHealthy(health)
+  const healthBad = outputManager.isUnhealthy(health)
   const className = !isHealthField ? classes.tableCell :
         healthGood ? classes.tableCellHealthGood : 
         healthBad ? classes.tableCellHealthBad : classes.tableCell
@@ -70,82 +63,68 @@ interface IProps extends WithStyles<typeof styles> {
 }
 
 interface IState {
-  filteredOutput: ActionOutput,
 }
 
 class TableBox extends React.Component<IProps, IState> {
 
   state: IState = {
-    filteredOutput: [],
   }
+  outputManager: OutputManager = new OutputManager
+  filterTimer: any = undefined
 
   componentDidMount() {
     this.componentWillReceiveProps(this.props)
   }
 
   componentWillReceiveProps(props: IProps) {
-    this.setState({filteredOutput: this.props.output})
+    this.outputManager.setOutput(this.props.output)
+    this.forceUpdate()
   }
 
+  filter = (inputText: string) => {
+    this.outputManager.filter(inputText)
+    this.forceUpdate()
+  }
 
-  onFilter = (event: ChangeEvent<HTMLInputElement>) => {
-    const {output} = this.props
-    const filterText = event.target.value.toLowerCase()
-    let filteredOutput: ActionOutput = []
-
-    if(filterText.length === 0) {
-      filteredOutput = output
-    } else {
-      filteredOutput = output.slice(1).filter(row => {
-        const lastField = row.length > 1 ? row[row.length-1] : undefined
-        const isGroup = lastField && lastField.includes("---") || false
-        if(isGroup) {
-          return true
-        } else {
-          return row.filter(item =>
-            typeof item === 'string' ? 
-                item.toLowerCase().includes(filterText)
-            : item instanceof Array ? 
-                item.filter(i => i.toLowerCase().includes(filterText)).length > 0 
-            : false
-          ).length > 0
-        }
-      })
-      filteredOutput.unshift(output[0])
+  onFilterChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if(this.filterTimer) {
+      clearTimeout(this.filterTimer)
     }
-    this.setState({filteredOutput})
+    const text = event.target.value
+    if(text.length === 0) {
+      this.outputManager.clearFilter()
+      this.forceUpdate()
+    } else {
+      this.filterTimer = setTimeout(this.filter.bind(this, text), 500)
+    }
   }
 
   render() {
     const {classes, compare, health} = this.props
-    const {filteredOutput: output} = this.state
-    if(output.length < 1) {
+    
+    if(!this.outputManager.hasFilteredContent) {
       return <div/>
     }
-    const headers = output.slice(0, 1)[0]
-    const rows = output.slice(1)
-    let healthFieldIndex = headers.map(header => header.toLowerCase())
-        .map((header,index) => (header.includes("status") || header.includes("health")?index:-1))
-        .reduce((prev, curr) => prev >= 0 ? prev : curr >= 0 ? curr : -1)
-    healthFieldIndex = healthFieldIndex >= 0 ? healthFieldIndex : headers.length-1
+
+    const headers = this.outputManager.getHeaders()
+    const rows = this.outputManager.rows
+    const healthColumnIndex = this.outputManager.getHealthColumnIndex()
     
     return (
       <Paper className={classes.root}>
         <Input  fullWidth
                 placeholder="Type here to filter data from the results" 
-                onChange={this.onFilter}
+                onChange={this.onFilterChange}
                 className={classes.filterInput}
         />
         <Table className={classes.table}>
           <TableHead>
             <TableRow className={classes.tableHeaderRow}>
               {headers.map((header, ri) => {
-                header = header.split("<br/>")
                 return (
                 <TableCell key={ri}>
-                  <Typography className={classes.tableHeaderText}>
-                  {header.map((text,i) => <span key={"CellContent"+i}>{text}<br/></span>)}
-                  </Typography>
+                  <Typography className={classes.tableHeaderText}
+                  dangerouslySetInnerHTML={{__html:header}} />
                 </TableCell>
                 )
               })}
@@ -153,48 +132,49 @@ class TableBox extends React.Component<IProps, IState> {
           </TableHead>
           <TableBody>
             {rows.map((row, index) => {
-              const firstField = row.length > 0 ? row[0] : undefined
-              const lastField = row.length > 1 ? row[row.length-1] : undefined
-              const isGroup = lastField && lastField.includes("---") || false
-              const isSubgroup = firstField && firstField.startsWith(">")
-              isSubgroup && (row[0] = row[0].substring(1))
-              let highlight = false
-              if(compare && row.length > 2) {
-                const secondLastField = row[row.length-2]
-                highlight = lastField ? secondLastField.localeCompare(lastField) !== 0 : false
-              }
-
+              let highlight = compare ? row.diffLastTwoFields() : false
               const components : any[] = []
-              if(isGroup && !isSubgroup) {
+
+              if(row.isGroupOrSubgroup) {
                 components.push(
                   <TableRow key={index+".pre"} className={classes.tableGroupRow}>
                   </TableRow>
                 )
-              } 
+              }
+
               components.push(
                   <TableRow key={index} className={
-                      (isGroup && !isSubgroup) ? classes.tableGroupRow :
-                      isSubgroup ? classes.tableSubgroupRow : classes.tableRow}>
-                  {row.map((field, ci) => {
+                      row.isGroup ? classes.tableGroupRow :
+                      row.isSubGroup ? classes.tableSubgroupRow : classes.tableRow}>
+                  
+                  {row.content.map((field, ci) => {
                     if(field instanceof Array) {
                       return (
                         <GridCell key={"GridCell"+ci} index={ci} content={field}
-                                  highlight={highlight} />
+                                  highlight={highlight} 
+                                  outputManager={this.outputManager}
+                                  />
                       )
                     } else {
-                      const text = isGroup && field === "---" ? "" : field
-                      const colspan = isGroup && field !== "---" ? row.length/2 : 1
+                      const text = row.isGroupOrSubgroup && field === "---" ? "" : 
+                                      row.isSubGroup && ci === 0 ? field.slice(1) : field
+
+                      const colspan = row.isGroupOrSubgroup && field !== "---" ? row.content.length/2+1 : 1
                       if(health) {
                         return (
                           <HealthCell key={"HealthCell"+ci} index={ci} content={text} 
                                       colSpan={colspan}
-                                      isHealthField={!isGroup && ci === healthFieldIndex} />
+                                      isHealthField={!row.isGroupOrSubgroup && ci === healthColumnIndex} 
+                                      outputManager={this.outputManager}
+                                      />
                         )
                       } else {
                         return (
                           <TextCell key={"TextCell"+ci} index={ci} content={text}
                                     colSpan={colspan}
-                                    highlight={highlight} />
+                                    highlight={highlight} 
+                                    outputManager={this.outputManager}
+                                    />
                         )
                       }
                     }
