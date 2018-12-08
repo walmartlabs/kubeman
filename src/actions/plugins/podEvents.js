@@ -1,37 +1,32 @@
-const jpExtract = require('../../util/jpExtract')
 const CommonFunctions = require('../../k8s/commonFunctions')
 
-function generatePodStatusOutput(podsMap) {
+function generatePodEventsOutput(podsMap) {
   const output = []
-  output.push(["Pod", "Created", "Status"])
+  output.push([
+    "Event <br/> Last Timestamp <br/> (Count)", 
+    "Details"
+  ])
 
   Object.keys(podsMap).forEach(cluster => {
-    output.push(["Cluster: "+cluster, "---", "---"])
-
     const namespaces = Object.keys(podsMap[cluster])
     namespaces.forEach(namespace => {
-      output.push([">Namespace: "+namespace, "---", "---"])
+      output.push(["Cluster: "+cluster + ", Namespace: "+namespace, "---", "---"])
 
-      const pods = podsMap[cluster][namespace]
+      const pods = Object.keys(podsMap[cluster][namespace])
       if(pods.length === 0) {
         output.push(["No pods selected", "", ""])
       } else {
         pods.forEach(pod => {
-          const meta = jpExtract.extract(pod, "$.metadata", "name", "creationTimestamp")
-          const containerStatuses = jpExtract.extractMulti(pod, "$.status.containerStatuses[*]",
-                                        "name", "state")
-          const containerStatusTable = []
-          containerStatuses.forEach(container => {
-            containerStatusTable.push(
-              container.name + ": " + 
-              Object.keys(container.state).map(state => state + ", " + 
-                  Object.keys(container.state[state])
-                    .map(started => started + " " + container.state[state][started])
-                    .join(" ")
-                ).join(" ")
-            )
-          })
-          output.push([meta.name, meta.creationTimestamp, containerStatusTable])
+          output.push([">Pod: "+pod, "---", "---"])
+          const events = podsMap[cluster][namespace][pod]
+          events.forEach(event => output.push([
+            event.reason + " <br/> " + event.lastTimestamp + " <br/> (" + event.count + ")",
+            [
+              "type: " + event.type,
+              "source: " + event.source,
+              "message: " + event.message,
+            ],
+          ]))
         })
       }
     })
@@ -45,7 +40,7 @@ module.exports = {
   context: "Pod",
   actions: [
     {
-      name: "Get Pod Status",
+      name: "Get Pod Events",
       async act(getClusters, getNamespaces, getPods, getK8sClients, onOutput) {
         const clusters = getClusters()
         const namespaces = getNamespaces()
@@ -72,17 +67,18 @@ module.exports = {
           const clusterNamespaces = namespaces.filter(ns => ns.cluster.name === cluster.name)
           for(const n in clusterNamespaces) {
             const namespace = clusterNamespaces[n]
-            podsMap[cluster.name][namespace.name] = []
+            podsMap[cluster.name][namespace.name] = {}
 
             const podNames = pods.filter(pod => pod.namespace.cluster.name === cluster.name)
                           .filter(pod => pod.namespace.name === namespace.name)
                           .map(pod => pod.name)
-            if(podNames.length > 0) {
-              const nsPods = await CommonFunctions.getNamespacePods(namespace.name, podNames, k8sClients[c])
-              nsPods.forEach(pod => pod && podsMap[cluster.name][namespace.name].push(pod))
+            for(const p in podNames) {
+              const pod = podNames[p]
+              podsMap[cluster.name][namespace.name][pod] = 
+                  await CommonFunctions.getPodEvents(namespace.name, pod, k8sClients[c])
+              const output = generatePodEventsOutput(podsMap)
+              onOutput(output, "Health")
             }
-            const output = generatePodStatusOutput(podsMap)
-            onOutput(output, "Health")
           }
         }
       }

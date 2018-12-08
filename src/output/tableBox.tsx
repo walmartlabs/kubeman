@@ -16,20 +16,23 @@ interface ITableCellProps extends WithStyles<typeof styles> {
   highlight?: boolean,
   isHealthField?: boolean,
   outputManager: OutputManager,
+  isGroup: boolean,
 }
 
-const TextCell = withStyles(styles)(({index, content, colSpan, highlight, classes}: ITableCellProps) => {
+const TextCell = withStyles(styles)(({index, content, colSpan, highlight, classes, isGroup}: ITableCellProps) => {
   return (
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
               className={(highlight && index !==0) ? classes.tableCellHighlight : classes.tableCell}
+              style={{paddingLeft: isGroup ? '2px' : '10px'}}
               dangerouslySetInnerHTML={{__html:content}} />
   )
 })
 
-const GridCell = withStyles(styles)(({index, content, colSpan, highlight, classes}: ITableCellProps) => {
+const GridCell = withStyles(styles)(({index, content, colSpan, highlight, classes, isGroup}: ITableCellProps) => {
   return (
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
-              className={(highlight && index !==0) ? classes.tableCellHighlight : classes.tableCell}>
+              className={(highlight && index !==0) ? classes.tableCellHighlight : classes.tableCell}
+              style={{paddingLeft: isGroup ? '2px' : '10px'}} >
       <Grid container direction='column' spacing={8} className={classes.grid} >
         {(content as string[]).map((item, i) => 
           <Grid key={"GridItem"+i} item xs={12} md={12} 
@@ -42,7 +45,7 @@ const GridCell = withStyles(styles)(({index, content, colSpan, highlight, classe
   )
 })
 
-const HealthCell = withStyles(styles)(({index, content, colSpan, isHealthField, classes, outputManager}: ITableCellProps) => {
+const HealthCell = withStyles(styles)(({index, content, colSpan, isHealthField, classes, outputManager, isGroup}: ITableCellProps) => {
   const health = content ? content.toLowerCase() : ""
   const healthGood = outputManager.isHealthy(health)
   const healthBad = outputManager.isUnhealthy(health)
@@ -52,6 +55,7 @@ const HealthCell = withStyles(styles)(({index, content, colSpan, isHealthField, 
   return (
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
                className={className} 
+               style={{paddingLeft: isGroup ? '2px' : '10px'}}
                dangerouslySetInnerHTML={{__html:content}} />
   )
 })
@@ -63,11 +67,13 @@ interface IProps extends WithStyles<typeof styles> {
 }
 
 interface IState {
+  filterText: string
 }
 
 class TableBox extends React.Component<IProps, IState> {
 
   state: IState = {
+    filterText: ''
   }
   outputManager: OutputManager = new OutputManager
   filterTimer: any = undefined
@@ -77,13 +83,17 @@ class TableBox extends React.Component<IProps, IState> {
   }
 
   componentWillReceiveProps(props: IProps) {
-    this.outputManager.setOutput(this.props.output)
+    this.outputManager.setOutput(props.output)
+    const {filterText} = this.state
+    if(filterText !== '') {
+      this.filter(filterText)
+    }
     this.forceUpdate()
   }
 
   filter = (inputText: string) => {
     this.outputManager.filter(inputText)
-    this.forceUpdate()
+    this.setState({filterText: inputText})
   }
 
   onFilterChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -93,7 +103,7 @@ class TableBox extends React.Component<IProps, IState> {
     const text = event.target.value
     if(text.length === 0) {
       this.outputManager.clearFilter()
-      this.forceUpdate()
+      this.setState({filterText: ''})
     } else {
       this.filterTimer = setTimeout(this.filter.bind(this, text), 500)
     }
@@ -101,7 +111,7 @@ class TableBox extends React.Component<IProps, IState> {
 
   render() {
     const {classes, compare, health} = this.props
-    
+
     if(!this.outputManager.hasFilteredContent) {
       return <div/>
     }
@@ -109,6 +119,7 @@ class TableBox extends React.Component<IProps, IState> {
     const headers = this.outputManager.getHeaders()
     const rows = this.outputManager.rows
     const healthColumnIndex = this.outputManager.getHealthColumnIndex()
+    let tableHasSubgroups = false
     
     return (
       <Paper className={classes.root}>
@@ -134,44 +145,57 @@ class TableBox extends React.Component<IProps, IState> {
             {rows.map((row, index) => {
               let highlight = compare ? row.diffLastTwoFields() : false
               const components : any[] = []
+              tableHasSubgroups = tableHasSubgroups || row.isSubGroup
 
               if(row.isGroupOrSubgroup) {
                 components.push(
                   <TableRow key={index+".pre"} className={classes.tableGroupRow}>
                   </TableRow>
                 )
-              }
-
-              components.push(
-                  <TableRow key={index} className={
-                      row.isGroup ? classes.tableGroupRow :
-                      row.isSubGroup ? classes.tableSubgroupRow : classes.tableRow}>
-                  
+                const field = row.content[0]
+                const text = field === "---" ? "" : 
+                                row.isSubGroup ? field.slice(1) : field
+                components.push(
+                  <TableRow key={index+".group"} 
+                            className={row.isGroup ? classes.tableGroupRow : classes.tableSubgroupRow}
+                  >
+                    <TextCell index={0} content={text}
+                            colSpan={row.content.length}
+                            isGroup={true}
+                            outputManager={this.outputManager}
+                    />
+                  </TableRow>
+                )
+              } else {
+                components.push(
+                  <TableRow key={index} 
+                      className={row.isGroup ? classes.tableGroupRow :
+                          row.isSubGroup ? classes.tableSubgroupRow : classes.tableRow}
+                  >
                   {row.content.map((field, ci) => {
                     if(field instanceof Array) {
                       return (
                         <GridCell key={"GridCell"+ci} index={ci} content={field}
-                                  highlight={highlight} 
+                                  isGroup={row.isGroup}
+                                  highlight={highlight}
                                   outputManager={this.outputManager}
                                   />
                       )
                     } else {
-                      const text = row.isGroupOrSubgroup && field === "---" ? "" : 
-                                      row.isSubGroup && ci === 0 ? field.slice(1) : field
-
-                      const colspan = row.isGroupOrSubgroup && field !== "---" ? row.content.length/2+1 : 1
                       if(health) {
                         return (
-                          <HealthCell key={"HealthCell"+ci} index={ci} content={text} 
-                                      colSpan={colspan}
+                          <HealthCell key={"HealthCell"+ci} index={ci} content={field} 
+                                      colSpan={1}
+                                      isGroup={row.isGroup}
                                       isHealthField={!row.isGroupOrSubgroup && ci === healthColumnIndex} 
                                       outputManager={this.outputManager}
                                       />
                         )
                       } else {
                         return (
-                          <TextCell key={"TextCell"+ci} index={ci} content={text}
-                                    colSpan={colspan}
+                          <TextCell key={"TextCell"+ci} index={ci} content={field}
+                                    colSpan={1}
+                                    isGroup={row.isGroup}
                                     highlight={highlight} 
                                     outputManager={this.outputManager}
                                     />
@@ -180,7 +204,8 @@ class TableBox extends React.Component<IProps, IState> {
                     }
                   })}
                   </TableRow>
-              )
+                )
+              }
               return components
             })}
           </TableBody>

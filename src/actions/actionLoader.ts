@@ -5,7 +5,7 @@ import * as ts from "typescript";
 import {ActionContext, ActionGroupSpec, ActionGroupSpecs, isActionGroupSpec, 
         methodGetClusters, methodGetK8sClients, 
         isClusterActionSpec, isNamespaceActionSpec, isPodActionSpec,
-        ActionOutput, ActionOutputStyle, } from './actionSpec'
+        ActionOutput, ActionOutputStyle, methodGetNamespaces, methodGetPods, } from './actionSpec'
 import Context from "../context/contextStore";
 import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
 import * as k8s from '../k8s/k8sClient'
@@ -133,6 +133,7 @@ export class ActionLoader {
 
   static configureCommonActions(actionGroupSpec: ActionGroupSpec) {
     actionGroupSpec.actions.forEach(action => {
+      action.context = actionGroupSpec.context
       if(action.act) {
         action.act = action.act.bind(null, this.onOutput)
       }
@@ -146,6 +147,7 @@ export class ActionLoader {
     }
 
     actionGroupSpec.actions.forEach(action => {
+      action.context = actionGroupSpec.context
       if(!isClusterActionSpec(action)) {
         console.log("Not ClusterActionSpec: " + JSON.stringify(action))
       } else {
@@ -162,6 +164,7 @@ export class ActionLoader {
     const getNamespaces = () => this.context ? this.context.namespaces() : []
 
     actionGroupSpec.actions.forEach(action => {
+      action.context = actionGroupSpec.context
       if(!isNamespaceActionSpec(action)) {
         console.log("Not NamespaceActionSpec: " + JSON.stringify(action))
       } else {
@@ -171,33 +174,19 @@ export class ActionLoader {
   }
 
   static configurePodActions(actionGroupSpec: ActionGroupSpec) {
-    const getPods = async () => {
-      const k8sClients = this.context.clusters().map(k8s.getClientForCluster)
-      const pods : {} = {}
-      const clusters = this.context.clusters()
-      for(const i in clusters) {
-        const cluster = clusters[i]
-        pods[cluster.name] = {}
-        const namespaces = this.context.namespacesForCluster(cluster)
-        for(const j in namespaces) {
-          const namespace = namespaces[j]
-          pods[cluster.name][namespace.name] = []
-          const nsPods = this.context.podsForNamespace(namespace)
-          for(const k in nsPods) {
-            const nsPod = nsPods[k]
-            const pod = await k8sClients[i].namespace(namespace.name).pods(nsPod.name).get()
-            pod && pods[cluster.name][namespace.name].push(pod.body)
-          }
-        }
-      }
-      return pods
+    const getClusters : methodGetClusters = () => this.context ? this.context.clusters() : []
+    const getK8sClients : methodGetK8sClients = () => {
+      return this.context.clusters().map(k8s.getClientForCluster)
     }
+    const getNamespaces : methodGetNamespaces = () => this.context ? this.context.namespaces() : []
+    const getPods : methodGetPods = () => this.context ? this.context.pods() : []
 
     actionGroupSpec.actions.forEach(action => {
+      action.context = actionGroupSpec.context
       if(!isPodActionSpec(action)) {
         console.log("Not PodActionSpec: " + JSON.stringify(action))
       } else {
-        action.act = action.act.bind(null, getPods, this.onOutput)
+        action.act = action.act.bind(null, getClusters, getNamespaces, getPods, getK8sClients, this.onOutput)
       }
     })
   }

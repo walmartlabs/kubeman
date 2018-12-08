@@ -12,7 +12,7 @@ module.exports = {
         const k8sClients = getK8sClients()
         const output = []
         output.push([
-          "Event <br/> Last Timestamp <br/> (Count)", 
+          "Event <br/> LastTimestamp <br/> (Count)", 
           "Details",
         ])
         for(const i in clusters) {

@@ -153,6 +153,15 @@ module.exports = {
     return secrets
   },
 
+  async getNamespacePods(namespace, podNames, k8sClient) {
+    const pods = []
+    for(const p in podNames) {
+      const podDetails = await k8sClient.namespace(namespace).pods(podNames[p]).get()
+      podDetails && pods.push(podDetails.body)
+    }
+    return pods
+  },
+
   processEventsData(result) {
     const events = []
     if(result && result.body) {
@@ -189,6 +198,19 @@ module.exports = {
 
   async getNamespaceEvents(namespace, k8sClient) {
     return this.processEventsData(await k8sClient.namespaces(namespace).events.get({qs: {limit: 20}}))
+  },
+
+  async getPodEvents(namespace, pod, k8sClient) {
+    return this.processEventsData(await k8sClient.namespaces(namespace).events.get({
+      qs: {
+        limit: 20,
+        fieldSelector: {
+          involvedObject: {
+            name: pod
+          }
+        },
+      }
+    }))
   },
   
 }

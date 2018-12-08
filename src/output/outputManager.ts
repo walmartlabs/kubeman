@@ -1,6 +1,7 @@
 import { ActionOutput } from "../actions/actionSpec"
 import _ from 'lodash'
 import StringBuffer from '../util/stringbuffer'
+import {appTheme} from '../theme/theme'
 
 const healthyKeywords : string[] = [
   "active", "healthy", "good", "green", "up", "run", "start"
@@ -11,6 +12,9 @@ const unhealthyKeywords : string[] = [
 
 
 function applyHighlight(text: string, filters: string[]) : [string, boolean] {
+  const highlightColor = appTheme.activeTheme.palette && 
+          appTheme.activeTheme.palette.type === 'dark' ? '#804d00' : '#FFCC80'
+
   const lowerText = text.toLowerCase()
   const matchPositions : Set<number> = new Set
   let cellChanged = false
@@ -34,7 +38,8 @@ function applyHighlight(text: string, filters: string[]) : [string, boolean] {
     } else if(i === endPos+1) {
       endPos = i
     } else {
-      let highlightedText = "<span style='background-color:#FFCC80'>" 
+      
+      let highlightedText = "<span className='background-color:" + highlightColor + "'>" 
                             + text.slice(startPos, endPos+1) 
                             + "</span>"
       sb.append(highlightedText)
@@ -45,7 +50,7 @@ function applyHighlight(text: string, filters: string[]) : [string, boolean] {
     }
   })
   if(startPos >= 0) {
-    let highlightedText = "<span style='background-color:#FFCC80'>" 
+    let highlightedText = "<span style='background-color:" + highlightColor + "'>" 
                           + text.slice(startPos, endPos+1) 
                           + "</span>"
     sb.append(highlightedText)
@@ -153,6 +158,7 @@ export default class OutputManager {
   headers: string[] = []
   _rows: Row[] = []
   filteredRows: Row[] = []
+  appliedFilters: string[] = []
   healthColumnIndex: number = -1
 
   setOutput(output: ActionOutput) {
@@ -167,6 +173,7 @@ export default class OutputManager {
   }
 
   clearFilter() {
+    this.appliedFilters = []
     this.filteredRows = this._rows
   }
 
@@ -182,6 +189,7 @@ export default class OutputManager {
     if(filters.length === 0) {
       this.clearFilter()
     } else {
+      this.appliedFilters = filters
       this.filteredRows = this._rows.filter((row,i) => row.filter(filters))
       this.highlightFilter(filters)
     }

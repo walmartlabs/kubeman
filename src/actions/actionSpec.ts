@@ -36,6 +36,7 @@ type PodActionMethod = (methodGetPods, outputMethod) => void
 
 export interface ActionSpec {
   name: string
+  context: ActionContext
   order?: number
   act: (...any) => void
   outputStyle?: ActionOutputStyle
@@ -75,7 +76,7 @@ export function isNamespaceActionSpec(obj: any) : obj is NamespaceActionSpec {
 
 export function isPodActionSpec(obj: any) : obj is PodActionSpec {
   return isActionSpec(obj) 
-         && obj.act.length === 2
+         && obj.act.length === 5
 }
 
 export function isActionGroupSpec(obj: any) : obj is ActionGroupSpec {

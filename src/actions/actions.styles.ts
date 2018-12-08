@@ -22,7 +22,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     display: 'block',
   },
   selectedAction: {
-    backgroundColor: palette.type === 'dark' ? '#b3003e' : '#b6dcfb',
+    backgroundColor: palette.type === 'dark' ? '#805500' : '#b6dcfb',
     fontStyle: 'bold',
     fontWeight: 800,
   },

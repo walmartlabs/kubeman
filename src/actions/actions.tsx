@@ -25,7 +25,7 @@ const actionPluginFolder = "plugins"
 
 interface IState {
   actionGroupSpecs: ActionGroupSpecs,
-  selectedAction: string,
+  selectedAction?: ActionSpec,
 }
 
 interface IProps extends WithStyles<typeof styles> {
@@ -38,7 +38,7 @@ interface IProps extends WithStyles<typeof styles> {
 class Actions extends React.Component<IProps, IState> {
   state: IState = {
     actionGroupSpecs: [],
-    selectedAction: '',
+    selectedAction: undefined,
   }
 
   componentDidMount() {
@@ -62,7 +62,7 @@ class Actions extends React.Component<IProps, IState> {
   }
 
   onAction = (actionContext: string, action: ActionSpec) => {
-    this.setState({selectedAction: action.name})
+    this.setState({selectedAction: action})
     if(action.act) {
       this.props.showLoading()
       action.act()
@@ -84,7 +84,8 @@ class Actions extends React.Component<IProps, IState> {
           <List component="nav">
             {actions.map(action => 
               <ListItem key={action.name} button disableGutters
-              className={action.name === selectedAction ? classes.selectedAction : ''}>
+              className={selectedAction && action.name === selectedAction.name 
+                          && action.context === selectedAction.context ? classes.selectedAction : ''}>
                 <ListItemText className={classes.listText}
                       onClick={this.onAction.bind(this, context, action)}>
                   <Typography>{action.name}</Typography>
