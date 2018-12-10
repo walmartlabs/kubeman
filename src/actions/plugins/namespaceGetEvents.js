@@ -1,19 +1,19 @@
+"use strict";
 const CommonFunctions = require('../../k8s/commonFunctions')
 
 module.exports = {
-  order: 2,
   context: "Namespace",
   actions: [
     {
       name: "Get Events",
       order: 5,
-      async act(getClusters, getNamespaces, getK8sClients, onOutput) {
-        const clusters = getClusters()
-        const k8sClients = getK8sClients()
-        const namespaces = getNamespaces()
+      async act(actionContext) {
+        const clusters = actionContext.getClusters()
+        const k8sClients = actionContext.getK8sClients()
+        const namespaces = actionContext.getNamespaces()
         const output = []
         output.push([
-          "Event <br/> Last Timestamp (Count)", 
+          ["Event", "LastTimestamp", "(Count)"],
           "Details",
         ])
         for(const i in clusters) {
@@ -26,7 +26,7 @@ module.exports = {
               output.push([">Namespace: "+namespace.name, "---"])
               const events = await CommonFunctions.getNamespaceEvents(namespace.name, k8sClients[i])
               events.forEach(event => output.push([
-                event.reason + " <br/> " + event.lastTimestamp + " (" + event.count + ")",
+                [event.reason, event.lastTimestamp, "(" + event.count + ")"],
                 [
                   "type: " + event.type,
                   "source: " + event.source,
@@ -36,7 +36,7 @@ module.exports = {
             }
           }
         }
-        onOutput(output, 'Table')
+        actionContext.onOutput(output, 'Health')
       },
     },
   ]

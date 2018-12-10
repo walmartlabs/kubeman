@@ -37,8 +37,8 @@ module.exports = {
     const result = await k8sClient.namespaces.get()
     if(result && result.body) {
       const items = result.body.items
-      const meta = jpExtract.extract(items, "$[*].metadata", "name", "creationTimestamp")
-      const status = jpExtract.extract(items, "$[*].status", "phase")
+      const meta = jpExtract.extractMulti(items, "$[*].metadata", "name", "creationTimestamp")
+      const status = jpExtract.extractMulti(items, "$[*].status", "phase")
       meta.forEach((item, index) => {
         namespaceList.push({
           name: item.name, 
@@ -144,7 +144,7 @@ module.exports = {
       const meta = jpExtract.extractMulti(items, "$[*].metadata", "name", "creationTimestamp")
       meta.forEach((item, index) => {
         secrets.push({
-          name: item.name,
+          name: item.name.slice(0, item.name.lastIndexOf('-')),
           creationTimestamp: item.creationTimestamp,
           type: items[index].type,
         })
@@ -162,12 +162,17 @@ module.exports = {
     return pods
   },
 
+  async getPodDetails(namespace, pod, k8sClient) {
+    const podDetails = await k8sClient.namespace(namespace).pods(pod).get()
+    return podDetails ? podDetails.body : undefined
+  },
+
   processEventsData(result) {
     const events = []
     if(result && result.body) {
       const items = result.body.items
       if(items.length > 0) {
-        const eventsData = jpExtract.extract(items, "$[*]", "type", "source", "reason", "message", "count", "lastTimestamp")
+        const eventsData = jpExtract.extractMulti(items, "$[*]", "type", "source", "reason", "message", "count", "lastTimestamp")
         eventsData.forEach(event => {
           events.push({
             reason: event.reason,

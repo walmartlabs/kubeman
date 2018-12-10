@@ -164,16 +164,17 @@ class ActionsTheme {
         MuiList: {
           root: {
             paddingTop: '0px !important',
-            paddingBottom: '5px !important',
+            paddingBottom: '0px !important',
           }
         },
         MuiListItem: {
           root: {
             paddingTop: 0,
-            paddingBottom: 0,
+            paddingBottom: 5,
             paddingLeft: 10,
             backgroundColor: useDarkTheme ? '#404fa5'  : '#daddf1',
-            borderBottom: '1px solid #9c9c9c',
+            //borderBottom: '1px solid #9c9c9c',
+            boxShadow: useDarkTheme ? '0px 1px 2px 0px rgba(255, 255, 255, 0.8)' : '0px 1px 2px 0px rgba(0, 0, 255, 0.8)',
           }
         },
       }

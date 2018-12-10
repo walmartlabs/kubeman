@@ -95,7 +95,7 @@ class extends React.Component<IProps, IState> {
   render() {
     const {classes, ...others} = this.props
     const {output} = this.props
-    const colCount = output.length > 0 ? output[0].length : 0
+    const colCount = output.length > 0 ? output[0] instanceof Array ? output[0].length : output.length : 0
     return (
       <Card className={classes.card}>
         <CardContent className={classes.cardContent}>

@@ -233,7 +233,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                 this.loadingCounter--
                 return Object.assign({}, state, clusterInfo)
               })
-              //load data for the acctive tab by simply calling set tab
+              //load data for the active tab by simply calling set tab
               this.setTab(this.activeTabIndex)
             }
             resolve(true)
@@ -444,7 +444,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     })
   }
 
-  handleEntering = () => {
+  onEntering = () => {
     const {selection} = this.props
     switch(selection) {
       case SelectionType.Clusters:
@@ -462,14 +462,14 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     }
   }
 
-  handleCancel = () => {
+  onCancel = () => {
     this.props.onCancel()
-  };
+  }
 
-  handleOk = () => {
+  onOk = () => {
     const {selectedClusters, selectedNamespaces, selectedPods, filter} = this.state
     this.props.onSelection(selectedClusters, selectedNamespaces, selectedPods, filter)
-  };
+  }
 
   render() {
     const { classes, open, forced } = this.props;
@@ -488,9 +488,9 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     return (
       <MuiThemeProvider theme={theme}>
         <Dialog
-          onEntering={this.handleEntering}
+          onEntering={this.onEntering}
           aria-labelledby="confirmation-dialog-title"
-          onClose={this.handleCancel.bind(this)}
+          onClose={this.onCancel}
           open={open}
         >
           <DialogContent className={classes.dialogContent}>
@@ -560,10 +560,10 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
               </div>}
           </DialogContent>
           <DialogActions className={classes.dialogActions}>
-            <Button onClick={this.handleCancel} className={classes.dialogButton} >
+            <Button onClick={this.onCancel} className={classes.dialogButton} >
               Cancel
             </Button>
-            <Button onClick={this.handleOk} className={classes.dialogButton} >
+            <Button onClick={this.onOk} className={classes.dialogButton} >
               Ok
             </Button>
           </DialogActions>

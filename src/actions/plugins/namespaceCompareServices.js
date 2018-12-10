@@ -1,3 +1,4 @@
+"use strict";
 const CommonFunctions = require('../../k8s/commonFunctions')
 
 
@@ -48,22 +49,21 @@ function generateServiceComparisonOutput(clusters, namespaces, clusterServices) 
 }
 
 module.exports = {
-  order: 3,
   context: "Namespace",
   generateServiceComparisonOutput: generateServiceComparisonOutput,
   actions: [
     {
       name: "Compare Services",
       order: 1,
-      async act(getClusters, getNamespaces, getK8sClients, onOutput) {
-        const clusters = getClusters()
-        const k8sClients = getK8sClients()
-        const namespaces = getNamespaces()
+      async act(actionContext) {
+        const clusters = actionContext.getClusters()
+        const k8sClients = actionContext.getK8sClients()
+        const namespaces = actionContext.getNamespaces()
 
         const clusterServices = await CommonFunctions.getServicesGroupedByClusterNamespace(clusters, namespaces, k8sClients)
 
         const output = generateServiceComparisonOutput(clusters, namespaces, clusterServices)
-        onOutput(output, "Compare")
+        actionContext.onOutput(output, "Compare")
       },
     }
   ]

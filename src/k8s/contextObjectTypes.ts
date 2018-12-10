@@ -1,5 +1,6 @@
 export class Cluster {
   name: string
+  namespaces: Namespace[] = []
   constructor(name: string) {
     this.name = name
   }
@@ -17,6 +18,8 @@ export class Cluster {
 export class Namespace {
   name: string
   cluster: Cluster
+  pods: Pod[] = []
+  items: Item[] = []
   constructor(name?: string, cluster?: Cluster) {
     this.name = name || ''
     this.cluster = cluster || new Cluster('');

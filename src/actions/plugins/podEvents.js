@@ -1,9 +1,10 @@
+"use strict";
 const CommonFunctions = require('../../k8s/commonFunctions')
 
 function generatePodEventsOutput(podsMap) {
   const output = []
   output.push([
-    "Event <br/> Last Timestamp <br/> (Count)", 
+    ["Event", "LastTimestamp", "(Count)"],
     "Details"
   ])
 
@@ -20,7 +21,7 @@ function generatePodEventsOutput(podsMap) {
           output.push([">Pod: "+pod, "---", "---"])
           const events = podsMap[cluster][namespace][pod]
           events.forEach(event => output.push([
-            event.reason + " <br/> " + event.lastTimestamp + " <br/> (" + event.count + ")",
+            [event.reason, event.lastTimestamp, "(" + event.count + ")"],
             [
               "type: " + event.type,
               "source: " + event.source,
@@ -36,29 +37,15 @@ function generatePodEventsOutput(podsMap) {
 
 
 module.exports = {
-  order: 4,
   context: "Pod",
   actions: [
     {
       name: "Get Pod Events",
-      async act(getClusters, getNamespaces, getPods, getK8sClients, onOutput) {
-        const clusters = getClusters()
-        const namespaces = getNamespaces()
-        const pods = getPods()
-        const k8sClients = getK8sClients()
-
-        if(clusters.length === 0) {
-          onOutput([["No cluster selected"]], "Text")
-          return
-        }
-        if(namespaces.length === 0) {
-          onOutput([["No namespace selected"]], "Text")
-          return
-        }
-        if(pods.length === 0) {
-          onOutput([["No pods selected"]], "Text")
-          return
-        }
+      async act(actionContext) {
+        const clusters = actionContext.getClusters()
+        const namespaces = actionContext.getNamespaces()
+        const pods = actionContext.getPods()
+        const k8sClients = actionContext.getK8sClients()
 
         const podsMap = {}
         for(const c in clusters) {
@@ -77,7 +64,7 @@ module.exports = {
               podsMap[cluster.name][namespace.name][pod] = 
                   await CommonFunctions.getPodEvents(namespace.name, pod, k8sClients[c])
               const output = generatePodEventsOutput(podsMap)
-              onOutput(output, "Health")
+              actionContext.onOutput(output, "Health")
             }
           }
         }

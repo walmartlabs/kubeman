@@ -1,16 +1,21 @@
+"use strict";
 const CommonFunctions = require('../../k8s/commonFunctions')
 const generateServiceComparisonOutput = require('./namespaceCompareServices').generateServiceComparisonOutput
 
 module.exports = {
-  order: 2,
   context: "Cluster",
   actions: [
     {
       name: "Compare Services",
       order: 5,
-      async act(getClusters, getK8sClients, onOutput) {
-        const clusters = getClusters()
-        const k8sClients = getK8sClients()
+      async act(actionContext) {
+        const clusters = actionContext.getClusters()
+        const k8sClients = actionContext.getK8sClients()
+
+        if(clusters.length < 2 || k8sClients.length < 2) {
+          actionContext.onOutput([["Not enough clusters to compare"]], 'Text')
+          return
+        }
 
         const clusterServices = await CommonFunctions.getServicesGroupedByClusterNamespace(clusters, null, k8sClients)
         const namespaces = []
@@ -19,7 +24,7 @@ module.exports = {
           namespaces.push({name: namespace})))
 
         const output = generateServiceComparisonOutput(clusters, namespaces, clusterServices)
-        onOutput(output, 'Compare')
+        actionContext.onOutput(output, 'Compare')
       },
     },
   ]

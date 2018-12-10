@@ -38,7 +38,7 @@ class ContextPanel extends React.Component<IProps, IState> {
     const {context} = props;
     const {activeTab} = this.state
     const clusters = context.clusters()
-    if(activeTab === clusters.length) {
+    if(activeTab >= clusters.length) {
       this.setState({ activeTab: 0});
     }
   }

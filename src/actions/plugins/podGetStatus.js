@@ -1,3 +1,4 @@
+"use strict";
 const jpExtract = require('../../util/jpExtract')
 const CommonFunctions = require('../../k8s/commonFunctions')
 
@@ -41,29 +42,15 @@ function generatePodStatusOutput(podsMap) {
 
 
 module.exports = {
-  order: 4,
   context: "Pod",
   actions: [
     {
       name: "Get Pod Status",
-      async act(getClusters, getNamespaces, getPods, getK8sClients, onOutput) {
-        const clusters = getClusters()
-        const namespaces = getNamespaces()
-        const pods = getPods()
-        const k8sClients = getK8sClients()
-
-        if(clusters.length === 0) {
-          onOutput([["No cluster selected"]], "Text")
-          return
-        }
-        if(namespaces.length === 0) {
-          onOutput([["No namespace selected"]], "Text")
-          return
-        }
-        if(pods.length === 0) {
-          onOutput([["No pods selected"]], "Text")
-          return
-        }
+      async act(actionContext) {
+        const clusters = actionContext.getClusters()
+        const namespaces = actionContext.getNamespaces()
+        const pods = actionContext.getPods()
+        const k8sClients = actionContext.getK8sClients()
 
         const podsMap = {}
         for(const c in clusters) {
@@ -82,7 +69,7 @@ module.exports = {
               nsPods.forEach(pod => pod && podsMap[cluster.name][namespace.name].push(pod))
             }
             const output = generatePodStatusOutput(podsMap)
-            onOutput(output, "Health")
+            actionContext.onOutput(output, "Health")
           }
         }
       }

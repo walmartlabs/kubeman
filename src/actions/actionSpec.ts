@@ -1,14 +1,22 @@
 import Context from "../context/contextStore";
 import {K8sClient} from '../k8s/k8sClient'
 import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
+import ActionContext from './actionContext'
 
-export enum ActionContext {
+export enum ActionContextType {
   Common = "Common",
   Cluster = "Cluster",
   Namespace = "Namespace",
   Pod = "Pod",
   Other = "Other",
 }
+
+export const ActionContextOrder = {}
+ActionContextOrder[ActionContextType.Common] = 1
+ActionContextOrder[ActionContextType.Cluster] = 10
+ActionContextOrder[ActionContextType.Namespace] = 100
+ActionContextOrder[ActionContextType.Pod] = 1000
+ActionContextOrder[ActionContextType.Other] = 10000
 
 export enum ActionOutputStyle {
   None = "None",
@@ -19,64 +27,31 @@ export enum ActionOutputStyle {
 }
 
 export type ActionOutput = any[][]
+export type ActionChoices = any[]
+export type ActionAct = (actionContext?: ActionContext) => void
+export type ActionOutputCollector = (output: ActionOutput, style: ActionOutputStyle) => void
+export type ActionChoiceMaker = (act: ActionAct, title: string, choices: ActionChoices, minChoices: number, maxChoices: number) => void
+
 export type ActionGroupSpecs = ActionGroupSpec[]
 
-export type ActionOutputCollector = (output: string[]) => void
-
-export type methodGetClusters = () => Cluster[]
-export type methodGetK8sClients = () => K8sClient[]
-export type methodGetNamespaces = () => Namespace[]
-export type methodGetPods = () => Pod[]
-export type outputMethod = (ActionOutput) => void
-
-
-type ClusterActionMethod = (methodGetClusters, methodGetK8sClients, outputMethod) => void
-type NamespaceActionMethod = (methodGetClusters, methodGetNamespaces, methodGetK8sClients, outputMethod) => void
-type PodActionMethod = (methodGetPods, outputMethod) => void
 
 export interface ActionSpec {
   name: string
-  context: ActionContext
+  context: ActionContextType
   order?: number
-  act: (...any) => void
-  outputStyle?: ActionOutputStyle
-}
-
-export interface ClusterActionSpec extends ActionSpec {
-  act: ClusterActionMethod
-}
-
-export interface NamespaceActionSpec extends ActionSpec {
-  act: NamespaceActionMethod
-}
-
-export interface PodActionSpec extends ActionSpec {
-  act: PodActionMethod
+  act: ActionAct
+  choose?: ActionAct
 }
 
 export interface ActionGroupSpec {
   order: number
-  context: ActionContext
+  title?: string
+  context: ActionContextType
   actions: ActionSpec[]
 }
 
 export function isActionSpec(obj: any) : obj is ActionSpec {
   return obj && obj.name && obj.act && obj.act instanceof Function
-}
-
-export function isClusterActionSpec(obj: any) : obj is ClusterActionSpec {
-  return isActionSpec(obj) 
-         && obj.act.length === 3
-}
-
-export function isNamespaceActionSpec(obj: any) : obj is NamespaceActionSpec {
-  return isActionSpec(obj) 
-         && obj.act.length === 4
-}
-
-export function isPodActionSpec(obj: any) : obj is PodActionSpec {
-  return isActionSpec(obj) 
-         && obj.act.length === 5
 }
 
 export function isActionGroupSpec(obj: any) : obj is ActionGroupSpec {

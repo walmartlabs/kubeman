@@ -1,6 +1,6 @@
 import jpExtract from '../../util/jpExtract'
-import {methodGetClusters, methodGetNamespaces, methodGetPods, outputMethod} from '../actionSpec'
 import { ActionOutput } from "../actionSpec";
+import ActionContext from '../actionContext'
 
 module.exports = {
   order: 4,
@@ -8,13 +8,12 @@ module.exports = {
   actions: [
     {
       name: "Get Pod Status",
-      act(getClusters: methodGetClusters, getNamespaces: methodGetNamespaces, 
-          getPods: methodGetPods, onOutput: outputMethod) {
+      act(actionContext: ActionContext) {
+        const clusters = actionContext.getClusters()
+        const namespaces = actionContext.getNamespaces()
+        const pods = actionContext.getPods()
         const output : ActionOutput = []
         output.push(["Pod", "Container", "Status"])
-        const clusters = getClusters()
-        const namespaces = getNamespaces()
-        const pods = getPods()
 
         clusters.forEach(cluster => {
           output.push([cluster.name, "---", "---"])

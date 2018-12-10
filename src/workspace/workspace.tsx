@@ -5,6 +5,7 @@ import Switch from '@material-ui/core/Switch';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 
 import Actions from '../actions/actions'
+import ActionChoiceDialog from '../actions/actionChoiceDialog'
 import ContextPanel from '../context/contextPanel'
 import ContextSelector from '../context/contextSelector'
 import Context from "../context/contextStore";
@@ -12,7 +13,7 @@ import Terminal from '../output/terminal'
 import TerminalBox from "../output/terminalBox";
 import BlackBox from '../output/blackbox'
 import TableBox from '../output/tableBox'
-import {ActionOutput, ActionOutputStyle} from '../actions/actionSpec'
+import {ActionOutput, ActionOutputStyle, ActionOutputCollector, ActionChoiceMaker, ActionChoices, ActionAct} from '../actions/actionSpec'
 
 import styles from './workspace.styles'
 
@@ -21,6 +22,12 @@ interface IState {
   output: ActionOutput
   outputStyle: ActionOutputStyle
   loading: boolean
+  showChoices: boolean
+  minChoices: number
+  maxChoices: number
+  choiceTitle: string
+  choices: any[]
+  deferredAction?: ActionAct
 }
 
 interface IProps extends WithStyles<typeof styles> {
@@ -42,6 +49,11 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     output: [],
     outputStyle: ActionOutputStyle.Table,
     loading: false,
+    showChoices: false,
+    minChoices: 0,
+    maxChoices: 0,
+    choiceTitle: '',
+    choices: [],
   }
   commandHandler?: ((string) => void) = undefined
 
@@ -60,9 +72,31 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     this.commandHandler && this.commandHandler(command)
   }
 
-  showOutput = (output: ActionOutput, outputStyle: ActionOutputStyle) => {
+  showOutput : ActionOutputCollector = (output, outputStyle) => {
     //this.refs.terminal && this.refs.terminal.write(output)
     this.setState({output, outputStyle: outputStyle || ActionOutputStyle.Text, loading: false})
+  }
+
+  showChoices : ActionChoiceMaker = (act, title, choices, minChoices, maxChoices) => {
+    this.setState({
+      choices,
+      minChoices,
+      maxChoices,
+      choiceTitle: title, 
+      showChoices: true,
+      deferredAction: act,
+    })
+  }
+
+  onSelectActionChoice = (selections: ActionChoices) => {
+    const {context, deferredAction} = this.state
+    context.selections = selections
+    this.setState({showChoices: false})
+    deferredAction && deferredAction()
+  }
+
+  onCancelActionChoice = () => {
+    this.setState({showChoices: false, loading: false})
   }
 
   showLoading = () => {
@@ -85,7 +119,9 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   render() {
     const { classes } = this.props;
-    const { context, output, outputStyle, loading, } = this.state;
+    const { context, output, outputStyle, loading, 
+      showChoices, minChoices, maxChoices, choiceTitle, choices } = this.state;
+
     const showBlackBox = outputStyle === ActionOutputStyle.Text
     const showTableBox = outputStyle === ActionOutputStyle.Table
     const showComparison = outputStyle === ActionOutputStyle.Compare
@@ -111,6 +147,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                         showLoading={this.showLoading}
                         onCommand={this.onCommand}
                         onOutput={this.showOutput}
+                        onChoices={this.showChoices}
                         />
               </TableCell>
               <TableCell className={classes.outputCell}>
@@ -162,6 +199,18 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
         <ContextSelector ref='contextSelector'
             context={context} 
             onUpdateContext={this.onUpdateContext.bind(this)} />
+        {
+          showChoices && 
+          <ActionChoiceDialog
+            open={showChoices}
+            title={choiceTitle}
+            choices={choices}
+            minChoices={minChoices}
+            maxChoices={maxChoices}
+            onSelection={this.onSelectActionChoice}
+            onCancel={this.onCancelActionChoice}
+          />
+        }
       </div>
     );
   }

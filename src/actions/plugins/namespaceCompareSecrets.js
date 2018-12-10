@@ -1,16 +1,17 @@
+"use strict";
 const CommonFunctions = require('../../k8s/commonFunctions')
 
 module.exports = {
-  order: 3,
   context: "Namespace",
   actions: [
     {
       name: "Compare Secrets",
       order: 2,
-      async act(getClusters, getNamespaces, getK8sClients, onOutput) {
-        const clusters = getClusters()
-        const k8sClients = getK8sClients()
-        const namespaces = getNamespaces()
+      async act(actionContext) {
+        const clusters = actionContext.getClusters()
+        const k8sClients = actionContext.getK8sClients()
+        const namespaces = actionContext.getNamespaces()
+
         const secretsMap = {}
 
         for(const i in namespaces) {
@@ -57,7 +58,7 @@ module.exports = {
             })
           }
         })
-        onOutput(output, "Compare")
+        actionContext.onOutput(output, "Compare")
       },
     }
   ]

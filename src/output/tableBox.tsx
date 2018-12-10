@@ -19,44 +19,55 @@ interface ITableCellProps extends WithStyles<typeof styles> {
   isGroup: boolean,
 }
 
-const TextCell = withStyles(styles)(({index, content, colSpan, highlight, classes, isGroup}: ITableCellProps) => {
+const getHealthClass = (content, outputManager, classes) : string => {
+  const health = content ? content.toLowerCase() : ""
+  const healthGood = outputManager.isHealthy(health)
+  const healthBad = outputManager.isUnhealthy(health)
+  return healthGood ? classes.tableCellHealthGood : 
+                    healthBad ? classes.tableCellHealthBad : classes.tableCell
+
+}
+
+const TextCell = withStyles(styles)(({index, content, colSpan, highlight, classes, isGroup, isHealthField, outputManager}: ITableCellProps) => {
+  const className = isHealthField ? getHealthClass(content, outputManager, classes)
+                    : (highlight && index !==0) ? classes.tableCellHighlight : classes.tableCell
+  const isJSON = content.startsWith("{") && content.endsWith("}")
+  isJSON && (content = "<pre>" + content + "</pre>")
+  content = content.replace("<pre>", 
+                "<pre style='font-size:1.1rem; display: inline-block; margin: 0px;'>")
   return (
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
-              className={(highlight && index !==0) ? classes.tableCellHighlight : classes.tableCell}
+              className={className}
               style={{paddingLeft: isGroup ? '2px' : '10px'}}
               dangerouslySetInnerHTML={{__html:content}} />
   )
 })
 
-const GridCell = withStyles(styles)(({index, content, colSpan, highlight, classes, isGroup}: ITableCellProps) => {
+const GridCell = withStyles(styles)(({index, content, colSpan, highlight, classes, isGroup, isHealthField, outputManager}: ITableCellProps) => {
   return (
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
               className={(highlight && index !==0) ? classes.tableCellHighlight : classes.tableCell}
               style={{paddingLeft: isGroup ? '2px' : '10px'}} >
-      <Grid container direction='column' spacing={8} className={classes.grid} >
-        {(content as string[]).map((item, i) => 
-          <Grid key={"GridItem"+i} item xs={12} md={12} 
-                className={classes.gridCell}
+      <Table>
+        <TableBody>
+          {(content as string[]).map((item, i) => {
+            const className = isHealthField ? getHealthClass(item, outputManager, classes) : classes.tableCell
+            const isJSON = item.startsWith("{") && item.endsWith("}")
+            isJSON && (item = "<pre>" + item + "</pre>")
+            item = item.replace("<pre>", "<pre style='font-size:1.1rem; display: inline-block; margin: 0px;'>")
+            return (
+              <TableRow key={i} className={classes.tableRow}>
+                <TableCell component="th" scope="row" colSpan={colSpan}
+                className={className}
+                style={{paddingLeft: isGroup ? '2px' : '10px'}}
                 dangerouslySetInnerHTML={{__html:item}} />
-        )}
-      </Grid>
+              </TableRow>
+            )
+          })}
+        </TableBody>  
+      </Table>        
       
     </TableCell>
-  )
-})
-
-const HealthCell = withStyles(styles)(({index, content, colSpan, isHealthField, classes, outputManager, isGroup}: ITableCellProps) => {
-  const health = content ? content.toLowerCase() : ""
-  const healthGood = outputManager.isHealthy(health)
-  const healthBad = outputManager.isUnhealthy(health)
-  const className = !isHealthField ? classes.tableCell :
-        healthGood ? classes.tableCellHealthGood : 
-        healthBad ? classes.tableCellHealthBad : classes.tableCell
-  return (
-    <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
-               className={className} 
-               style={{paddingLeft: isGroup ? '2px' : '10px'}}
-               dangerouslySetInnerHTML={{__html:content}} />
   )
 })
 
@@ -132,13 +143,29 @@ class TableBox extends React.Component<IProps, IState> {
           <TableHead>
             <TableRow className={classes.tableHeaderRow}>
               {headers.map((header, ri) => {
-                return (
-                <TableCell key={ri}>
-                  <Typography className={classes.tableHeaderText}
-                  dangerouslySetInnerHTML={{__html:header}} />
-                </TableCell>
-                )
-              })}
+                if(header instanceof Array){
+                  return(
+                  <TableCell key={ri}>
+                    <Typography className={classes.tableHeaderText}>
+                    {header.map((text,hi) =>
+                      <span key={hi} style={{display: 'block'}}>
+                        {text}
+                      </span>
+                    )}
+                    </Typography>
+                  </TableCell>
+                  )
+                } else {
+                  return(
+                  <TableCell key={ri}>
+                    <Typography className={classes.tableHeaderText}>
+                      {header}
+                    </Typography>
+                  </TableCell>
+                  )
+                }
+              })
+              }
             </TableRow>
           </TableHead>
           <TableBody>
@@ -169,38 +196,27 @@ class TableBox extends React.Component<IProps, IState> {
               } else {
                 components.push(
                   <TableRow key={index} 
-                      className={row.isGroup ? classes.tableGroupRow :
-                          row.isSubGroup ? classes.tableSubgroupRow : classes.tableRow}
-                  >
+                      className={classes.tableRow} >
                   {row.content.map((field, ci) => {
                     if(field instanceof Array) {
                       return (
                         <GridCell key={"GridCell"+ci} index={ci} content={field}
                                   isGroup={row.isGroup}
                                   highlight={highlight}
+                                  isHealthField={!row.isGroupOrSubgroup && health && ci === healthColumnIndex} 
                                   outputManager={this.outputManager}
                                   />
                       )
                     } else {
-                      if(health) {
-                        return (
-                          <HealthCell key={"HealthCell"+ci} index={ci} content={field} 
-                                      colSpan={1}
-                                      isGroup={row.isGroup}
-                                      isHealthField={!row.isGroupOrSubgroup && ci === healthColumnIndex} 
-                                      outputManager={this.outputManager}
-                                      />
-                        )
-                      } else {
-                        return (
-                          <TextCell key={"TextCell"+ci} index={ci} content={field}
-                                    colSpan={1}
-                                    isGroup={row.isGroup}
-                                    highlight={highlight} 
-                                    outputManager={this.outputManager}
-                                    />
-                        )
-                      }
+                      return (
+                        <TextCell key={"TextCell"+ci} index={ci} content={field}
+                                  colSpan={1}
+                                  isGroup={row.isGroup}
+                                  isHealthField={!row.isGroupOrSubgroup && health && ci === healthColumnIndex} 
+                                  highlight={highlight} 
+                                  outputManager={this.outputManager}
+                                  />
+                      )
                     }
                   })}
                   </TableRow>

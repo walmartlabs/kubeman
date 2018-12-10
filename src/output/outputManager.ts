@@ -4,10 +4,12 @@ import StringBuffer from '../util/stringbuffer'
 import {appTheme} from '../theme/theme'
 
 const healthyKeywords : string[] = [
-  "active", "healthy", "good", "green", "up", "run", "start"
+  "active", "healthy", "good", "green", "up", "run", "start", "success", "complete", "created", "available",
+  "no issue", "ready"
 ]
 const unhealthyKeywords : string[] = [
-  "inactive", "unhealthy", "bad", "red", "down", "stop", "terminat", "wait"
+  "inactive", "unhealthy", "bad", "red", "down", "stop", "terminat", "wait", "warning", "error", 
+  "fail", "not available"
 ]
 
 
@@ -38,8 +40,7 @@ function applyHighlight(text: string, filters: string[]) : [string, boolean] {
     } else if(i === endPos+1) {
       endPos = i
     } else {
-      
-      let highlightedText = "<span className='background-color:" + highlightColor + "'>" 
+      let highlightedText = "<span style='background-color:" + highlightColor + "'>" 
                             + text.slice(startPos, endPos+1) 
                             + "</span>"
       sb.append(highlightedText)
@@ -73,7 +74,7 @@ export class Row {
     this.firstField = content.length > 0 ? content[0] : undefined
     this.lastField = content.length > 0 ? content[content.length-1] : undefined
     this.secondLastField = content.length > 1 ? content[content.length-2] : undefined
-    this.subgroup = this.firstField && this.firstField.startsWith(">")
+    this.subgroup = this.firstField && typeof this.firstField === 'string' && this.firstField.startsWith(">")
     this.group = !this.subgroup && this.content.includes("---") || false
     //this.subgroup && (this.content[0] = this.content[0].substring(1))
   }
@@ -155,7 +156,7 @@ export class Row {
 
 export default class OutputManager {
   output: ActionOutput = []
-  headers: string[] = []
+  headers: any[] = []
   _rows: Row[] = []
   filteredRows: Row[] = []
   appliedFilters: string[] = []
@@ -166,9 +167,13 @@ export default class OutputManager {
     this.headers = output && output.length > 0 ? output.slice(0, 1)[0] : []
     this.filteredRows = this._rows = this.output && this.output.length > 0 ? 
                 this.output.slice(1).map(row => new Row(row)) : []
-    this.healthColumnIndex = this.headers.length > 0 ? this.headers.map(header => header.toLowerCase())
-        .map((header,index) => (header.includes("status") || header.includes("health")?index:-1))
-        .reduce((prev, curr) => prev >= 0 ? prev : curr >= 0 ? curr : -1) : -1
+    
+    this.healthColumnIndex = this.headers.length > 0 ? this.headers.map(header => 
+            header instanceof Array ? header.map(item => item.toLowerCase()) :
+            typeof header === 'string' ? header.toLowerCase() : header)
+      .map((header,index) => (header.includes("status") || header.includes("health") 
+            || header.includes("condition") ? index : -1))
+      .reduce((prev, curr) => prev >= 0 ? prev : curr >= 0 ? curr : -1) : -1
     this.healthColumnIndex = this.healthColumnIndex >= 0 ? this.healthColumnIndex : this.headers.length-1
   }
 

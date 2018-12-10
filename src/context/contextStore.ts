@@ -43,11 +43,17 @@ export class ClusterContext {
   }
 
   clearPods() {
-    Array.from(this._namespaces.values()).forEach(nc => nc.clearPods())
+    this._namespaces.forEach((nc, namespace) => {
+      namespace.pods = []
+      nc.clearPods()
+    })
   }
 
   clearItems() {
-    Array.from(this._namespaces.values()).forEach(nc => nc.clearItems())
+    this._namespaces.forEach((nc, namespace) => {
+      namespace.items = []
+      nc.clearItems()
+    })
   }
 
   addNamespace(namespace: Namespace) {
@@ -67,6 +73,7 @@ export class ClusterContext {
     if(!namespaceContext) {
       throw new ReferenceError("Namespace not found: " + pod.namespace)
     }
+    pod.namespace.pods.push(pod)
     namespaceContext.addPod(pod)
   }
 
@@ -79,6 +86,7 @@ export class ClusterContext {
     if(!namespaceContext) {
       throw new ReferenceError("Namespace not found: " + item.namespace)
     }
+    item.namespace.items.push(item)
     namespaceContext.addItem(item)
   }
 
@@ -101,6 +109,7 @@ export default class Context {
   hasClusters: boolean = false
   hasNamespaces: boolean = false
   hasPods: boolean = false
+  selections: any[] = []
 
   updateFlags() {
     this.hasClusters = this._clusters.size > 0
@@ -138,12 +147,15 @@ export default class Context {
   }
 
   clearNamespaces() {
-    Array.from(this._clusters.values()).forEach(cc => cc.clearNamespaces())
+    this._clusters.forEach((cc, cluster) => {
+      cluster.namespaces = []
+      cc.clearNamespaces()
+    })
     this.updateFlags()
   }
 
   clearPods() {
-    Array.from(this._clusters.values()).forEach(cc => cc.clearPods())
+    this._clusters.forEach((cc, cluster) => cc.clearPods())
     this.updateFlags()
   }
 
@@ -158,6 +170,7 @@ export default class Context {
       console.log("Cluster %s not found for ns %s", namespace.cluster.name, namespace.name)
       throw new ReferenceError("Cluster not found: " + namespace.cluster)
     }
+    namespace.cluster.namespaces.push(namespace)
     clusterContext.addNamespace(namespace)
     this.updateFlags()
   }

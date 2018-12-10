@@ -2,12 +2,11 @@ import fs from 'fs'
 import path from 'path'
 import * as ts from "typescript";
 
-import {ActionContext, ActionGroupSpec, ActionGroupSpecs, isActionGroupSpec, 
-        methodGetClusters, methodGetK8sClients, 
-        isClusterActionSpec, isNamespaceActionSpec, isPodActionSpec,
-        ActionOutput, ActionOutputStyle, methodGetNamespaces, methodGetPods, } from './actionSpec'
+import {ActionContextType, ActionGroupSpec, ActionGroupSpecs, ActionContextOrder,
+        isActionGroupSpec, isActionSpec, ActionOutput, ActionOutputStyle, 
+        ActionOutputCollector, ActionChoiceMaker, } from './actionSpec'
 import Context from "../context/contextStore";
-import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
+import ActionContext from './actionContext'
 import * as k8s from '../k8s/k8sClient'
 import actions from './actions';
 
@@ -15,21 +14,28 @@ import actions from './actions';
 const actionPluginFolder = "plugins"
 
 export class ActionLoader {
-
   static onLoad: (ActionGroupSpecs) => void
-  static onOutput: (ActionOutput, ActionOutputStyle?) => void
+  static onOutput: ActionOutputCollector
+  static onChoices: ActionChoiceMaker
   static context: Context
+  static actionContext: ActionContext = new ActionContext
 
   static setContext(context: Context) {
     this.context = context
+    this.actionContext.context = context
   }
 
   static setOnLoad(callback: (ActionGroupSpecs) => void) {
     this.onLoad = callback
   }
 
-  static setOnOutput(callback: (ActionOutput, ActionOutputStyle) => void) {
+  static setOnOutput(callback: ActionOutputCollector) {
     this.onOutput = callback
+    this.actionContext.onOutput = callback
+  }
+
+  static setOnChoices(callback: ActionChoiceMaker) {
+    this.onChoices = callback
   }
 
   static loadActionPlugins() {
@@ -49,11 +55,13 @@ export class ActionLoader {
           const actionGroupSpec = globalRequire(filePath)
           if(isActionGroupSpec(actionGroupSpec)) {
             ActionLoader.configureActions(actionGroupSpec)
-            const existingSpec = actionGroupsMap.get(actionGroupSpec.context)
-            if(existingSpec) {
-              existingSpec.actions = existingSpec.actions.concat(actionGroupSpec.actions)
-            } else {actionGroupSpec
-              actionGroupsMap.set(actionGroupSpec.context, actionGroupSpec)
+            if(actionGroupSpec.title) {
+              const existingSpec = actionGroupsMap.get(actionGroupSpec.title)
+              if(existingSpec) {
+                existingSpec.actions = existingSpec.actions.concat(actionGroupSpec.actions)
+              } else {actionGroupSpec
+                actionGroupsMap.set(actionGroupSpec.title, actionGroupSpec)
+              }
             }
           } else {
             console.log("Invalid ActionGroupSpec: " + JSON.stringify(actionGroupSpec))
@@ -62,7 +70,6 @@ export class ActionLoader {
         if(this.onLoad) {
           const actionGroups : ActionGroupSpecs = Array.from(actionGroupsMap.values())
           actionGroups.sort((i1,i2) => (i1.order || 100) - (i2.order || 100))
-          actionGroups.forEach(group => group.actions.sort((i1,i2) => (i1.order || 100) - (i2.order || 100)))
           this.onLoad(actionGroups)
         }
       }
@@ -98,18 +105,21 @@ export class ActionLoader {
   }
 
   static configureActions(actionGroupSpec: ActionGroupSpec) {
+    actionGroupSpec.order = ActionContextOrder[actionGroupSpec.context || ActionContextType.Other]
+    if(actionGroupSpec.title) {
+      actionGroupSpec.order++
+    }
+    actionGroupSpec.title = actionGroupSpec.title || (actionGroupSpec.context + " Actions")
+    actionGroupSpec.actions.sort((i1,i2) => (i1.order || 100) - (i2.order || 100))
+
     switch(actionGroupSpec.context) {
-      case ActionContext.Common:
+      case ActionContextType.Common:
         this.configureCommonActions(actionGroupSpec)
         break
-      case ActionContext.Cluster:
-        this.configureClusterActions(actionGroupSpec)
-        break
-      case ActionContext.Namespace:
-        this.configureNamespaceActions(actionGroupSpec)
-        break
-      case ActionContext.Pod:
-        this.configurePodActions(actionGroupSpec)
+      case ActionContextType.Cluster:
+      case ActionContextType.Namespace:
+      case ActionContextType.Pod:
+        this.bindActions(actionGroupSpec)
         break
     }
   }
@@ -117,77 +127,71 @@ export class ActionLoader {
   static addReloadAction(actionGroupsMap : Map<string, ActionGroupSpec>) {
     const reloadAction = {
       order: 1,
-      context: ActionContext.Common,
+      title: "Common Actions",
+      context: ActionContextType.Common,
       actions: [
         {
           name: "Reload Actions",
-          act: function(onOutput) {
+          context: ActionContextType.Common,
+          act: function(onOutput: ActionOutputCollector) {
             ActionLoader.loadActionPlugins()
-            onOutput([["Actions Reloaded"]])
+            onOutput([["Actions Reloaded"]], ActionOutputStyle.Text)
           }.bind(null, this.onOutput)
         }
       ]
     }
-    actionGroupsMap.set(reloadAction.context, reloadAction)
+    actionGroupsMap.set(reloadAction.title, reloadAction)
   }
 
   static configureCommonActions(actionGroupSpec: ActionGroupSpec) {
     actionGroupSpec.actions.forEach(action => {
       action.context = actionGroupSpec.context
       if(action.act) {
-        action.act = action.act.bind(null, this.onOutput)
+        action.act = action.act.bind(action, this.onOutput)
       }
     })
   }
 
-  static configureClusterActions(actionGroupSpec: ActionGroupSpec) {
-    const getClusters : methodGetClusters = () => this.context ? this.context.clusters() : []
-    const getK8sClients : methodGetK8sClients = () => {
-      return this.context.clusters().map(k8s.getClientForCluster)
-    }
-
+  static bindActions(actionGroupSpec: ActionGroupSpec) {
     actionGroupSpec.actions.forEach(action => {
       action.context = actionGroupSpec.context
-      if(!isClusterActionSpec(action)) {
-        console.log("Not ClusterActionSpec: " + JSON.stringify(action))
+      if(!isActionSpec(action)) {
+        console.log("Not ActionSpec: " + JSON.stringify(action))
       } else {
-        action.act = action.act.bind(null, getClusters, getK8sClients, this.onOutput)
+        const act = action.act
+        action.act = () => {
+          if(this.checkSelections({
+            checkClusters: true, 
+            checkNamespaces: actionGroupSpec.context === ActionContextType.Namespace
+                            || actionGroupSpec.context === ActionContextType.Pod,
+            checkPods: actionGroupSpec.context === ActionContextType.Pod,
+          })) {
+            if(action.choose) {
+              this.actionContext.onChoices = this.onChoices.bind(this, 
+                  act.bind(action, this.actionContext))
+              action.choose(this.actionContext)
+            } else {
+              act.call(action, this.actionContext)
+            }
+          }
+        }
       }
     })
   }
 
-  static configureNamespaceActions(actionGroupSpec: ActionGroupSpec) {
-    const getClusters : methodGetClusters = () => this.context ? this.context.clusters() : []
-    const getK8sClients : methodGetK8sClients = () => {
-      return this.context.clusters().map(k8s.getClientForCluster)
+  static checkSelections({checkClusters, checkNamespaces, checkPods}: 
+                          {checkClusters?: boolean, checkNamespaces?: boolean, checkPods?: boolean}) {
+    let result = true
+    if(checkClusters && this.context.clusters().length === 0) {
+      result = false
+      this.onOutput([["No clusters selected"]], ActionOutputStyle.Text)
+    } else if(checkNamespaces && this.context.namespaces().length === 0) {
+      result = false
+      this.onOutput([["No namespaces selected"]], ActionOutputStyle.Text)
+    } else if(checkPods && this.context.pods().length === 0) {
+      result = false
+      this.onOutput([["No pods selected"]], ActionOutputStyle.Text)
     }
-    const getNamespaces = () => this.context ? this.context.namespaces() : []
-
-    actionGroupSpec.actions.forEach(action => {
-      action.context = actionGroupSpec.context
-      if(!isNamespaceActionSpec(action)) {
-        console.log("Not NamespaceActionSpec: " + JSON.stringify(action))
-      } else {
-        action.act = action.act.bind(null, getClusters, getNamespaces, getK8sClients, this.onOutput)
-      }
-    })
-  }
-
-  static configurePodActions(actionGroupSpec: ActionGroupSpec) {
-    const getClusters : methodGetClusters = () => this.context ? this.context.clusters() : []
-    const getK8sClients : methodGetK8sClients = () => {
-      return this.context.clusters().map(k8s.getClientForCluster)
-    }
-    const getNamespaces : methodGetNamespaces = () => this.context ? this.context.namespaces() : []
-    const getPods : methodGetPods = () => this.context ? this.context.pods() : []
-
-    actionGroupSpec.actions.forEach(action => {
-      action.context = actionGroupSpec.context
-      if(!isPodActionSpec(action)) {
-        console.log("Not PodActionSpec: " + JSON.stringify(action))
-      } else {
-        action.act = action.act.bind(null, getClusters, getNamespaces, getPods, getK8sClients, this.onOutput)
-      }
-    })
+    return result
   }
 }

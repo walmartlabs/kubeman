@@ -1,5 +1,4 @@
 module.exports = {
-  order: 1,
   context: "Common",
   actions: [
     {

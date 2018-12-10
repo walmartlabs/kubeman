@@ -60,6 +60,11 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     padding: '0px',
     borderBottom: palette.type ==='dark' ? borderDark : borderLight,
   },
+  pre: {
+    fontSize: '1.1rem',
+    display: 'inline-block',
+    height: '15px',
+  },
   tableCellHighlight: {
     padding: '0px',
     backgroundColor: palette.type ==='dark' ? "#6c6313" : "#FFF9C4",
