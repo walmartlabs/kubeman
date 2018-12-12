@@ -1,5 +1,5 @@
 "use strict";
-const CommonFunctions = require('../../k8s/commonFunctions')
+const k8sFunctions = require('../../k8s/k8sFunctions')
 
 module.exports = {
   context: "Cluster",
@@ -19,7 +19,7 @@ module.exports = {
         for(const i in clusters) {
           const cluster = clusters[i].name
           output.push(["Cluster: " + cluster, "---", "---"])
-          const nodes = await CommonFunctions.getClusterNodes(cluster, k8sClients[i])
+          const nodes = await k8sFunctions.getClusterNodes(cluster, k8sClients[i])
           nodes.forEach(node => output.push([
             [node.name, "(" + node.creationTimestamp + ")"],
             Object.keys(node.network)

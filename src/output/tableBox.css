@@ -1,0 +1,21 @@
+pre {
+  display: inline-block;
+  margin: 0;
+  font-size: 1.1rem;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+.json-key {
+  color: brown;
+}
+.json-value {
+  color: navy;
+}
+.json-boolean {
+  color: teal;
+}
+.json-string {
+  color: olive;
+}

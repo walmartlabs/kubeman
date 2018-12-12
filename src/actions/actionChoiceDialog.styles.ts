@@ -3,6 +3,15 @@ import { Theme, createStyles } from '@material-ui/core/styles'
 const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   dialog: {
   },
+  dialogTitle: {
+    height: 70,
+    padding: 10,
+    backgroundColor: '#4b6082',
+  },
+  filterInput: {
+    fontSize: '0.9rem',
+    color: 'white',
+  },
   dialogContent: {
     padding: 10,
   },
@@ -17,11 +26,6 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
   dialogButtonDisabled: {
     color: '#c2c2d6 !important'
-  },
-  appBar: {
-    height: 30,
-    padding: 5,
-    backgroundColor: '#4b6082',
   },
   loading: {
     display: 'block',
@@ -59,12 +63,6 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     color: 'white !important',
     fontSize: typography.pxToRem(15),
     fontWeight: typography.fontWeightRegular,
-  },
-  secondaryHeading: {
-    fontSize: typography.pxToRem(12),
-    color: palette.text.secondary,
-    marginLeft: 10,
-    marginTop: 2,
   },
 })
 

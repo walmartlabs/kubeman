@@ -2,7 +2,7 @@ import {Cluster, Namespace, Pod, Item} from "./k8s/contextObjectTypes";
 import Context from "./context/contextStore";
 import * as k8s from './k8s/k8sClient'
 import * as jp from 'jsonpath'
-import jpExtract from './util/jpExtract'
+import jsonUtil from './util/jsonUtil'
 
 
 export async function setupRealContext(context: Context) : Promise<Context> {
@@ -34,7 +34,7 @@ export async function setupRealContext(context: Context) : Promise<Context> {
     maxPods > 1 ? maxPods-- : maxPods++
     pods.forEach((pod,i) => {
       if(i < maxPods) {
-        const meta = jpExtract.extract(pod, "$.metadata", "name")
+        const meta = jsonUtil.extract(pod, "$.metadata", "name")
         context.addPod(new Pod(meta.name, ns))
       }
     })

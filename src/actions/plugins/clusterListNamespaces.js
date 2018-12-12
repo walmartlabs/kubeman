@@ -1,5 +1,5 @@
 "use strict";
-const CommonFunctions = require('../../k8s/commonFunctions')
+const k8sFunctions = require('../../k8s/k8sFunctions')
 
 module.exports = {
   context: "Cluster",
@@ -19,7 +19,7 @@ module.exports = {
         for(const i in clusters) {
           const cluster = clusters[i].name
           output.push(["Cluster: " + cluster, "---", "---"])
-          const namespaces = await CommonFunctions.getClusterNamespaces(cluster, k8sClients[i])
+          const namespaces = await k8sFunctions.getClusterNamespaces(cluster, k8sClients[i])
           namespaces.forEach(ns => output.push([ns.name, ns.creationTimestamp, ns.status]))
         }
         actionContext.onOutput(output, 'Health')

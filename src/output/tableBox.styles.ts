@@ -9,7 +9,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     width: '100%',
     height: '100%',
     overflowY: 'scroll',
-    overflowX: 'auto',
+    overflowX: 'scroll',
     padding: 0,
     paddingLeft: 5,
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
@@ -18,6 +18,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     padding: 0,
     paddingLeft: 5,
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
+    wordWrap: 'break-word',
   },
   tableBody: {
   },
@@ -49,12 +50,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   tableRow: {
     padding: 0,
     height: 24,
-    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#dadcf1',
-  },
-  tableRowHighlight: {
-    padding: 0,
-    height: 24,
-    backgroundColor: palette.type ==='dark' ? "#827717" : "#FFF9C4"
+    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#dee6ed',
   },
   tableCell: {
     padding: '0px',
@@ -65,9 +61,12 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     display: 'inline-block',
     height: '15px',
   },
+  tableKeyCell: {
+    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#bcccdc',
+  },
   tableCellHighlight: {
     padding: '0px',
-    backgroundColor: palette.type ==='dark' ? "#6c6313" : "#FFF9C4",
+    backgroundColor: palette.type ==='dark' ? "#6c6313" : "#FFFDE7",
   },
   tableCellHealthGood: {
     padding: '0px',

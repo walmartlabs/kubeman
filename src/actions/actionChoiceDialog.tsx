@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { ChangeEvent } from 'react';
 import { isNullOrUndefined } from 'util';
 
 import { withStyles, WithStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
-import { AppBar, Button, FormHelperText, FormControlLabel, Checkbox, Typography, } from '@material-ui/core';
-import { Dialog, DialogContent, DialogActions, } from '@material-ui/core';
+import { AppBar, Button, Input, FormControlLabel, Checkbox, Typography, } from '@material-ui/core';
+import { Dialog, DialogTitle, DialogContent, DialogActions, } from '@material-ui/core';
 import { Table, TableBody, TableCell, TableRow } from '@material-ui/core';
 
 import {ActionChoices} from './actionSpec'
@@ -22,6 +22,8 @@ interface IProps extends WithStyles<typeof styles> {
 
 interface IState {
   selections: Map<any, any>
+  filteredChoices: ActionChoices
+  filterText: string
 }
 
 class ActionChoiceDialog extends React.Component<IProps, IState> {
@@ -29,14 +31,18 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
     open: false,
   }
   state: IState = {
-    selections: new Map
+    selections: new Map,
+    filteredChoices: [],
+    filterText: ''
   }
+  filterTimer: any = undefined
 
   componentDidMount() {
     this.componentWillReceiveProps(this.props)
   }
 
   componentWillReceiveProps(props: IProps) {
+    this.setState({filteredChoices: props.choices})
   }
 
   onChange = (itemId: any, item: any) => {
@@ -49,6 +55,30 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
     this.setState({selections})
   }
 
+  filter = (inputText: string) => {
+    const {choices} = this.props
+    const filteredChoices = choices.filter(choice => {
+      if(choice instanceof Array) {
+        return choice.map(item => item.includes(inputText)).reduce((r1,r2) => r1||r2)
+      } else {
+        choice.includes(inputText)
+      }
+    })
+    this.setState({filterText: inputText, filteredChoices})
+  }
+
+  onFilterChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if(this.filterTimer) {
+      clearTimeout(this.filterTimer)
+    }
+    const text = event.target.value
+    if(text.length === 0) {
+      this.setState({filterText: '', filteredChoices: this.props.choices})
+    } else {
+      this.filterTimer = setTimeout(this.filter.bind(this, text), 400)
+    }
+  }
+
   onCancel = () => {
     this.props.onCancel()
   }
@@ -59,8 +89,8 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
   }
 
   render() {
-    const {open, title, choices, minChoices, maxChoices, classes} = this.props
-    const {selections} = this.state
+    const {open, title, minChoices, maxChoices, classes} = this.props
+    const {selections, filteredChoices} = this.state
     let countSelected = selections.size
     const minSelected = minChoices > 0 && countSelected >= minChoices
     const maxSelected = maxChoices > 0 && countSelected >= maxChoices
@@ -68,13 +98,18 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
     return (
       <Dialog open={open} className={classes.dialog}
               onClose={this.onCancel} >
+        <DialogTitle className={classes.dialogTitle}>
+          <Typography className={classes.heading}>{title}</Typography>
+          <Input  fullWidth
+                placeholder="Type here to filter data from the results" 
+                onChange={this.onFilterChange}
+                className={classes.filterInput}
+            />
+        </DialogTitle>
         <DialogContent className={classes.dialogContent}>
-          <AppBar position="static" className={classes.appBar}>
-            <Typography className={classes.heading}>{title}</Typography>
-          </AppBar>
           <Table className={classes.table} aria-labelledby="tableTitle">
             <TableBody>
-            {choices.map((item, index) => {
+            {filteredChoices.map((item, index) => {
               const isArray = item instanceof Array
               const itemId = isArray ? item.join(".") : item
               const text = isArray ? item[0] : item

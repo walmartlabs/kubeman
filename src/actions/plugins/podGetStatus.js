@@ -1,10 +1,10 @@
 "use strict";
-const jpExtract = require('../../util/jpExtract')
-const CommonFunctions = require('../../k8s/commonFunctions')
+const jsonUtil = require('../../util/jsonUtil')
+const k8sFunctions = require('../../k8s/k8sFunctions')
 
 function generatePodStatusOutput(podsMap) {
   const output = []
-  output.push(["Pod", "Created", "Status"])
+  output.push(["Pod", "Created", "Container Status"])
 
   Object.keys(podsMap).forEach(cluster => {
     output.push(["Cluster: "+cluster, "---", "---"])
@@ -18,8 +18,8 @@ function generatePodStatusOutput(podsMap) {
         output.push(["No pods selected", "", ""])
       } else {
         pods.forEach(pod => {
-          const meta = jpExtract.extract(pod, "$.metadata", "name", "creationTimestamp")
-          const containerStatuses = jpExtract.extractMulti(pod, "$.status.containerStatuses[*]",
+          const meta = jsonUtil.extract(pod, "$.metadata", "name", "creationTimestamp")
+          const containerStatuses = jsonUtil.extractMulti(pod, "$.status.containerStatuses[*]",
                                         "name", "state")
           const containerStatusTable = []
           containerStatuses.forEach(container => {
@@ -65,7 +65,7 @@ module.exports = {
                           .filter(pod => pod.namespace.name === namespace.name)
                           .map(pod => pod.name)
             if(podNames.length > 0) {
-              const nsPods = await CommonFunctions.getNamespacePods(namespace.name, podNames, k8sClients[c])
+              const nsPods = await k8sFunctions.getNamespacePods(namespace.name, podNames, k8sClients[c])
               nsPods.forEach(pod => pod && podsMap[cluster.name][namespace.name].push(pod))
             }
             const output = generatePodStatusOutput(podsMap)

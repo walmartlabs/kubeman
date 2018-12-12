@@ -2,16 +2,16 @@ import React, { ChangeEvent } from "react";
 
 import { withStyles, WithStyles } from '@material-ui/core/styles'
 import { Table, TableHead, TableBody, TableRow, TableCell } from "@material-ui/core";
-import { Grid, Paper, Typography, Input } from '@material-ui/core';
+import { Paper, Typography, Input } from '@material-ui/core';
 
-import styles from './tableBox.styles'
 import { ActionOutput } from "../actions/actionSpec";
-import OutputManager from './outputManager'
-
+import OutputManager, {Row, Cell} from './outputManager'
+import styles from './tableBox.styles'
+import './tableBox.css'
 
 interface ITableCellProps extends WithStyles<typeof styles> {
   index: number,
-  content: any,
+  cell: Cell,
   colSpan?: number,
   highlight?: boolean,
   isHealthField?: boolean,
@@ -28,39 +28,38 @@ const getHealthClass = (content, outputManager, classes) : string => {
 
 }
 
-const TextCell = withStyles(styles)(({index, content, colSpan, highlight, classes, isGroup, isHealthField, outputManager}: ITableCellProps) => {
-  const className = isHealthField ? getHealthClass(content, outputManager, classes)
-                    : (highlight && index !==0) ? classes.tableCellHighlight : classes.tableCell
-  const isJSON = content.startsWith("{") && content.endsWith("}")
-  isJSON && (content = "<pre>" + content + "</pre>")
-  content = content.replace("<pre>", 
-                "<pre style='font-size:1.1rem; display: inline-block; margin: 0px;'>")
+const TextCell = withStyles(styles)(({index, cell, colSpan, highlight, classes, isGroup, isHealthField, outputManager}: ITableCellProps) => {
+  let text = isGroup ? cell.groupText : cell.text
+  const className = isHealthField ? getHealthClass(cell.text, outputManager, classes)
+                    : highlight ? classes.tableCellHighlight 
+                    : index === 0 && !isGroup ? classes.tableKeyCell : classes.tableCell
+  cell.isJSON && (text = "<pre>" + text + "</pre>")
   return (
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
               className={className}
               style={{paddingLeft: isGroup ? '2px' : '10px'}}
-              dangerouslySetInnerHTML={{__html:content}} />
+              dangerouslySetInnerHTML={{__html:text}} />
   )
 })
 
-const GridCell = withStyles(styles)(({index, content, colSpan, highlight, classes, isGroup, isHealthField, outputManager}: ITableCellProps) => {
+const GridCell = withStyles(styles)(({index, cell, colSpan, highlight, classes, isGroup, isHealthField, outputManager}: ITableCellProps) => {
+  const outerCellClass = highlight ? classes.tableCellHighlight : classes.tableCell
   return (
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
-              className={(highlight && index !==0) ? classes.tableCellHighlight : classes.tableCell}
+              className={outerCellClass}
               style={{paddingLeft: isGroup ? '2px' : '10px'}} >
       <Table>
         <TableBody>
-          {(content as string[]).map((item, i) => {
-            const className = isHealthField ? getHealthClass(item, outputManager, classes) : classes.tableCell
-            const isJSON = item.startsWith("{") && item.endsWith("}")
-            isJSON && (item = "<pre>" + item + "</pre>")
-            item = item.replace("<pre>", "<pre style='font-size:1.1rem; display: inline-block; margin: 0px;'>")
+          {cell.map((formattedText, text, index) => {
+            const innerCellClass = isHealthField ? getHealthClass(text, outputManager, classes)
+                              : index === 0 ? classes.tableKeyCell : 
+                              highlight? classes.tableCellHighlight : classes.tableCell
             return (
-              <TableRow key={i} className={classes.tableRow}>
+              <TableRow key={index} className={classes.tableRow}>
                 <TableCell component="th" scope="row" colSpan={colSpan}
-                className={className}
-                style={{paddingLeft: isGroup ? '2px' : '10px'}}
-                dangerouslySetInnerHTML={{__html:item}} />
+                className={innerCellClass}
+                style={{paddingLeft: isGroup ? '2px' : '10px', border: 0}}
+                dangerouslySetInnerHTML={{__html:formattedText}} />
               </TableRow>
             )
           })}
@@ -120,17 +119,106 @@ class TableBox extends React.Component<IProps, IState> {
     }
   }
 
-  render() {
-    const {classes, compare, health} = this.props
+  renderGroupRow(row: Row, rowIndex: number) {
+    const {classes} = this.props
+    const components : any[] = []
+    components.push(
+      <TableRow key={rowIndex+".pre"} className={classes.tableGroupRow}>
+      </TableRow>
+    )
+    components.push(
+      <TableRow key={rowIndex+".group"} 
+                className={row.isGroup ? classes.tableGroupRow : classes.tableSubgroupRow}
+      >
+        <TextCell index={0} 
+                cell={row.cells[0]}
+                colSpan={row.columnCount}
+                isGroup={true}
+                outputManager={this.outputManager}
+        />
+      </TableRow>
+    )
+    return components
+  }
 
-    if(!this.outputManager.hasFilteredContent) {
+  renderRow(row: Row, rowIndex: number) {
+    const {classes, compare, health} = this.props
+    let highlight = compare ? row.lastTwoColumnsDiffer : false
+    const healthColumnIndex = this.outputManager.healthColumnIndex
+    return (
+      <TableRow key={rowIndex} 
+          className={classes.tableRow} >
+      {row.cells.map((cell, ci) => {
+        if(cell.isArray) {
+          return (
+            <GridCell key={"GridCell"+ci} 
+                      index={ci} 
+                      cell={cell}
+                      isGroup={row.isGroup}
+                      highlight={ci !== 0 && highlight}
+                      isHealthField={!row.isGroupOrSubgroup && health && ci === healthColumnIndex} 
+                      outputManager={this.outputManager}
+                      />
+          )
+        } else {
+          return (
+            <TextCell key={"TextCell"+ci} 
+                      index={ci} 
+                      cell={cell}
+                      colSpan={1}
+                      isGroup={row.isGroup}
+                      isHealthField={!row.isGroupOrSubgroup && health && ci === healthColumnIndex} 
+                      highlight={ci !== 0 && highlight} 
+                      outputManager={this.outputManager}
+                      />
+          )
+        }
+      })}
+      </TableRow>
+    )
+  }
+
+  renderHeaderRow() {
+    const {classes} = this.props
+    const headers = this.outputManager.headers
+    return (
+      <TableRow className={classes.tableHeaderRow}>
+        {headers.map((header, ri) => {
+          if(header instanceof Array){
+            return(
+            <TableCell key={ri}>
+              <Typography className={classes.tableHeaderText}>
+              {header.map((text,hi) =>
+                <span key={hi} style={{display: 'block'}}>
+                  {text}
+                </span>
+              )}
+              </Typography>
+            </TableCell>
+            )
+          } else {
+            return(
+            <TableCell key={ri}>
+              <Typography className={classes.tableHeaderText}>
+                {header}
+              </Typography>
+            </TableCell>
+            )
+          }
+        })
+        }
+      </TableRow>
+    )
+  }
+
+  render() {
+    const {classes} = this.props
+
+    if(!this.outputManager.hasContent) {
       return <div/>
     }
 
-    const headers = this.outputManager.getHeaders()
-    const rows = this.outputManager.rows
-    const healthColumnIndex = this.outputManager.getHealthColumnIndex()
-    let tableHasSubgroups = false
+    const rows = this.outputManager.filteredRows
     
     return (
       <Paper className={classes.root}>
@@ -141,88 +229,15 @@ class TableBox extends React.Component<IProps, IState> {
         />
         <Table className={classes.table}>
           <TableHead>
-            <TableRow className={classes.tableHeaderRow}>
-              {headers.map((header, ri) => {
-                if(header instanceof Array){
-                  return(
-                  <TableCell key={ri}>
-                    <Typography className={classes.tableHeaderText}>
-                    {header.map((text,hi) =>
-                      <span key={hi} style={{display: 'block'}}>
-                        {text}
-                      </span>
-                    )}
-                    </Typography>
-                  </TableCell>
-                  )
-                } else {
-                  return(
-                  <TableCell key={ri}>
-                    <Typography className={classes.tableHeaderText}>
-                      {header}
-                    </Typography>
-                  </TableCell>
-                  )
-                }
-              })
-              }
-            </TableRow>
+            {this.renderHeaderRow()}
           </TableHead>
           <TableBody>
             {rows.map((row, index) => {
-              let highlight = compare ? row.diffLastTwoFields() : false
-              const components : any[] = []
-              tableHasSubgroups = tableHasSubgroups || row.isSubGroup
-
               if(row.isGroupOrSubgroup) {
-                components.push(
-                  <TableRow key={index+".pre"} className={classes.tableGroupRow}>
-                  </TableRow>
-                )
-                const field = row.content[0]
-                const text = field === "---" ? "" : 
-                                row.isSubGroup ? field.slice(1) : field
-                components.push(
-                  <TableRow key={index+".group"} 
-                            className={row.isGroup ? classes.tableGroupRow : classes.tableSubgroupRow}
-                  >
-                    <TextCell index={0} content={text}
-                            colSpan={row.content.length}
-                            isGroup={true}
-                            outputManager={this.outputManager}
-                    />
-                  </TableRow>
-                )
+                return this.renderGroupRow(row, index)
               } else {
-                components.push(
-                  <TableRow key={index} 
-                      className={classes.tableRow} >
-                  {row.content.map((field, ci) => {
-                    if(field instanceof Array) {
-                      return (
-                        <GridCell key={"GridCell"+ci} index={ci} content={field}
-                                  isGroup={row.isGroup}
-                                  highlight={highlight}
-                                  isHealthField={!row.isGroupOrSubgroup && health && ci === healthColumnIndex} 
-                                  outputManager={this.outputManager}
-                                  />
-                      )
-                    } else {
-                      return (
-                        <TextCell key={"TextCell"+ci} index={ci} content={field}
-                                  colSpan={1}
-                                  isGroup={row.isGroup}
-                                  isHealthField={!row.isGroupOrSubgroup && health && ci === healthColumnIndex} 
-                                  highlight={highlight} 
-                                  outputManager={this.outputManager}
-                                  />
-                      )
-                    }
-                  })}
-                  </TableRow>
-                )
+                return this.renderRow(row, index)
               }
-              return components
             })}
           </TableBody>
         </Table>

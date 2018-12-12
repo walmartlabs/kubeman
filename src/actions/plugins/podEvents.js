@@ -1,5 +1,5 @@
 "use strict";
-const CommonFunctions = require('../../k8s/commonFunctions')
+const k8sFunctions = require('../../k8s/k8sFunctions')
 
 function generatePodEventsOutput(podsMap) {
   const output = []
@@ -62,7 +62,7 @@ module.exports = {
             for(const p in podNames) {
               const pod = podNames[p]
               podsMap[cluster.name][namespace.name][pod] = 
-                  await CommonFunctions.getPodEvents(namespace.name, pod, k8sClients[c])
+                  await k8sFunctions.getPodEvents(namespace.name, pod, k8sClients[c])
               const output = generatePodEventsOutput(podsMap)
               actionContext.onOutput(output, "Health")
             }

@@ -1,5 +1,5 @@
 "use strict";
-const CommonFunctions = require('../../k8s/commonFunctions')
+const k8sFunctions = require('../../k8s/k8sFunctions')
 
 module.exports = {
   context: "Namespace",
@@ -24,7 +24,7 @@ module.exports = {
           const k8sClient = clusters.map((c,i) => c.name === nsCluster ? i : -1)
                                     .filter(i => i >= 0).map(i => k8sClients[i])[0]
           
-          const secrets = await CommonFunctions.getNamespaceSecrets(namespace.name, k8sClient)
+          const secrets = await k8sFunctions.getNamespaceSecrets(namespace.name, k8sClient)
           secrets.forEach(secret => {
             secret.name = secret.name.slice(0, secret.name.lastIndexOf('-'))
             if(!secretsMap[namespace.name][secret.name]) {

@@ -22,11 +22,13 @@ function applyHighlight(text: string, filters: string[]) : [string, boolean] {
   let cellChanged = false
   filters.forEach(filter => {
     let index = 0
-    while((index = lowerText.indexOf(filter, index)) >= 0) {
-      for(let i = index; i < index + filter.length; i++ ) {
-        matchPositions.add(i)
+    if(filter.length > 0) {
+      while((index = lowerText.indexOf(filter, index)) >= 0) {
+        for(let i = index; i < index + filter.length; i++ ) {
+          matchPositions.add(i)
+        }
+        index += filter.length
       }
-      index += filter.length
     }
   })
   const positions = Array.from(matchPositions.values()).sort((a,b) => a-b)
@@ -61,93 +63,228 @@ function applyHighlight(text: string, filters: string[]) : [string, boolean] {
   return [sb.toString(), cellChanged]
 }
 
-export class Row {
-  _content: any[] = []
-  firstField: any
-  lastField: any
-  secondLastField: any
-  group: boolean = false
-  subgroup: boolean = false
+export interface ContentRenderer {
+  render(text: string)
+}
 
-  constructor(content: any[]) {
-    this._content = content
-    this.firstField = content.length > 0 ? content[0] : undefined
-    this.lastField = content.length > 0 ? content[content.length-1] : undefined
-    this.secondLastField = content.length > 1 ? content[content.length-2] : undefined
-    this.subgroup = this.firstField && typeof this.firstField === 'string' && this.firstField.startsWith(">")
-    this.group = !this.subgroup && this.content.includes("---") || false
-    //this.subgroup && (this.content[0] = this.content[0].substring(1))
-  }
+export type CellContent = string|[]|Object
 
-  diffLastTwoFields() {
-    if(this.secondLastField) {
-      return this.secondLastField.localeCompare(this.lastField) !== 0
-    } else {
-      return false
+export class Cell {
+  _content: CellContent
+  _stringContent: string
+  _isArray: boolean
+  _isJSON: boolean
+  _isText: boolean
+  lowercaseContent: string
+  
+  constructor(content: CellContent) {
+    this._isText = typeof content === 'string'
+    this._isArray = content instanceof Array
+    this._isJSON = typeof content === 'object' || 
+          (typeof content === 'string' && content.startsWith("{") && content.endsWith("}"))
+    if(this._isArray) {
+      content = (content as any[]).map(item => 
+        item ? typeof item === 'string' ? item : JSON.stringify(item, null, 2) : "")
     }
+    this._content = content
+    this._stringContent = content ?
+        this._isText ? content as string :
+        (this._isArray || this._isJSON) ? JSON.stringify(content, null, 2) 
+        : content.toString()
+        : ""
+    this.lowercaseContent = this._stringContent.toLowerCase()
   }
 
-  get isGroupOrSubgroup() {
-    return this.group || this.subgroup
+  get isText() {
+    return this._isText
   }
 
-  get isGroup() {
-    return this.group && !this.subgroup
+  get isArray() {
+    return this._isArray
+  }
+
+  get isJSON() {
+    return this._isJSON
   }
 
   get isSubGroup() {
-    return this.subgroup && !this.group
+    return this._isText && this._stringContent.startsWith(">")
   }
 
   get content() {
     return this._content
   }
 
-  filter(filters: string[]) : boolean {
-    if(this.isGroup) {
-      return true
+  get text() {
+    return this._stringContent
+  }
+
+  get groupText() {
+    let groupTitle = this._isText && this._stringContent !== "---" ? this._stringContent : ""
+    if(this.isSubGroup) {
+      groupTitle = groupTitle.slice(1)
+    }
+    return groupTitle
+  }
+
+  map(mapper: (formattedText: string, text: string, index: number) => any) : any[] {
+    if(this._isArray) {
+      return (this._content as any[]).map((item, i) => {
+        const isJSON = item.startsWith("{") && item.endsWith("}")
+        let formattedText = isJSON ? "<pre>" + item + "</pre>" : item
+        return mapper(formattedText, item, i)
+      })
+    }
+    return []
+  }
+
+  match(filters: string[]) : string[] {
+    const matchingFilters : string[] = []
+    filters.map(filter => {
+      if(this.lowercaseContent.includes(filter)) {
+        matchingFilters.push(filter)
+      }
+    })
+    return matchingFilters
+  }
+
+  highlight(filters: string[]) : [CellContent, boolean] {
+    if(this._isText) {
+      return applyHighlight(this._content as string, filters)
+    } else if(this._isArray) {
+      const changedCellData : Array<[string, boolean]> = []
+      let cellChanged = false
+      const arrayContent = this._content as []
+      arrayContent.forEach((text,i) => {
+        changedCellData[i] = applyHighlight(text, filters)
+        cellChanged = cellChanged || changedCellData[i][1]
+      })
+      if(cellChanged) {
+        let newCellContent : string[] = []
+        changedCellData.forEach((data, i) => newCellContent.push(data[0]))
+        return [newCellContent, true]
+      }
+    } else if(this._isJSON) {
+      const changedCellData = {}
+      let cellChanged = false
+      Object.keys(this._content)
+      .forEach(key => {
+        const value = this._content[key]
+        const highlightedKey = applyHighlight(key, filters)
+        const highlightedValue = applyHighlight(value, filters)
+        changedCellData[highlightedKey[0]] = highlightedValue[0]
+        cellChanged = cellChanged || highlightedKey[1] || highlightedValue[1]
+      })
+      if(cellChanged) {
+        return [changedCellData, true]
+      }
+    }
+    return [this._content, false]
+  }
+
+  compareWith(otherCell: Cell) {
+    return this._stringContent.localeCompare(otherCell._stringContent)
+  }
+
+  matches(otherCell: Cell) {
+    return this._stringContent.localeCompare(otherCell._stringContent) === 0
+  }
+
+  render(renderer: ContentRenderer) {
+    if(this._isArray) {
+      (this._content as []).map(renderer.render)
+    } else if(this._isJSON) {
+      renderer.render("<pre>" + JSON.stringify(this._content, null, 2) + "</pre>")
     } else {
-      return filters.map(filter =>
-        this._content.map(item => 
-          typeof item === 'string' ? item.toLowerCase().includes(filter)
-          : item instanceof Array ? item.filter(text => text.toLowerCase().includes(filter)).length > 0
-          : false
-        ).reduce((r1,r2) => r1 || r2, false)
-      ).reduce((r1,r2) => r1 && r2, true)
+      renderer.render(this._stringContent)
+    }
+  }
+}
+
+export class Row {
+  _index: number
+  _cells: Cell[]
+  _firstColumn?: Cell
+  _lastColumn?: Cell
+  _secondLastColumn?: Cell
+  _isGroup: boolean = false
+  _isSubgroup: boolean = false
+  appliedFilters: string[] = []
+
+  constructor(index: number, content: any[]) {
+    this._index = index
+    this._cells = content.map(item => new Cell(item))
+    this._firstColumn = this._cells.length > 0 ? this._cells[0] : undefined
+    this._lastColumn = this._cells.length > 0 ? this._cells[this._cells.length-1] : undefined
+    this._secondLastColumn = this._cells.length > 1 ? this._cells[this._cells.length-2] : undefined
+    this._isSubgroup = this._firstColumn ? this._firstColumn.isSubGroup : false
+    this._isGroup = !this._isSubgroup && content.includes("---") || false
+    //this.subgroup && (this.content[0] = this.content[0].substring(1))
+  }
+
+  get lastTwoColumnsDiffer() : boolean {
+    if(this._secondLastColumn && this._lastColumn) {
+      return !this._secondLastColumn.matches(this._lastColumn)
+    } else {
+      return false
     }
   }
 
-  highlight(filters: string[]) : [Row, boolean] {
-    const newRowData : Array<[any, boolean]> = []
-    let rowChanged = false
-    this._content.forEach((cell, i) => {
-      let cellChanged = false
-      if(typeof cell === 'string') {
-        newRowData[i] = applyHighlight(cell, filters)
-        rowChanged = rowChanged || newRowData[i][1]
-      } else if(cell instanceof Array) {
-        const newCellData : Array<[string, boolean]> = []
-        let cellChanged = false
-        cell.forEach((text,j) => {
-          newCellData[j] = applyHighlight(text, filters)
-          cellChanged = cellChanged || newCellData[j][1]
-        })
-        if(cellChanged) {
-          cell = _.cloneDeep(cell)
-          newCellData.forEach((data, j) => cell[j] = data[0])
-          rowChanged = true
+  get isGroupOrSubgroup() : boolean {
+    return this._isGroup || this._isSubgroup
+  }
+
+  get isGroup() : boolean {
+    return this._isGroup && !this._isSubgroup
+  }
+
+  get isSubGroup() : boolean {
+    return this._isSubgroup && !this._isGroup
+  }
+
+  get groupText() : string {
+    return this._firstColumn ? this._firstColumn.groupText : ""
+  }
+
+  get cells() {
+    return this._cells
+  }
+
+  get columnCount() {
+    return this._cells.length
+  }
+
+  filter(filterGroups: string[][]) : boolean {
+    if(this.isGroup) {
+      return true
+    } else {
+      this.appliedFilters = []
+      let anyMatched = false, allMatched = false
+      filterGroups.forEach(filters => {
+        const matchedFilters : Set<String> = new Set
+        this._cells.map(cell => cell.match(filters)).forEach(matchingFilters => 
+                        matchingFilters.forEach(filter => matchedFilters.add(filter)))
+        const rowMatched = matchedFilters.size === filters.length
+        if(rowMatched) {
+          this.appliedFilters = this.appliedFilters.concat(filters)
         }
-        newRowData[i] = [cell, cellChanged]
-      }
+        anyMatched = anyMatched || rowMatched
+      })
+      return anyMatched
+    }
+  }
+
+  highlightFilters() : [Row, boolean] {
+    const newCellContent : CellContent[] = []
+    let rowChanged = false
+    const filters = this.appliedFilters.filter(filter => filter.length > 0)
+    this._cells.forEach((cell, i) => {
+      const newCellData = cell.highlight(filters)
+      newCellContent.push(newCellData[0])
+      rowChanged = rowChanged || newCellData[1]
     })
     if(rowChanged) {
-      const newContent = _.cloneDeep(this._content)
-      newRowData.forEach((data, i) => {
-        if(data[1]) {
-          newContent[i] = data[0]
-        }
-      })
-      return [new Row(newContent), true]
+      return [new Row(this._index, newCellContent), true]
     } else {
       return [this, false]
     }
@@ -156,55 +293,63 @@ export class Row {
 
 export default class OutputManager {
   output: ActionOutput = []
-  headers: any[] = []
+  _headers: any[] = []
   _rows: Row[] = []
-  filteredRows: Row[] = []
-  appliedFilters: string[] = []
-  healthColumnIndex: number = -1
+  _filteredRows: Row[] = []
+  _healthColumnIndex: number = -1
+  appliedFilters: string[][] = []
 
   setOutput(output: ActionOutput) {
     this.output = output
-    this.headers = output && output.length > 0 ? output.slice(0, 1)[0] : []
-    this.filteredRows = this._rows = this.output && this.output.length > 0 ? 
-                this.output.slice(1).map(row => new Row(row)) : []
+    this._headers = output && output.length > 0 ? output.slice(0, 1)[0] : []
+    this._filteredRows = this._rows = this.output && this.output.length > 0 ? 
+                this.output.slice(1).map((row, index) => new Row(index, row)) : []
     
-    this.healthColumnIndex = this.headers.length > 0 ? this.headers.map(header => 
+    this._healthColumnIndex = this._headers.length > 0 ? this._headers.map(header => 
             header instanceof Array ? header.map(item => item.toLowerCase()) :
             typeof header === 'string' ? header.toLowerCase() : header)
       .map((header,index) => (header.includes("status") || header.includes("health") 
             || header.includes("condition") ? index : -1))
       .reduce((prev, curr) => prev >= 0 ? prev : curr >= 0 ? curr : -1) : -1
-    this.healthColumnIndex = this.healthColumnIndex >= 0 ? this.healthColumnIndex : this.headers.length-1
+    this._healthColumnIndex = this._healthColumnIndex >= 0 ? this._healthColumnIndex : this._headers.length-1
   }
 
   clearFilter() {
     this.appliedFilters = []
-    this.filteredRows = this._rows
+    this._filteredRows = this._rows
+  }
+
+  get hasContent() {
+    return this._rows && this._rows.length > 0
   }
 
   get hasFilteredContent() {
-    return this.filteredRows && this.filteredRows.length > 0
+    return this._filteredRows && this._filteredRows.length > 0
   }
 
   filter = (inputText: string) => {
-    const filters = inputText.toLowerCase()
-                          .split(" ")
-                          .filter(text => text.length > 0)
+    inputText = inputText.toLowerCase()
+    const matchAny = inputText.includes(" or ")
+    const filters : string[][] = 
+                  inputText.toLowerCase().split(" or ")
+                  .filter(group => group.length > 0)
+                  .map(group => group.split(" "))
+                  .filter(word => word.length > 0)
 
     if(filters.length === 0) {
       this.clearFilter()
     } else {
       this.appliedFilters = filters
-      this.filteredRows = this._rows.filter((row,i) => row.filter(filters))
-      this.highlightFilter(filters)
+      this._filteredRows = this._rows.filter((row,i) => row.filter(filters))
+      this.highlightFilter()
     }
   }
 
-  private highlightFilter(filters: string[]) {
-    this.filteredRows.forEach((row,i) => {
-      const [highlightedRow, rowChanged] = row.highlight(filters)
+  private highlightFilter() {
+    this._filteredRows.forEach((row,i) => {
+      const [highlightedRow, rowChanged] = row.highlightFilters()
       if(rowChanged) {
-        this.filteredRows[i] = highlightedRow
+        this._filteredRows[i] = highlightedRow
       }
     })
   }
@@ -218,16 +363,16 @@ export default class OutputManager {
     return unhealthyKeywords.filter(word => text.includes(word)).length > 0
   }
 
-  getHeaders() {
-    return this.headers
+  get headers() {
+    return this._headers
   }
 
-  get rows() {
-    return this.filteredRows
+  get filteredRows() {
+    return this._filteredRows
   }
 
-  getHealthColumnIndex() {
-    return this.healthColumnIndex
+  get healthColumnIndex() {
+    return this._healthColumnIndex
   }
 
 }

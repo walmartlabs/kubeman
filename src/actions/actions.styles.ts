@@ -13,6 +13,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
   expansion: {
     width: '100%',
+    maxWidth: 300,
   },
   expansionHead: {
     fontSize: typography.pxToRem(15),
@@ -22,7 +23,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     display: 'block',
   },
   selectedAction: {
-    backgroundColor: palette.type === 'dark' ? '#805500' : '#b6dcfb',
+    backgroundColor: palette.type === 'dark' ? '#805500' : '#80a8ff',
     fontStyle: 'bold',
     fontWeight: 800,
   },

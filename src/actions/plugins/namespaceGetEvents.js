@@ -1,5 +1,5 @@
 "use strict";
-const CommonFunctions = require('../../k8s/commonFunctions')
+const k8sFunctions = require('../../k8s/k8sFunctions')
 
 module.exports = {
   context: "Namespace",
@@ -24,7 +24,7 @@ module.exports = {
             const namespace = namespaces[j]
             if(namespace.cluster.name === cluster.name) {
               output.push([">Namespace: "+namespace.name, "---"])
-              const events = await CommonFunctions.getNamespaceEvents(namespace.name, k8sClients[i])
+              const events = await k8sFunctions.getNamespaceEvents(namespace.name, k8sClients[i])
               events.forEach(event => output.push([
                 [event.reason, event.lastTimestamp, "(" + event.count + ")"],
                 [

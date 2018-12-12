@@ -1,5 +1,25 @@
-const jpExtract = require('../util/jpExtract')
-module.exports = {
+const jsonUtil = require('../util/jsonUtil')
+
+
+const k8sFunctions = {
+
+  extractMetadata(data) {
+    const prettifyLabels = (meta) => {
+      if(meta.labels) {
+        meta.labels = jsonUtil.convertObjectToArray(meta.labels)
+      }
+    }
+    const metaFields = ["name", "creationTimestamp", "labels"]
+    if(data instanceof Array) {
+      const metas = jsonUtil.extractMulti(data, "$[*].metadata", ...metaFields)
+      metas.forEach(prettifyLabels)
+      return metas
+    } else {
+      const meta = jsonUtil.extract(data, "$.metadata", ...metaFields)
+      prettifyLabels(meta)
+      return meta
+    }
+  },
 
   async getClusterNodes(cluster, k8sClient) {
     const nodes = []
@@ -7,12 +27,11 @@ module.exports = {
     if(result && result.body) {
       const items = result.body.items
       items.forEach(item => {
-        const meta = jpExtract.extract(item, "$.metadata", "name", "creationTimestamp")
-        const spec = jpExtract.extract(item, "$.spec", "podCIDR")
-        const status = jpExtract.extract(item, "$.status", "addresses", "conditions", "nodeInfo")
+        const meta = this.extractMetadata(item)
+        const spec = jsonUtil.extract(item, "$.spec", "podCIDR")
+        const status = jsonUtil.extract(item, "$.status", "addresses", "conditions", "nodeInfo")
         const node = {
-          name: meta.name,
-          creationTimestamp: meta.creationTimestamp,
+          ...meta,
           network: {
             ip: spec.podCIDR,
           },
@@ -37,12 +56,11 @@ module.exports = {
     const result = await k8sClient.namespaces.get()
     if(result && result.body) {
       const items = result.body.items
-      const meta = jpExtract.extractMulti(items, "$[*].metadata", "name", "creationTimestamp")
-      const status = jpExtract.extractMulti(items, "$[*].status", "phase")
+      const meta = this.extractMetadata(items)
+      const status = jsonUtil.extractMulti(items, "$[*].status", "phase")
       meta.forEach((item, index) => {
         namespaceList.push({
-          name: item.name, 
-          creationTimestamp: item.creationTimestamp,
+          ...item,
           status: status[index].phase,
         })
       })
@@ -50,14 +68,45 @@ module.exports = {
     return namespaceList
   },
 
+  async getNamespaceServiceNames(namespace, k8sClient) {
+    const services = []
+    const result = await k8sClient.namespaces(namespace).services.get()
+    if(result && result.body) {
+      const items = result.body.items
+      const meta = this.extractMetadata(items)
+      meta.forEach((item, index) => {
+        services.push(item.name)
+      })
+    }
+    return services
+  },
+
   async getNamespaceServices(namespace, k8sClient) {
     const services = []
     const result = await k8sClient.namespaces(namespace).services.get()
     if(result && result.body) {
       const items = result.body.items
-      const meta = jpExtract.extractMulti(items, "$[*].metadata", "name", "creationTimestamp")
-      meta.forEach((item, index) => {
-        services.push(item.name)
+      const metas = this.extractMetadata(items)
+      const specs = jsonUtil.extract(items, "$[*].spec")
+      const statuses = jsonUtil.extract(items, "$[*].status")
+      specs.forEach((spec, index) => {
+        services.push({
+          ...metas[index],
+          clusterIP: spec.clusterIP,
+          externalIPs: spec.externalIPs,
+          externalName: spec.externalName,
+          externalTrafficPolicy: spec.externalTrafficPolicy,
+          healthCheckNodePort: spec.healthCheckNodePort,
+          loadBalancerIP: spec.loadBalancerIP,
+          loadBalancerSourceRanges: spec.loadBalancerSourceRanges,
+          ports: spec.ports,
+          publishNotReadyAddresses: spec.publishNotReadyAddresses,
+          selector: jsonUtil.convertObjectToArray(spec.selector),
+          sessionAffinity: spec.sessionAffinity,
+          sessionAffinityConfig: spec.sessionAffinityConfig,
+          type: spec.type,
+          loadBalancer: statuses.loadBalancer,
+        })
       })
     }
     return services
@@ -67,7 +116,7 @@ module.exports = {
     const namespaces = await this.getClusterNamespaces(cluster, k8sClient)
     const services = {}
     for(const i in namespaces) {
-      services[namespaces[i].name] = await this.getNamespaceServices(namespaces[i].name, k8sClient)
+      services[namespaces[i].name] = await this.getNamespaceServiceNames(namespaces[i].name, k8sClient)
     }
     return services
   },
@@ -85,7 +134,7 @@ module.exports = {
         for(const j in namespaces) {
           if(namespaces[j].cluster.name === cluster) {
             const namespace = namespaces[j].name
-            services[cluster][namespace] = await this.getNamespaceServices(namespace, k8sClient)
+            services[cluster][namespace] = await this.getNamespaceServiceNames(namespace, k8sClient)
           }
         }
       }
@@ -98,7 +147,7 @@ module.exports = {
     const result = await k8sClient.namespaces(namespace).deployments.get()
     if(result && result.body) {
       const items = result.body.items
-      const meta = jpExtract.extractMulti(items, "$[*].metadata", "name", "creationTimestamp")
+      const meta = this.extractMetadata(items)
       meta.forEach((item, index) => {
         deployments.push(item.name)
       })
@@ -141,13 +190,16 @@ module.exports = {
     const result = await k8sClient.namespaces(namespace).secrets.get()
     if(result && result.body) {
       const items = result.body.items
-      const meta = jpExtract.extractMulti(items, "$[*].metadata", "name", "creationTimestamp")
-      meta.forEach((item, index) => {
-        secrets.push({
-          name: item.name.slice(0, item.name.lastIndexOf('-')),
-          creationTimestamp: item.creationTimestamp,
-          type: items[index].type,
-        })
+      const metas = this.extractMetadata(items)
+      items.forEach((item, index) => {
+        const secret = {
+          ...metas[index],
+          type: item.type,
+          kind: item.kind,
+          stringData: item.stringData,
+        }
+        secret.name = secret.name.slice(0, secret.name.lastIndexOf('-'))
+        secrets.push(secret)
       })
     }
     return secrets
@@ -172,7 +224,7 @@ module.exports = {
     if(result && result.body) {
       const items = result.body.items
       if(items.length > 0) {
-        const eventsData = jpExtract.extractMulti(items, "$[*]", "type", "source", "reason", "message", "count", "lastTimestamp")
+        const eventsData = jsonUtil.extractMulti(items, "$[*]", "type", "source", "reason", "message", "count", "lastTimestamp")
         eventsData.forEach(event => {
           events.push({
             reason: event.reason,
@@ -217,5 +269,9 @@ module.exports = {
       }
     }))
   },
-  
 }
+k8sFunctions.extractMetadata = k8sFunctions.extractMetadata.bind(k8sFunctions)
+k8sFunctions.getNamespaceSecrets = k8sFunctions.getNamespaceSecrets.bind(k8sFunctions)
+k8sFunctions.getNamespaceServices = k8sFunctions.getNamespaceServices.bind(k8sFunctions)
+
+module.exports = k8sFunctions

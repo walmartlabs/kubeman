@@ -1,5 +1,5 @@
 "use strict";
-const CommonFunctions = require('../../k8s/commonFunctions')
+const k8sFunctions = require('../../k8s/k8sFunctions')
 const generateServiceComparisonOutput = require('./namespaceCompareServices').generateServiceComparisonOutput
 
 module.exports = {
@@ -17,7 +17,7 @@ module.exports = {
           return
         }
 
-        const clusterServices = await CommonFunctions.getServicesGroupedByClusterNamespace(clusters, null, k8sClients)
+        const clusterServices = await k8sFunctions.getServicesGroupedByClusterNamespace(clusters, null, k8sClients)
         const namespaces = []
         Object.keys(clusterServices).map(cluster => Object.keys(clusterServices[cluster]))
         .forEach(cnamespaces => cnamespaces.forEach(namespace => 
