@@ -81,7 +81,7 @@ const k8sFunctions = {
     return services
   },
 
-  async getNamespaceServices(namespace, k8sClient) {
+  async getNamespaceServices(cluster, namespace, k8sClient) {
     const services = []
     const result = await k8sClient.namespaces(namespace).services.get()
     if(result && result.body) {
@@ -185,7 +185,7 @@ const k8sFunctions = {
     return deployments
   },
 
-  async getNamespaceSecrets(namespace, k8sClient) {
+  async getNamespaceSecrets(cluster, namespace, k8sClient) {
     const secrets = []
     const result = await k8sClient.namespaces(namespace).secrets.get()
     if(result && result.body) {
@@ -214,9 +214,55 @@ const k8sFunctions = {
     return pods
   },
 
-  async getPodDetails(namespace, pod, k8sClient) {
-    const podDetails = await k8sClient.namespace(namespace).pods(pod).get()
-    return podDetails ? podDetails.body : undefined
+  async getPodDetails(namespace, podName, k8sClient) {
+    const result = await k8sClient.namespace(namespace).pods(podName).get()
+    const podDetails = {}
+    if(result && result.body) {
+
+    }
+    return podDetails
+  },
+
+  async getPodsDetails(namespace, podNames, k8sClient) {
+    const pods = []
+    for(const p in podNames) {
+      let result = await k8sClient.namespace(namespace).pods(podNames[p]).get()
+      if(result && result.body) {
+        const pod = result.body
+        const meta = k8sFunctions.extractMetadata(pod)
+        const initContainers = jsonUtil.extract(pod, "$.spec.initContainers", 
+                              "name", "image", "securityContext")
+        const containers = jsonUtil.extractMulti(pod, "$.spec.containers[*]", 
+                              "name", "image", "imagePullPolicy", "ports", "resources", 
+                              "volumeMounts", "securityContext")
+        const conditions = jsonUtil.extractMulti(pod, "$.status.conditions[*]",
+                                "type", "status", "message")
+                            .map(jsonUtil.convertObjectToString)
+        const containerStatuses = jsonUtil.extractMulti(pod, "$.status.containerStatuses[*]", "name", "state")
+                                    .map(jsonUtil.convertObjectToString)
+      
+        const podDetails = {
+          ...meta,
+          containers: containers,
+          initContainers: initContainers,
+          affinity: pod.spec.affinity,
+          dnsConfig: pod.spec.dnsConfig,
+          dnsPolicy: pod.spec.dnsPolicy,
+          hostname: pod.spec.hostname,
+          nodeSelector: pod.spec.nodeSelector,
+          priority: pod.spec.priority,
+          priorityClassName: pod.spec.priorityClassName,
+          readinessGates: pod.spec.readinessGates,
+          restartPolicy: pod.spec.restartPolicy,
+          securityContext: pod.spec.securityContext,
+          subdomain: pod.spec.subdomain,
+          conditions,
+          containerStatuses,
+        }
+        pods.push(podDetails)
+      }
+    }
+    return pods
   },
 
   processEventsData(result) {

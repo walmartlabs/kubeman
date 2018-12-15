@@ -4,6 +4,9 @@ import {indigo, blue, red, pink, purple} from '@material-ui/core/colors'
 const borderLight = '1px solid #c8c8ea'
 const borderDark = '1px solid rgba(255, 255, 255, 0.12)'
 
+const columnSeparatorLight = '1px dotted #3141b4'
+const columnSeparatorDark = '1px dotted #4b6082'
+
 const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   root: {
     width: '100%',
@@ -56,6 +59,9 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     padding: '0px',
     borderBottom: palette.type ==='dark' ? borderDark : borderLight,
   },
+  tableCellCompare: {
+    borderRight: palette.type ==='dark' ? columnSeparatorDark : columnSeparatorLight,
+  },
   pre: {
     fontSize: '1.1rem',
     display: 'inline-block',
@@ -64,9 +70,18 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   tableKeyCell: {
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#bcccdc',
   },
+  tableKeyCellHighlight: {
+    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#bcccdc',
+    '&:after': {
+      content: "'*'",
+      color: 'red'
+    },
+  },
   tableCellHighlight: {
     padding: '0px',
-    backgroundColor: palette.type ==='dark' ? "#6c6313" : "#FFFDE7",
+    borderBottom: palette.type ==='dark' ? borderDark : borderLight,
+    borderLeft: '1px solid red',
+    //backgroundColor: palette.type ==='dark' ? "#6c6313" : "#FFFDE7",
   },
   tableCellHealthGood: {
     padding: '0px',

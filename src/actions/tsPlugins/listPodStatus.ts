@@ -1,4 +1,4 @@
-import jpExtract from '../../util/jpExtract'
+import jpExtract from '../../util/jsonUtil'
 import { ActionOutput } from "../actionSpec";
 import ActionContext from '../actionContext'
 
@@ -29,7 +29,8 @@ module.exports = {
                     output.push([
                       "Pod: " + pod.name,
                       "Container: " + result.name,
-                      "Status: " + JSON.stringify(result.state)])
+                      "Status: " + result.state
+                    ])
                   })
                 }
               })

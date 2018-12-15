@@ -175,6 +175,9 @@ class ActionsTheme {
             backgroundColor: useDarkTheme ? '#404fa5'  : '#daddf1',
             //borderBottom: '1px solid #9c9c9c',
             boxShadow: useDarkTheme ? '0px 1px 2px 0px rgba(255, 255, 255, 0.8)' : '0px 1px 2px 0px rgba(0, 0, 255, 0.8)',
+            '&:hover':{
+              color: 'black'
+            },
           }
         },
       }

@@ -26,17 +26,17 @@ module.exports = {
               output.push([">Namespace: "+namespace.name, "---"])
               const events = await k8sFunctions.getNamespaceEvents(namespace.name, k8sClients[i])
               events.forEach(event => output.push([
-                [event.reason, event.lastTimestamp, "(" + event.count + ")"],
-                [
+                [event.reason, event.lastTimestamp, event.count ? "(" + event.count + ")" : ""],
+                event.type ? [
                   "type: " + event.type,
                   "source: " + event.source,
                   "message: " + event.message,
-                ],
+                ] : [],
               ]))
             }
           }
         }
-        actionContext.onOutput(output, 'Health')
+        actionContext.onOutput(output, 'Table')
       },
     },
   ]

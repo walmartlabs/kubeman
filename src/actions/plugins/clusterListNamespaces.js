@@ -22,7 +22,7 @@ module.exports = {
           const namespaces = await k8sFunctions.getClusterNamespaces(cluster, k8sClients[i])
           namespaces.forEach(ns => output.push([ns.name, ns.creationTimestamp, ns.status]))
         }
-        actionContext.onOutput(output, 'Health')
+        actionContext.onOutput(output, 'Table')
       }
     },
   ]

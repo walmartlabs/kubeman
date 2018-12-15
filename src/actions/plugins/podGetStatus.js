@@ -69,7 +69,7 @@ module.exports = {
               nsPods.forEach(pod => pod && podsMap[cluster.name][namespace.name].push(pod))
             }
             const output = generatePodStatusOutput(podsMap)
-            actionContext.onOutput(output, "Health")
+            actionContext.onOutput(output, "Table")
           }
         }
       }

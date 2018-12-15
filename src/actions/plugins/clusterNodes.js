@@ -31,7 +31,7 @@ module.exports = {
                   " (" + node.condition[key].message + ")"),
           ]))
         }
-        actionContext.onOutput(output, 'Health')
+        actionContext.onOutput(output, 'Table')
       },
     },
   ]

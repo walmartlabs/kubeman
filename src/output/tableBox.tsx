@@ -1,4 +1,4 @@
-import React, { ChangeEvent } from "react";
+import React, { ChangeEvent } from "react"
 
 import { withStyles, WithStyles } from '@material-ui/core/styles'
 import { Table, TableHead, TableBody, TableRow, TableCell } from "@material-ui/core";
@@ -9,60 +9,58 @@ import OutputManager, {Row, Cell} from './outputManager'
 import styles from './tableBox.styles'
 import './tableBox.css'
 
+
 interface ITableCellProps extends WithStyles<typeof styles> {
   index: number,
   cell: Cell,
+  highlight: boolean,
+  compare: boolean,
   colSpan?: number,
-  highlight?: boolean,
-  isHealthField?: boolean,
-  outputManager: OutputManager,
-  isGroup: boolean,
 }
 
-const getHealthClass = (content, outputManager, classes) : string => {
-  const health = content ? content.toLowerCase() : ""
-  const healthGood = outputManager.isHealthy(health)
-  const healthBad = outputManager.isUnhealthy(health)
-  return healthGood ? classes.tableCellHealthGood : 
-                    healthBad ? classes.tableCellHealthBad : classes.tableCell
-
+function computeCellClass(cell: Cell, highlight: boolean, compare: boolean, classes: any) : string {
+  let className = classes.tableCell
+  if(!cell.isGroup && !cell.isSubGroup ) {
+    if(highlight) {
+      className = cell.isFirstColumn ? classes.tableKeyCellHighlight : classes.tableCellHighlight 
+    } else if(cell.isFirstColumn) {
+      className = classes.tableKeyCell
+    } else if(!compare && cell.isHealthStatusField) {
+      className = cell.isHealthy ? classes.tableCellHealthGood : 
+                      cell.isUnhealthy ? classes.tableCellHealthBad : classes.tableCell
+    } 
+    compare && (className = className + " " + classes.tableCellCompare)
+  }
+  return className
 }
 
-const TextCell = withStyles(styles)(({index, cell, colSpan, highlight, classes, isGroup, isHealthField, outputManager}: ITableCellProps) => {
-  let text = isGroup ? cell.groupText : cell.text
-  const className = isHealthField ? getHealthClass(cell.text, outputManager, classes)
-                    : highlight ? classes.tableCellHighlight 
-                    : index === 0 && !isGroup ? classes.tableKeyCell : classes.tableCell
-  cell.isJSON && (text = "<pre>" + text + "</pre>")
-  return (
+const TextCell = withStyles(styles)(({index, cell, colSpan, highlight, compare, classes}: ITableCellProps) => {
+  const className = computeCellClass(cell, highlight, compare, classes)
+  
+  return cell.render((formattedText) =>
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
               className={className}
-              style={{paddingLeft: isGroup ? '2px' : '10px'}}
-              dangerouslySetInnerHTML={{__html:text}} />
+              style={{paddingLeft: cell.isGroup ? '2px' : '10px'}}
+              dangerouslySetInnerHTML={{__html:formattedText}} />
   )
 })
 
-const GridCell = withStyles(styles)(({index, cell, colSpan, highlight, classes, isGroup, isHealthField, outputManager}: ITableCellProps) => {
-  const outerCellClass = highlight ? classes.tableCellHighlight : classes.tableCell
+const GridCell = withStyles(styles)(({index, cell, colSpan, highlight, compare, classes}: ITableCellProps) => {
+  let className = computeCellClass(cell, highlight, compare, classes)
   return (
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
-              className={outerCellClass}
-              style={{paddingLeft: isGroup ? '2px' : '10px'}} >
+              className={className}
+              style={{paddingLeft: cell.isGroup ? '2px' : '10px'}} >
       <Table>
         <TableBody>
-          {cell.map((formattedText, text, index) => {
-            const innerCellClass = isHealthField ? getHealthClass(text, outputManager, classes)
-                              : index === 0 ? classes.tableKeyCell : 
-                              highlight? classes.tableCellHighlight : classes.tableCell
-            return (
-              <TableRow key={index} className={classes.tableRow}>
-                <TableCell component="th" scope="row" colSpan={colSpan}
-                className={innerCellClass}
-                style={{paddingLeft: isGroup ? '2px' : '10px', border: 0}}
-                dangerouslySetInnerHTML={{__html:formattedText}} />
-              </TableRow>
-            )
-          })}
+          {cell.render((formattedText, gridIndex) =>
+            <TableRow key={gridIndex} className={classes.tableRow}>
+              <TableCell component="th" scope="row" colSpan={colSpan}
+              className={className}
+              style={{paddingLeft: cell.isGroup ? '2px' : '10px', border: 0}}
+              dangerouslySetInnerHTML={{__html:formattedText}} />
+            </TableRow>
+          )}
         </TableBody>  
       </Table>        
       
@@ -73,7 +71,6 @@ const GridCell = withStyles(styles)(({index, cell, colSpan, highlight, classes, 
 interface IProps extends WithStyles<typeof styles> {
   output: ActionOutput,
   compare?: boolean
-  health?: boolean
 }
 
 interface IState {
@@ -131,10 +128,10 @@ class TableBox extends React.Component<IProps, IState> {
                 className={row.isGroup ? classes.tableGroupRow : classes.tableSubgroupRow}
       >
         <TextCell index={0} 
-                cell={row.cells[0]}
-                colSpan={row.columnCount}
-                isGroup={true}
-                outputManager={this.outputManager}
+                  cell={row.cells[0]}
+                  highlight={false}
+                  compare={false}
+                  colSpan={row.columnCount}
         />
       </TableRow>
     )
@@ -142,9 +139,9 @@ class TableBox extends React.Component<IProps, IState> {
   }
 
   renderRow(row: Row, rowIndex: number) {
-    const {classes, compare, health} = this.props
+    const {classes, compare} = this.props
     let highlight = compare ? row.lastTwoColumnsDiffer : false
-    const healthColumnIndex = this.outputManager.healthColumnIndex
+    
     return (
       <TableRow key={rowIndex} 
           className={classes.tableRow} >
@@ -154,10 +151,8 @@ class TableBox extends React.Component<IProps, IState> {
             <GridCell key={"GridCell"+ci} 
                       index={ci} 
                       cell={cell}
-                      isGroup={row.isGroup}
-                      highlight={ci !== 0 && highlight}
-                      isHealthField={!row.isGroupOrSubgroup && health && ci === healthColumnIndex} 
-                      outputManager={this.outputManager}
+                      highlight={highlight || false}
+                      compare={ci !== 0 && compare || false}
                       />
           )
         } else {
@@ -165,11 +160,9 @@ class TableBox extends React.Component<IProps, IState> {
             <TextCell key={"TextCell"+ci} 
                       index={ci} 
                       cell={cell}
+                      highlight={highlight || false} 
+                      compare={compare || false}
                       colSpan={1}
-                      isGroup={row.isGroup}
-                      isHealthField={!row.isGroupOrSubgroup && health && ci === healthColumnIndex} 
-                      highlight={ci !== 0 && highlight} 
-                      outputManager={this.outputManager}
                       />
           )
         }

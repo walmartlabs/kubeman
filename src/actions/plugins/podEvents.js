@@ -64,7 +64,7 @@ module.exports = {
               podsMap[cluster.name][namespace.name][pod] = 
                   await k8sFunctions.getPodEvents(namespace.name, pod, k8sClients[c])
               const output = generatePodEventsOutput(podsMap)
-              actionContext.onOutput(output, "Health")
+              actionContext.onOutput(output, "Table")
             }
           }
         }

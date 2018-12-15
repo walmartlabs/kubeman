@@ -23,7 +23,6 @@ export enum ActionOutputStyle {
   Text = "Text",
   Table = "Table",
   Compare = "Compare",
-  Health = "Health",
 }
 
 export type ActionOutput = any[][]

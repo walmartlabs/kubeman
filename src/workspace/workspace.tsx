@@ -123,9 +123,8 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
       showChoices, minChoices, maxChoices, choiceTitle, choices } = this.state;
 
     const showBlackBox = outputStyle === ActionOutputStyle.Text
-    const showTableBox = outputStyle === ActionOutputStyle.Table
-    const showComparison = outputStyle === ActionOutputStyle.Compare
-    const showHealthStatusBox = outputStyle === ActionOutputStyle.Health
+    const showTable = outputStyle === ActionOutputStyle.Table
+    const compare = outputStyle === ActionOutputStyle.Compare
 
     return (
       <div className={classes.root} 
@@ -153,8 +152,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
               <TableCell className={classes.outputCell}>
                 {loading && <CircularProgress className={classes.loading} />}
                 {showBlackBox && <BlackBox output={output} />}
-                {(showTableBox || showComparison) && <TableBox output={output} compare={showComparison} />}
-                {showHealthStatusBox && <TableBox health={true} output={output} />}
+                {(showTable || compare) && <TableBox output={output} compare={compare} />}
                 
                 {/* <TerminalBox 
                   ref='terminal' 
