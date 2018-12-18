@@ -1,4 +1,4 @@
-import jsonUtil from '../util/jsonUtil'
+import jsonUtil from '../../src/util/jsonUtil'
 import { ActionOutput } from "../../src/actions/actionSpec";
 import ActionContext from '../../src/actions/actionContext'
 

@@ -1,4 +1,4 @@
-import {DataObject, StringStringArrayMap, ComparisonFunction} from '../util/k8sFunctions'
+import {DataObject, StringStringArrayMap, ComparisonFunction} from '../../src/k8s/k8sFunctions'
 import ActionContext from '../../src/actions/actionContext'
 import {ActionOutput} from '../../src/actions/actionSpec'
 

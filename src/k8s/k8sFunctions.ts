@@ -1,6 +1,6 @@
-import jsonUtil from './jsonUtil'
-import {K8sClient} from '../../src/k8s/k8sClient'
-import {Cluster, Namespace, Pod} from "../../src/k8s/contextObjectTypes";
+import jsonUtil from '../util/jsonUtil'
+import {K8sClient} from './k8sClient'
+import {Cluster, Namespace, Pod} from "./contextObjectTypes";
 import { type } from 'os';
 
 export type DataObject = {[key: string]: any}

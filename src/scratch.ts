@@ -2,7 +2,7 @@ import {Cluster, Namespace, Pod, Item} from "./k8s/contextObjectTypes";
 import Context from "./context/contextStore";
 import * as k8s from './k8s/k8sClient'
 import * as jp from 'jsonpath'
-import jsonUtil from '../static/util/jsonUtil'
+import jsonUtil from './util/jsonUtil'
 
 
 export async function setupRealContext(context: Context) : Promise<Context> {

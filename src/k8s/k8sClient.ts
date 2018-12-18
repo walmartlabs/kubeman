@@ -22,7 +22,11 @@ function getUserKubeConfig() {
 export function getClientForCluster(cluster: Cluster) : K8sClient {
   const kubeConfig = getUserKubeConfig()
   const context = jp.query(kubeConfig, "$.contexts[?(@.context.cluster == '" + cluster.name + "')].name")
-  kubeConfig["current-context"] = context.length > 0 ? context[0] : ''
+  if(context.length > 0) {
+    kubeConfig["current-context"] = context[0]
+  } else {
+    throw new Error("Cannot identify cluster " + cluster.name + " from config.")
+  }
   const config = k8s.config.fromKubeconfig(kubeConfig)
   const k8sV1Client = new k8s.Client1_10({config}).api.v1
   const k8sAppsClient = new k8s.Client1_10({config}).api.apps.v1

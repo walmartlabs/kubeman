@@ -7,7 +7,7 @@ import 'highlight.js/styles/github.css'
 
 import StringBuffer from '../util/stringbuffer'
 import {appTheme} from '../theme/theme'
-import jsonUtil from '../../static/util/jsonUtil'
+import jsonUtil from '../util/jsonUtil'
 
 const healthStatusHeaderKeywords = ["status", "health", "condition"]
 

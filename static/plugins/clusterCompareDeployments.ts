@@ -1,14 +1,13 @@
-import {ActionGroupSpec, ActionContextType, 
-  ActionOutput, ActionOutputStyle, ActionChoiceMaker, } from '../../src/actions/actionSpec'
+import {ActionGroupSpec, ActionContextType, ActionOutputStyle} from '../../src/actions/actionSpec'
 import ActionContext from '../../src/actions/actionContext'
-import k8sFunctions from '../util/k8sFunctions'
+import k8sFunctions from '../../src/k8s/k8sFunctions'
 import {generateDeploymentComparisonOutput} from './namespaceCompareDeployments'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,
   actions: [
     {
-      name: "Compare Deployments",
+      name: "List/Compare Deployments",
       order: 6,
       async act(actionContext: ActionContext) {
         const clusters = actionContext.getClusters()

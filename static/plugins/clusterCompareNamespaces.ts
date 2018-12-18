@@ -1,8 +1,7 @@
-import k8sFunctions from '../util/k8sFunctions'
+import k8sFunctions from '../../src/k8s/k8sFunctions'
 import {K8sClient} from '../../src/k8s/k8sClient'
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
-import ActionContext from '../../src/actions/actionContext'
 
 async function compareClusterNamespaces(cluster1: string, k8sClient1: K8sClient, 
                                         cluster2: string, k8sClient2: K8sClient, 
@@ -24,7 +23,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       order: 3,
-      name: "Compare Namespaces",
+      name: "List/Compare Namespaces",
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         const k8sClients = actionContext.getK8sClients()

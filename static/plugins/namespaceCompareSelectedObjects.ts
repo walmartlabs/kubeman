@@ -1,4 +1,4 @@
-import k8sFunctions from '../util/k8sFunctions'
+import k8sFunctions from '../../src/k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType} from '../../src/actions/actionSpec'
 import K8sComparisonUtil from '../util/k8sComparisonUtil'
 

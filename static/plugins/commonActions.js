@@ -3,8 +3,8 @@ module.exports = {
   actions: [
     {
       name: "Clear",
-      act(onOutput) {
-        onOutput([])
+      act(actionContext) {
+        actionContext.onOutput && actionContext.onOutput([])
       }
     },
   ]

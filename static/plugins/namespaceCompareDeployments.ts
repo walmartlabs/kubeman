@@ -1,4 +1,4 @@
-import k8sFunctions, {StringStringStringBooleanMap} from '../util/k8sFunctions'
+import k8sFunctions, {StringStringStringBooleanMap} from '../../src/k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
 import ActionContext from '../../src/actions/actionContext'

@@ -1,4 +1,4 @@
-import k8sFunctions from '../util/k8sFunctions'
+import k8sFunctions from '../../src/k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
 import {generateServiceComparisonOutput} from './namespaceCompareServices'
@@ -7,7 +7,7 @@ const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,
   actions: [
     {
-      name: "Compare Services",
+      name: "List/Compare Services",
       order: 5,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
