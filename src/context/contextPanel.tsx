@@ -30,7 +30,6 @@ class ContextPanel extends React.Component<IProps, IState> {
   }
 
   componentDidMount() {
-    scratch.setupRealContext(this.props.context).then(context => {this.setState({context}); this.props.onUpdateContext(context)})
     this.componentWillReceiveProps(this.props)
   }
 

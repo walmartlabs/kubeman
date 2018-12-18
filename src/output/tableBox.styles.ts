@@ -40,9 +40,8 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     padding: 0,
     height: 24,
     backgroundBlendMode: 'multiply',
-    background: palette.type ==='dark' ? 
-              'linear-gradient(45deg, #0e2fd8 20%, #0b25a8 99%)' :
-              'linear-gradient(45deg, #90CAF9 20%, #2962FF 99%)',
+    color: '#ffffff !important',
+    background: 'linear-gradient(45deg, #0e2fd8 80%, #0b25a8 99%)',
   },
   tableSubgroupRow: {
     padding: 0,
@@ -57,6 +56,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
   tableCell: {
     padding: '0px',
+    color: 'inherit',
     borderBottom: palette.type ==='dark' ? borderDark : borderLight,
   },
   tableCellCompare: {
@@ -69,6 +69,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
   tableKeyCell: {
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#bcccdc',
+    width: '22%',
   },
   tableKeyCellHighlight: {
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#bcccdc',
@@ -90,7 +91,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
   tableCellHealthBad: {
     padding: '0px',
-    backgroundColor: palette.type ==='dark' ? '#AD1457' : '#EC407A',
+    backgroundColor: palette.type ==='dark' ? '#805500' : '#ff8000',
     borderBottom: palette.type ==='dark' ? borderDark : borderLight,
   },
   searchHighlight: {

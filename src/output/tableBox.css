@@ -8,10 +8,10 @@ pre {
   word-break: break-all;
 }
 .json-key {
-  color: brown;
+  color: rgb(184, 61, 61);
 }
 .json-value {
-  color: navy;
+  color: rgba(15, 15, 150, 0.7);
 }
 .json-boolean {
   color: teal;

@@ -1,8 +1,9 @@
-"use strict";
-const k8sFunctions = require('../../k8s/k8sFunctions')
+import k8sFunctions from '../util/k8sFunctions'
+import {ActionGroupSpec, ActionContextType, 
+        ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
 
-module.exports = {
-  context: "Cluster",
+const plugin : ActionGroupSpec = {
+  context: ActionContextType.Cluster,
   actions: [
     {
       name: "Get Nodes Details",
@@ -10,7 +11,7 @@ module.exports = {
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         const k8sClients = actionContext.getK8sClients()
-        const output = []
+        const output: ActionOutput = []
         output.push([
           ["Node", "(CreationTime)"],
           "Info",
@@ -31,8 +32,10 @@ module.exports = {
                   " (" + node.condition[key].message + ")"),
           ]))
         }
-        actionContext.onOutput(output, 'Table')
+        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Table)
       },
     },
   ]
 }
+
+export default plugin

@@ -1,10 +1,11 @@
-"use strict";
-const k8sFunctions = require('../../k8s/k8sFunctions')
+import k8sFunctions from '../util/k8sFunctions'
+import {ActionGroupSpec, ActionContextType, 
+        ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
 
 
-function generateServiceComparisonOutput(clusters, namespaces, clusterServices) {
-  const output = []
-  const headers = ["Namespace/Service"]
+export function generateServiceComparisonOutput(clusters, namespaces, clusterServices) {
+  const output: ActionOutput = []
+  const headers: string[] = ["Namespace/Service"]
   clusters.forEach(cluster => {
     headers.push("Cluster: " + cluster.name)
   })
@@ -48,23 +49,24 @@ function generateServiceComparisonOutput(clusters, namespaces, clusterServices) 
   return output
 }
 
-module.exports = {
-  context: "Namespace",
-  generateServiceComparisonOutput: generateServiceComparisonOutput,
+const plugin : ActionGroupSpec = {
+  context: ActionContextType.Namespace,
   actions: [
     {
       name: "Compare Services",
-      order: 1,
+      order: 3,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         const k8sClients = actionContext.getK8sClients()
         const namespaces = actionContext.getNamespaces()
 
-        const clusterServices = await k8sFunctions.getServicesGroupedByClusterNamespace(clusters, namespaces, k8sClients)
+        const clusterServices = await k8sFunctions.getServicesGroupedByClusterNamespace(clusters, k8sClients, namespaces)
 
         const output = generateServiceComparisonOutput(clusters, namespaces, clusterServices)
-        actionContext.onOutput(output, "Compare")
+        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Compare)
       },
     }
   ]
 }
+
+export default plugin

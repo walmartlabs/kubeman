@@ -1,6 +1,6 @@
-import jpExtract from '../../util/jsonUtil'
-import { ActionOutput } from "../actionSpec";
-import ActionContext from '../actionContext'
+import jsonUtil from '../util/jsonUtil'
+import { ActionOutput } from "../../src/actions/actionSpec";
+import ActionContext from '../../src/actions/actionContext'
 
 module.exports = {
   order: 4,
@@ -23,7 +23,7 @@ module.exports = {
               pods.forEach(pod => {
                 if(pod.namespace.cluster.name === cluster.name && 
                   pod.namespace.name === namespace.name) {
-                  const containerStatuses = jpExtract.extractMulti(pod, "$.status.containerStatuses[*]",
+                  const containerStatuses = jsonUtil.extractMulti(pod, "$.status.containerStatuses[*]",
                                                 "name", "state")
                   containerStatuses.forEach(result => {
                     output.push([

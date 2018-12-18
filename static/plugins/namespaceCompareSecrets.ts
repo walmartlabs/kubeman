@@ -1,8 +1,9 @@
-"use strict";
-const k8sFunctions = require('../../k8s/k8sFunctions')
+import k8sFunctions from '../util/k8sFunctions'
+import {ActionGroupSpec, ActionContextType, 
+        ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
 
-module.exports = {
-  context: "Namespace",
+const plugin : ActionGroupSpec = {
+  context: ActionContextType.Namespace,
   actions: [
     {
       name: "Compare Secrets",
@@ -34,16 +35,16 @@ module.exports = {
           })
         }
 
-        const output = []
+        const output: ActionOutput = []
         const headers = ["Namespace/Secret"]
         clusters.forEach(cluster => {
           headers.push("Cluster: " + cluster.name)
         })
         output.push(headers)
       
-        namespaces.forEach(namespace => {
-          output.push(["Namespace: " + namespace.name, "---", "---"])
-          const secretToClusterMap = secretsMap[namespace.name]
+        Object.keys(secretsMap).forEach(namespace => {
+          output.push(["Namespace: " + namespace, "---", "---"])
+          const secretToClusterMap = secretsMap[namespace]
           const secrets = secretToClusterMap ? Object.keys(secretToClusterMap) : []
           if(secrets.length === 0) {
             output.push(["No Secrets", "", ""])
@@ -58,8 +59,10 @@ module.exports = {
             })
           }
         })
-        actionContext.onOutput(output, "Compare")
+        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Compare)
       },
     }
   ]
 }
+
+export default plugin

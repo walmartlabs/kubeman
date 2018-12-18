@@ -1,17 +1,10 @@
-import fs from 'fs'
-import path from 'path'
-import * as ts from "typescript";
-
+import PluginLoader from '../../static/pluginLoader'
 import {ActionContextType, ActionGroupSpec, ActionGroupSpecs, ActionContextOrder,
         isActionGroupSpec, isActionSpec, ActionOutput, ActionOutputStyle, 
         ActionOutputCollector, ActionChoiceMaker, } from './actionSpec'
 import Context from "../context/contextStore";
 import ActionContext from './actionContext'
-import * as k8s from '../k8s/k8sClient'
-import actions from './actions';
 
-
-const actionPluginFolder = "plugins"
 
 export class ActionLoader {
   static onLoad: (ActionGroupSpecs) => void
@@ -37,80 +30,43 @@ export class ActionLoader {
   static setOnChoices(callback: ActionChoiceMaker) {
     this.onChoices = callback
   }
-
+ 
   static loadActionPlugins() {
+    const plugins = PluginLoader.loadPlugins()
     let actionGroupsMap : Map<string, ActionGroupSpec> = new Map
     this.addReloadAction(actionGroupsMap)
 
-    const modulePath = path.join(__dirname, actionPluginFolder)
-
-    fs.readdir(modulePath, (err, files) => {
-      if(err && err.code) {
-        console.log("Failed to load plugins: " + err)
-      } else {
-        files.forEach(filename => {
-          const filePath =  path.join(path.resolve(__dirname), actionPluginFolder, filename)
-          const globalRequire = global['require']
-          delete globalRequire.cache[globalRequire.resolve(filePath)]
-          const actionGroupSpec = globalRequire(filePath)
-          if(isActionGroupSpec(actionGroupSpec)) {
-            ActionLoader.configureActions(actionGroupSpec)
-            if(actionGroupSpec.title) {
-              const existingSpec = actionGroupsMap.get(actionGroupSpec.title)
-              if(existingSpec) {
-                existingSpec.actions = existingSpec.actions.concat(actionGroupSpec.actions)
-              } else {actionGroupSpec
-                actionGroupsMap.set(actionGroupSpec.title, actionGroupSpec)
-              }
-            }
-          } else {
-            console.log("Invalid ActionGroupSpec: " + JSON.stringify(actionGroupSpec))
+    plugins.forEach(actionGroupSpec => {
+      if(isActionGroupSpec(actionGroupSpec)) {
+        ActionLoader.configureActions(actionGroupSpec)
+        if(actionGroupSpec.title) {
+          const existingSpec = actionGroupsMap.get(actionGroupSpec.title)
+          if(existingSpec) {
+            existingSpec.actions = existingSpec.actions.concat(actionGroupSpec.actions)
+          } else {actionGroupSpec
+            actionGroupsMap.set(actionGroupSpec.title, actionGroupSpec)
           }
-        })
-        if(this.onLoad) {
-          const actionGroups : ActionGroupSpecs = Array.from(actionGroupsMap.values())
-          actionGroups.sort((i1,i2) => (i1.order || 100) - (i2.order || 100))
-          this.onLoad(actionGroups)
+        } else {
+          console.log("Title missing for action plugin [%s]", JSON.stringify(actionGroupSpec))
         }
+      } else {
+        console.log("Invalid ActionGroupSpec: " + JSON.stringify(actionGroupSpec))
       }
     })
-  }
-
-  static loadTSPlugins() {
-  /*    
-    const tsModulePath = path.join(__dirname, "tsPlugins")
-    fs.readdir(tsModulePath, (err, files) => {
-      console.log(files)
-      files.forEach(filename => {
-        const filePath =  path.join(path.resolve(__dirname), "tsPlugins", filename)
-        fs.readFile(filePath, "utf8", (err, data) => {
-          let result = ts.transpileModule(data, {
-            compilerOptions: { 
-              module: ts.ModuleKind.ESNext ,
-              sourceMap: true,
-              target: ts.ScriptTarget.ESNext,
-              allowSyntheticDefaultImports: true,
-              allowJs: true,
-              jsx: ts.JsxEmit.React,
-              moduleResolution: ts.ModuleResolutionKind.NodeJs,
-            }
-          });
-          console.log(result.outputText + "")
-          const actionSpec = eval(result.outputText)
-          console.log(actionSpec)
-        })
-      })
-    })
-  */  
+    if(this.onLoad) {
+      const actionGroups : ActionGroupSpecs = Array.from(actionGroupsMap.values())
+      actionGroups.sort((i1,i2) => (i1.order || 100) - (i2.order || 100))
+      actionGroups.forEach(group => group.actions.sort((i1,i2) => (i1.order || 100) - (i2.order || 100)))
+      this.onLoad(actionGroups)
+    }
   }
 
   static configureActions(actionGroupSpec: ActionGroupSpec) {
     actionGroupSpec.order = ActionContextOrder[actionGroupSpec.context || ActionContextType.Other]
     if(actionGroupSpec.title) {
-      actionGroupSpec.order++
+      actionGroupSpec.order && actionGroupSpec.order++
     }
     actionGroupSpec.title = actionGroupSpec.title || (actionGroupSpec.context + " Actions")
-    actionGroupSpec.actions.sort((i1,i2) => (i1.order || 100) - (i2.order || 100))
 
     switch(actionGroupSpec.context) {
       case ActionContextType.Common:
@@ -147,7 +103,7 @@ export class ActionLoader {
     actionGroupSpec.actions.forEach(action => {
       action.context = actionGroupSpec.context
       if(action.act) {
-        action.act = action.act.bind(action, this.onOutput)
+        action.act = action.act.bind(action, this.actionContext)
       }
     })
   }
@@ -158,7 +114,7 @@ export class ActionLoader {
       if(!isActionSpec(action)) {
         console.log("Not ActionSpec: " + JSON.stringify(action))
       } else {
-        const act = action.act
+        const act = action.act.bind(action, this.actionContext)
         action.act = () => {
           if(this.checkSelections({
             checkClusters: true, 
@@ -167,11 +123,10 @@ export class ActionLoader {
             checkPods: actionGroupSpec.context === ActionContextType.Pod,
           })) {
             if(action.choose) {
-              this.actionContext.onChoices = this.onChoices.bind(this, 
-                  act.bind(action, this.actionContext))
+              this.actionContext.onChoices = this.onChoices.bind(this, act)
               action.choose(this.actionContext)
             } else {
-              act.call(action, this.actionContext)
+              act()
             }
           }
         }

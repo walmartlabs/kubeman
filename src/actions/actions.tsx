@@ -16,7 +16,7 @@ import ListItemText from '@material-ui/core/ListItemText';
 import Context from "../context/contextStore";
 import {ActionLoader} from './actionLoader'
 
-import {ActionGroupSpecs, ActionSpec, ActionGroupSpec, ActionContextType,
+import {ActionGroupSpecs, ActionSpec, BoundAction, ActionGroupSpec, ActionContextType,
         ActionOutputCollector, ActionChoiceMaker} from './actionSpec'
 
 import styles from './actions.styles'
@@ -64,7 +64,7 @@ class Actions extends React.Component<IProps, IState> {
     this.props.onCommand && this.props.onCommand("clear")
   }
 
-  onAction = (actionContext: string, action: ActionSpec) => {
+  onAction = (actionContext: string, action: BoundAction) => {
     this.setState({selectedAction: action})
     if(action.act) {
       this.props.showLoading()
@@ -90,7 +90,7 @@ class Actions extends React.Component<IProps, IState> {
               className={selectedAction && action.name === selectedAction.name 
                           && action.context === selectedAction.context ? classes.selectedAction : ''}>
                 <ListItemText className={classes.listText}
-                      onClick={this.onAction.bind(this, actionContext, action)}>
+                      onClick={this.onAction.bind(this, actionContext, action as BoundAction)}>
                   <Typography>{action.name}</Typography>
                 </ListItemText>
               </ListItem>

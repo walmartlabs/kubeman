@@ -1,6 +1,3 @@
-import Context from "../context/contextStore";
-import {K8sClient} from '../k8s/k8sClient'
-import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
 import ActionContext from './actionContext'
 
 export enum ActionContextType {
@@ -27,23 +24,31 @@ export enum ActionOutputStyle {
 
 export type ActionOutput = any[][]
 export type ActionChoices = any[]
-export type ActionAct = (actionContext?: ActionContext) => void
+export type ActionAct = (actionContext: ActionContext) => void
+export type BoundActionAct = () => void
+
 export type ActionOutputCollector = (output: ActionOutput, style: ActionOutputStyle) => void
-export type ActionChoiceMaker = (act: ActionAct, title: string, choices: ActionChoices, minChoices: number, maxChoices: number) => void
+export type ActionChoiceMaker = (act: BoundActionAct, title: string, choices: ActionChoices, minChoices: number, maxChoices: number) => void
+export type ActionOnChoice = (title: string, choices: ActionChoices, minChoices: number, maxChoices: number) => void
 
 export type ActionGroupSpecs = ActionGroupSpec[]
 
 
 export interface ActionSpec {
   name: string
-  context: ActionContextType
+  context?: ActionContextType
   order?: number
   act: ActionAct
-  choose?: ActionAct
+  choose?: ActionAct,
+  [x: string]: any
+}
+
+export interface BoundAction extends ActionSpec {
+  act: BoundActionAct
 }
 
 export interface ActionGroupSpec {
-  order: number
+  order?: number
   title?: string
   context: ActionContextType
   actions: ActionSpec[]

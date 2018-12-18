@@ -41,20 +41,18 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
   },
   actionCell: {
     verticalAlign: 'top',
-    width: '15%',
-    minWidth: 220,
-    maxWidth: 300,
+    width: '20%',
+    minWidth: 280,
     height: '100%',
     padding: 0,
     margin: 0,
     paddingLeft: 5,
     border: 0,
-    //border: '1px solid black'
   },
   outputCell: {
     verticalAlign: 'top',
     border: 0,
-    width: '85%',
+    width: '80%',
     height: '100%',
     minWidth: 500,
     maxWidth: 900,

@@ -1,17 +1,18 @@
-"use strict";
-const k8sFunctions = require('../../k8s/k8sFunctions')
+import k8sFunctions from '../util/k8sFunctions'
+import {ActionGroupSpec, ActionContextType, 
+        ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
 
-module.exports = {
-  context: "Namespace",
+const plugin : ActionGroupSpec = {
+  context: ActionContextType.Namespace,
   actions: [
     {
       name: "Get Events",
-      order: 5,
+      order: 1,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         const k8sClients = actionContext.getK8sClients()
         const namespaces = actionContext.getNamespaces()
-        const output = []
+        const output: ActionOutput = []
         output.push([
           ["Event", "LastTimestamp", "(Count)"],
           "Details",
@@ -36,8 +37,10 @@ module.exports = {
             }
           }
         }
-        actionContext.onOutput(output, 'Table')
+        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Table)
       },
     },
   ]
 }
+
+export default plugin

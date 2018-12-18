@@ -13,7 +13,7 @@ import Terminal from '../output/terminal'
 import TerminalBox from "../output/terminalBox";
 import BlackBox from '../output/blackbox'
 import TableBox from '../output/tableBox'
-import {ActionOutput, ActionOutputStyle, ActionOutputCollector, ActionChoiceMaker, ActionChoices, ActionAct} from '../actions/actionSpec'
+import {ActionOutput, ActionOutputStyle, ActionOutputCollector, ActionChoiceMaker, ActionChoices, BoundActionAct} from '../actions/actionSpec'
 
 import styles from './workspace.styles'
 
@@ -27,7 +27,7 @@ interface IState {
   maxChoices: number
   choiceTitle: string
   choices: any[]
-  deferredAction?: ActionAct
+  deferredAction?: BoundActionAct
 }
 
 interface IProps extends WithStyles<typeof styles> {

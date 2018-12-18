@@ -1,8 +1,9 @@
-"use strict";
-const k8sFunctions = require('../../k8s/k8sFunctions')
+import k8sFunctions from '../util/k8sFunctions'
+import {ActionGroupSpec, ActionContextType, 
+  ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
 
 function generatePodEventsOutput(podsMap) {
-  const output = []
+  const output: ActionOutput = []
   output.push([
     ["Event", "LastTimestamp", "(Count)"],
     "Details"
@@ -36,11 +37,12 @@ function generatePodEventsOutput(podsMap) {
 }
 
 
-module.exports = {
-  context: "Pod",
+const plugin : ActionGroupSpec = {
+  context: ActionContextType.Pod,
   actions: [
     {
       name: "Get Pod Events",
+      order: 1,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         const namespaces = actionContext.getNamespaces()
@@ -64,7 +66,7 @@ module.exports = {
               podsMap[cluster.name][namespace.name][pod] = 
                   await k8sFunctions.getPodEvents(namespace.name, pod, k8sClients[c])
               const output = generatePodEventsOutput(podsMap)
-              actionContext.onOutput(output, "Table")
+              actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Table)
             }
           }
         }
@@ -72,3 +74,5 @@ module.exports = {
     }
   ]
 }
+
+export default plugin

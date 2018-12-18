@@ -1,16 +1,18 @@
-"use strict";
-const k8sFunctions = require('../../k8s/k8sFunctions')
+import k8sFunctions from '../util/k8sFunctions'
+import {ActionGroupSpec, ActionContextType, 
+        ActionOutput, ActionOutputStyle } from '../../src/actions/actionSpec'
+import ActionContext from '../../src/actions/actionContext'
 
-module.exports = {
-  context: "Cluster",
+const plugin : ActionGroupSpec = {
+  context: ActionContextType.Cluster,
   actions: [
     {
-      order: 1,
+      order: 2,
       name: "List Namespaces",
-      async act(actionContext) {
+      async act(actionContext: ActionContext) {
         const clusters = actionContext.getClusters()
         const k8sClients = actionContext.getK8sClients()
-        const output = []
+        const output : ActionOutput  = []
         output.push([
           "Namespace", 
           "Created",
@@ -22,8 +24,10 @@ module.exports = {
           const namespaces = await k8sFunctions.getClusterNamespaces(cluster, k8sClients[i])
           namespaces.forEach(ns => output.push([ns.name, ns.creationTimestamp, ns.status]))
         }
-        actionContext.onOutput(output, 'Table')
+        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Table)
       }
     },
   ]
 }
+
+export default plugin

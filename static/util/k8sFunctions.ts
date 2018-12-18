@@ -1,33 +1,40 @@
-const jsonUtil = require('../util/jsonUtil')
+import jsonUtil from './jsonUtil'
+import {K8sClient} from '../../src/k8s/k8sClient'
+import {Cluster, Namespace, Pod} from "../../src/k8s/contextObjectTypes";
+import { type } from 'os';
 
+export type DataObject = {[key: string]: any}
+export type StringStringStringBooleanMap = {[key: string]: {[key: string]: {[key: string]: boolean}}}
+export type StringStringArrayMap = {[key: string]: {[key: string]: any[]}}
+export type ComparisonFunction = (cluster: string, namespace: string, k8sClient: K8sClient) => any
 
 const k8sFunctions = {
 
-  extractMetadata(data) {
-    const prettifyLabels = (meta) => {
+  extractMetadata(data : any) : DataObject|DataObject[] {
+    const prettifyLabels = (meta: DataObject) => {
       if(meta.labels) {
         meta.labels = jsonUtil.convertObjectToArray(meta.labels)
       }
     }
     const metaFields = ["name", "creationTimestamp", "labels"]
     if(data instanceof Array) {
-      const metas = jsonUtil.extractMulti(data, "$[*].metadata", ...metaFields)
+      const metas : DataObject[] = jsonUtil.extractMulti(data, "$[*].metadata", ...metaFields)
       metas.forEach(prettifyLabels)
       return metas
     } else {
-      const meta = jsonUtil.extract(data, "$.metadata", ...metaFields)
+      const meta : DataObject = jsonUtil.extract(data, "$.metadata", ...metaFields)
       prettifyLabels(meta)
       return meta
     }
   },
 
-  async getClusterNodes(cluster, k8sClient) {
-    const nodes = []
+  async getClusterNodes(cluster: string, k8sClient: K8sClient) {
+    const nodes : any[] = []
     const result = await k8sClient.nodes.get()
     if(result && result.body) {
       const items = result.body.items
       items.forEach(item => {
-        const meta = this.extractMetadata(item)
+        const meta : DataObject = this.extractMetadata(item)
         const spec = jsonUtil.extract(item, "$.spec", "podCIDR")
         const status = jsonUtil.extract(item, "$.status", "addresses", "conditions", "nodeInfo")
         const node = {
@@ -47,12 +54,12 @@ const k8sFunctions = {
         status.conditions.forEach(c => node.condition[c.type] = {status:c.status, message:c.message})
         nodes.push(node)
       })
-      return nodes
     }
+    return nodes
   },
   
-  async getClusterNamespaces(cluster, k8sClient) {
-    const namespaceList = []
+  async getClusterNamespaces(cluster: string, k8sClient: K8sClient) {
+    const namespaceList : any[] = []
     const result = await k8sClient.namespaces.get()
     if(result && result.body) {
       const items = result.body.items
@@ -68,8 +75,8 @@ const k8sFunctions = {
     return namespaceList
   },
 
-  async getNamespaceServiceNames(namespace, k8sClient) {
-    const services = []
+  async getNamespaceServiceNames(namespace: string, k8sClient: K8sClient) {
+    const services : any[] = []
     const result = await k8sClient.namespaces(namespace).services.get()
     if(result && result.body) {
       const items = result.body.items
@@ -81,8 +88,8 @@ const k8sFunctions = {
     return services
   },
 
-  async getNamespaceServices(cluster, namespace, k8sClient) {
-    const services = []
+  async getNamespaceServices(cluster: string, namespace: string, k8sClient: K8sClient) {
+    const services : any[] = []
     const result = await k8sClient.namespaces(namespace).services.get()
     if(result && result.body) {
       const items = result.body.items
@@ -112,7 +119,7 @@ const k8sFunctions = {
     return services
   },
 
-  async getClusterServices(cluster, k8sClient) {
+  async getClusterServices(cluster: string, k8sClient: K8sClient) {
     const namespaces = await this.getClusterNamespaces(cluster, k8sClient)
     const services = {}
     for(const i in namespaces) {
@@ -121,8 +128,9 @@ const k8sFunctions = {
     return services
   },
 
-  async getServicesGroupedByClusterNamespace(clusters, namespaces, k8sClients) {
-    const services = {}
+  async getServicesGroupedByClusterNamespace(clusters: Cluster[], 
+                  k8sClients: K8sClient[], namespaces?: Namespace[]) {
+    const services: StringStringArrayMap = {}
     for(const i in clusters) {
       const cluster = clusters[i].name
       const k8sClient = k8sClients[i]
@@ -142,9 +150,9 @@ const k8sFunctions = {
     return services
   },
 
-  async getDeploymentsForNamespace(namespace, k8sClient) {
-    const deployments = []
-    const result = await k8sClient.namespaces(namespace).deployments.get()
+  async getDeploymentListForNamespace(namespace: string, k8sClient: K8sClient) {
+    const deployments : any[] = []
+    const result = await k8sClient.apps.namespaces(namespace).deployments.get()
     if(result && result.body) {
       const items = result.body.items
       const meta = this.extractMetadata(items)
@@ -155,29 +163,30 @@ const k8sFunctions = {
     return deployments
   },
 
-  async getDeploymentsForCluster(cluster, k8sClient) {
+  async getDeploymentListForCluster(cluster: string, k8sClient: K8sClient) {
     const namespaces = await this.getClusterNamespaces(cluster, k8sClient)
     const deployments = {}
     for(const i in namespaces) {
-      deployments[namespaces[i].name] = await this.getDeploymentsForNamespace(namespaces[i].name, k8sClient)
+      deployments[namespaces[i].name] = await this.getDeploymentListForNamespace(namespaces[i].name, k8sClient)
     }
     return deployments
   },
 
-  async getDeploymentsGroupedByClusterNamespace(clusters, namespaces, k8sClients) {
-    const deployments = {}
+  async getDeploymentsGroupedByClusterNamespace(clusters: Cluster[], 
+                  k8sClients: K8sClient[], namespaces?: Namespace[]) {
+    const deployments: StringStringArrayMap = {}
     for(const i in clusters) {
       const cluster = clusters[i].name
       const k8sClient = k8sClients[i]
       deployments[cluster] = {}
 
       if(!namespaces || namespaces.length === 0) {
-        deployments[cluster] = await this.getDeploymentsForCluster(cluster, k8sClient)
+        deployments[cluster] = await this.getDeploymentListForCluster(cluster, k8sClient)
       } else {
         for(const j in namespaces) {
           if(namespaces[j].cluster.name === cluster) {
             const namespace = namespaces[j].name
-            deployments[cluster][namespace] = await this.getDeploymentsForNamespace(namespace, k8sClient)
+            deployments[cluster][namespace] = await this.getDeploymentListForNamespace(namespace, k8sClient)
           }
         }
       }
@@ -185,8 +194,33 @@ const k8sFunctions = {
     return deployments
   },
 
-  async getNamespaceSecrets(cluster, namespace, k8sClient) {
-    const secrets = []
+  async getNamespaceDeployments(cluster: string, namespace: string, k8sClient: K8sClient) {
+    const deployments : any[] = []
+    const result = await k8sClient.apps.namespaces(namespace).deployments.get()
+    if(result && result.body) {
+      const items = result.body.items
+      const metas = this.extractMetadata(items)
+      const specs = jsonUtil.extract(items, "$[*].spec")
+      const statuses = jsonUtil.extract(items, "$[*].status")
+      specs.forEach((spec, index) => {
+        deployments.push({
+          ...metas[index],
+          minReadySeconds: spec.minReadySeconds,
+          paused: spec.paused,
+          progressDeadlineSeconds: spec.progressDeadlineSeconds,
+          replicas: spec.replicas,
+          revisionHistoryLimit: spec.revisionHistoryLimit,
+          selector: spec.selector,
+          strategy: spec.strategy,
+          template: this.extractPodDetails(spec.template),
+        })
+      })
+    }
+    return deployments
+  },
+
+  async getNamespaceSecrets(cluster: string, namespace: string, k8sClient: K8sClient) {
+    const secrets : any[] = []
     const result = await k8sClient.namespaces(namespace).secrets.get()
     if(result && result.body) {
       const items = result.body.items
@@ -205,8 +239,25 @@ const k8sFunctions = {
     return secrets
   },
 
-  async getNamespacePods(namespace, podNames, k8sClient) {
-    const pods = []
+  async getNamespaceConfigMaps(cluster: string, namespace: string, k8sClient: K8sClient) {
+    const configMaps : any[] = []
+    const result = await k8sClient.namespaces(namespace).configmaps.get()
+    if(result && result.body) {
+      const items = result.body.items
+      const metas = this.extractMetadata(items)
+      items.forEach((item, index) => {
+        configMaps.push({
+          ...metas[index],
+          kind: item.kind,
+          data: item.data,
+        })
+      })
+    }
+    return configMaps
+  },
+
+  async getNamespacePods(namespace: string, podNames: string[], k8sClient: K8sClient) {
+    const pods : any[] = []
     for(const p in podNames) {
       const podDetails = await k8sClient.namespace(namespace).pods(podNames[p]).get()
       podDetails && pods.push(podDetails.body)
@@ -214,59 +265,76 @@ const k8sFunctions = {
     return pods
   },
 
-  async getPodDetails(namespace, podName, k8sClient) {
+  async getPodDetails(namespace: string, podName: string, k8sClient) {
     const result = await k8sClient.namespace(namespace).pods(podName).get()
-    const podDetails = {}
     if(result && result.body) {
-
+      return this.extractPodDetails(result)
     }
-    return podDetails
+    return {}
   },
 
-  async getPodsDetails(namespace, podNames, k8sClient) {
-    const pods = []
+  extractPodDetails(podTemplate) {
+    const meta = k8sFunctions.extractMetadata(podTemplate)
+    const initContainers = jsonUtil.extract(podTemplate, "$.spec.initContainers", 
+                          "name", "image", "securityContext")
+    const containers = jsonUtil.extractMulti(podTemplate, "$.spec.containers[*]", 
+                          "name", "image", "imagePullPolicy", "ports", "resources", 
+                          "volumeMounts", "securityContext")
+    return {
+      ...meta,
+      containers: containers,
+      initContainers: initContainers,
+      activeDeadlineSeconds: podTemplate.spec.activeDeadlineSeconds,
+      affinity: podTemplate.spec.affinity,
+      dnsConfig: podTemplate.spec.dnsConfig,
+      dnsPolicy: podTemplate.spec.dnsPolicy,
+      hostAliases: podTemplate.spec.hostAliases,
+      hostIPC: podTemplate.spec.hostIPC,
+      hostNetwork: podTemplate.spec.hostNetwork,
+      hostPID: podTemplate.spec.hostPID,
+      hostname: podTemplate.spec.hostname,
+      nodeName: podTemplate.spec.nodeName,
+      nodeSelector: podTemplate.spec.nodeSelector,
+      priority: podTemplate.spec.priority,
+      priorityClassName: podTemplate.spec.priorityClassName,
+      readinessGates: podTemplate.spec.readinessGates,
+      restartPolicy: podTemplate.spec.restartPolicy,
+      runtimeClassName: podTemplate.spec.runtimeClassName,
+      schedulerName: podTemplate.spec.schedulerName,
+      securityContext: podTemplate.spec.securityContext,
+      serviceAccount: podTemplate.spec.serviceAccount,
+      serviceAccountName: podTemplate.spec.serviceAccountName,
+      shareProcessNamespace: podTemplate.spec.shareProcessNamespace,
+      subdomain: podTemplate.spec.subdomain,
+      terminationGracePeriodSeconds: podTemplate.spec.terminationGracePeriodSeconds,
+      volumes: podTemplate.spec.volumes,
+    }
+  },
+
+  async getPodsDetails(namespace: string, podNames: string[], k8sClient: K8sClient) {
+    const pods : any[] = []
     for(const p in podNames) {
       let result = await k8sClient.namespace(namespace).pods(podNames[p]).get()
       if(result && result.body) {
         const pod = result.body
-        const meta = k8sFunctions.extractMetadata(pod)
-        const initContainers = jsonUtil.extract(pod, "$.spec.initContainers", 
-                              "name", "image", "securityContext")
-        const containers = jsonUtil.extractMulti(pod, "$.spec.containers[*]", 
-                              "name", "image", "imagePullPolicy", "ports", "resources", 
-                              "volumeMounts", "securityContext")
+
         const conditions = jsonUtil.extractMulti(pod, "$.status.conditions[*]",
                                 "type", "status", "message")
                             .map(jsonUtil.convertObjectToString)
         const containerStatuses = jsonUtil.extractMulti(pod, "$.status.containerStatuses[*]", "name", "state")
                                     .map(jsonUtil.convertObjectToString)
-      
-        const podDetails = {
-          ...meta,
-          containers: containers,
-          initContainers: initContainers,
-          affinity: pod.spec.affinity,
-          dnsConfig: pod.spec.dnsConfig,
-          dnsPolicy: pod.spec.dnsPolicy,
-          hostname: pod.spec.hostname,
-          nodeSelector: pod.spec.nodeSelector,
-          priority: pod.spec.priority,
-          priorityClassName: pod.spec.priorityClassName,
-          readinessGates: pod.spec.readinessGates,
-          restartPolicy: pod.spec.restartPolicy,
-          securityContext: pod.spec.securityContext,
-          subdomain: pod.spec.subdomain,
+        pods.push({
+          ...this.extractPodDetails(pod),
           conditions,
           containerStatuses,
-        }
-        pods.push(podDetails)
+        })
       }
     }
     return pods
   },
 
   processEventsData(result) {
-    const events = []
+    const events : any[] = []
     if(result && result.body) {
       const items = result.body.items
       if(items.length > 0) {
@@ -295,15 +363,15 @@ const k8sFunctions = {
     return events
   },
 
-  async getClusterEvents(cluster, k8sClient) {
+  async getClusterEvents(cluster: string, k8sClient: K8sClient) {
     return this.processEventsData(await k8sClient.events.get({qs: {limit: 20}}))
   },
 
-  async getNamespaceEvents(namespace, k8sClient) {
+  async getNamespaceEvents(namespace: string, k8sClient: K8sClient) {
     return this.processEventsData(await k8sClient.namespaces(namespace).events.get({qs: {limit: 20}}))
   },
 
-  async getPodEvents(namespace, pod, k8sClient) {
+  async getPodEvents(namespace: string, pod, k8sClient: K8sClient) {
     return this.processEventsData(await k8sClient.namespaces(namespace).events.get({
       qs: {
         limit: 20,
@@ -319,5 +387,7 @@ const k8sFunctions = {
 k8sFunctions.extractMetadata = k8sFunctions.extractMetadata.bind(k8sFunctions)
 k8sFunctions.getNamespaceSecrets = k8sFunctions.getNamespaceSecrets.bind(k8sFunctions)
 k8sFunctions.getNamespaceServices = k8sFunctions.getNamespaceServices.bind(k8sFunctions)
+k8sFunctions.getNamespaceDeployments = k8sFunctions.getNamespaceDeployments.bind(k8sFunctions)
+k8sFunctions.getNamespaceConfigMaps = k8sFunctions.getNamespaceConfigMaps.bind(k8sFunctions)
 
-module.exports = k8sFunctions
+export default k8sFunctions
