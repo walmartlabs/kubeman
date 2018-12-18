@@ -11,7 +11,7 @@ import Paper from '@material-ui/core/Paper';
 import FormHelperText from '@material-ui/core/FormHelperText';
 import { Button, Input, InputAdornment } from '@material-ui/core';
 
-import {Pod, Item, KubeComponent} from "../k8s/contextObjectTypes";
+import {Pod, Item, KubeComponent} from "../k8s/k8sObjectTypes";
 
 import styles from './podFilter.styles'
 

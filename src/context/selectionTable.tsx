@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableRow } from '@material-ui/core';
 import { ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails } from '@material-ui/core';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 
-import {Cluster, Namespace, Pod, Item, KubeComponent} from "../k8s/contextObjectTypes";
+import {Cluster, Namespace, Pod, Item, KubeComponent} from "../k8s/k8sObjectTypes";
 
 import styles from './selectionTable.styles'
 

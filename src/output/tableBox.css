@@ -19,3 +19,6 @@ pre {
 .json-string {
   color: olive;
 }
+.gridRow:not(:last-child) {
+  border-bottom: 1px dotted
+}

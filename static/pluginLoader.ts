@@ -6,6 +6,7 @@ export default class PluginLoader {
     const plugins : any[] = []
     const tsPluginRequire = require.context("./plugins" , true, /\.(ts|js)$/)
     tsPluginRequire.keys().forEach(tsPlugin => {
+      delete require.cache[tsPluginRequire.resolve(tsPlugin)]
       let plugin = tsPluginRequire(tsPlugin)
       if(plugin.default && plugin.default.actions) {
         plugin = plugin.default

@@ -1,4 +1,4 @@
-import {Cluster, Namespace, Pod, Item} from "./k8s/contextObjectTypes";
+import {Cluster, Namespace, Pod, Item} from "./k8s/k8sObjectTypes";
 import Context from "./context/contextStore";
 import * as k8s from './k8s/k8sClient'
 import * as jp from 'jsonpath'

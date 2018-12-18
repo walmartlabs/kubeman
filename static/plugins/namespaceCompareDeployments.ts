@@ -2,7 +2,7 @@ import k8sFunctions, {StringStringStringBooleanMap} from '../../src/k8s/k8sFunct
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
 import ActionContext from '../../src/actions/actionContext'
-import {Cluster, Namespace} from "../../src/k8s/contextObjectTypes";
+import {Cluster, Namespace} from "../../src/k8s/k8sObjectTypes";
 
 
 export function generateDeploymentComparisonOutput(clusters: Cluster[], namespaces: Namespace[], deployments: any) {

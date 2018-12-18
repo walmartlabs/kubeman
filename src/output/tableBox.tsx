@@ -50,11 +50,11 @@ const GridCell = withStyles(styles)(({index, cell, colSpan, highlight, compare, 
   return (
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
               className={className}
-              style={{paddingLeft: cell.isGroup ? '2px' : '10px'}} >
+              style={{paddingLeft: 2, paddingRight: 2}} >
       <Table>
         <TableBody>
           {cell.render((formattedText, gridIndex) =>
-            <TableRow key={gridIndex} className={classes.tableRow}>
+            <TableRow key={gridIndex} className={classes.tableRow + " gridRow"}>
               <TableCell component="th" scope="row" colSpan={colSpan}
               className={className}
               style={{paddingLeft: cell.isGroup ? '2px' : '10px', border: 0}}

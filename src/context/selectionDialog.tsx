@@ -7,7 +7,7 @@ import {Dialog, DialogContent, DialogActions, } from '@material-ui/core';
 import {Tab, Tabs, CircularProgress} from '@material-ui/core'
 
 
-import {Cluster, Namespace, Pod, Item, KubeComponent} from "../k8s/contextObjectTypes";
+import {Cluster, Namespace, Pod, Item, KubeComponent} from "../k8s/k8sObjectTypes";
 import * as k8s from '../k8s/k8sContextClient'
 import SelectionTable from './selectionTable'
 import {selectionDialogTheme} from '../theme/theme'

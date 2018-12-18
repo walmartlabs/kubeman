@@ -1,7 +1,7 @@
 import React from "react";
 import _ from 'lodash'
 import Context from "./contextStore";
-import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
+import {Cluster, Namespace, Pod, Item} from "../k8s/k8sObjectTypes";
 import SelectionDialog, {SelectionType} from './selectionDialog'
 
 

@@ -6,7 +6,7 @@ import { Paper, Tabs, Tab, Grid, Button } from '@material-ui/core';
 import {List, ListSubheader, ListItem, ListItemText}  from '@material-ui/core';
 import {Card, CardContent, CardActions, Typography} from '@material-ui/core';
 
-import {Cluster, Namespace, Pod, Item} from "../k8s/contextObjectTypes";
+import {Cluster, Namespace, Pod, Item} from "../k8s/k8sObjectTypes";
 import Context from "./contextStore";
 import * as scratch from '../scratch'
 

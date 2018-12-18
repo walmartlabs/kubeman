@@ -4,7 +4,7 @@ import Yaml from 'js-yaml'
 import jp from 'jsonpath'
 import fs from 'fs'
 import * as k8s from 'kubernetes-client'
-import {Cluster, Namespace, Pod, Item} from "./contextObjectTypes";
+import {Cluster, Namespace, Pod, Item} from "./k8sObjectTypes";
 
 const homedir = os.homedir();
 const defaultConfig = k8s.config.fromKubeconfig()
