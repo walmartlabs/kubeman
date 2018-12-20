@@ -51,7 +51,8 @@ export default class JsonUtil {
           i === 1 && fields.push(fields.pop() + ": " + JsonUtil._convertObjectToArray(level+1, false, object[key]))
           i > 1 && JsonUtil._convertObjectToArray(level+1, false, object[key])
         } else {
-          fields.push(key + (level > 0 ? " > " : ": ") + JsonUtil._convertObjectToArray(level+1, false, object[key]))
+          fields.push((level > 0 && level % 2 === 0 ? " | " : " ") + key 
+                      + (level % 2 === 0 ? ": " : "") + JsonUtil._convertObjectToArray(level+1, false, object[key]))
         }
       })
       return fields
@@ -62,7 +63,7 @@ export default class JsonUtil {
   static convertObjectToArray = JsonUtil._convertObjectToArray.bind(null, 0, false)
   static convertObjectToString(object) {
     return JsonUtil._convertObjectToArray(0, true, object)
-            .map(item => item instanceof Array ? item.join(", ") : item)
-            .join(", ")
+            .map(item => item instanceof Array ? item.join("; ") : (item as string).replace(',', ' '))
+            .join(". ")
   }
 }

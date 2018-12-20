@@ -38,9 +38,3 @@ export function getClientForCluster(cluster: Cluster) : K8sClient {
 
   return k8sClient
 }
-
-export async function getPodsForNamespace(namespace: Namespace) : Promise<Array<any>> {
-  const client = getClientForCluster(namespace.cluster)
-  const pods = await client.namespace(namespace.name).pods.get()
-  return pods.body.items
-}

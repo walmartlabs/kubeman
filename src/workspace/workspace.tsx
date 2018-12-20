@@ -12,14 +12,15 @@ import Context from "../context/contextStore";
 import Terminal from '../output/terminal'
 import TerminalBox from "../output/terminalBox";
 import BlackBox from '../output/blackbox'
-import TableBox from '../output/tableBox'
-import {ActionOutput, ActionOutputStyle, ActionOutputCollector, ActionChoiceMaker, ActionChoices, BoundActionAct} from '../actions/actionSpec'
+import TableOutput, {TableBox} from '../output/tableBox'
+import {ActionOutput, ActionOutputStyle, ActionOutputCollector, ActionStreamOutputCollector,
+        ActionChoiceMaker, ActionChoices, BoundActionAct} from '../actions/actionSpec'
 
 import styles from './workspace.styles'
 
 interface IState {
   context: Context
-  output: ActionOutput
+  output: ActionOutput|string[]
   outputStyle: ActionOutputStyle
   loading: boolean
   showChoices: boolean
@@ -42,7 +43,7 @@ interface IRefs {
 export class Workspace extends React.Component<IProps, IState, IRefs> {
   refs: IRefs = {
     terminal: undefined,
-    contextSelector: undefined
+    contextSelector: undefined,
   }
   state: IState = {
     context: new Context,
@@ -56,6 +57,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     choices: [],
   }
   commandHandler?: ((string) => void) = undefined
+  tableBox?: TableBox
 
   componentDidMount() {
     this.componentWillReceiveProps(this.props)
@@ -73,8 +75,15 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
 
   showOutput : ActionOutputCollector = (output, outputStyle) => {
-    //this.refs.terminal && this.refs.terminal.write(output)
-    this.setState({output, outputStyle: outputStyle || ActionOutputStyle.Text, loading: false})
+    this.setState({
+      output, 
+      outputStyle: outputStyle || ActionOutputStyle.Text, 
+      loading: false,
+    })
+  }
+
+  showStreamOutput : ActionStreamOutputCollector = (output) => {
+    this.tableBox && this.tableBox.appendOutput(output as ActionOutput)
   }
 
   showChoices : ActionChoiceMaker = (act, title, choices, minChoices, maxChoices) => {
@@ -123,7 +132,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
       showChoices, minChoices, maxChoices, choiceTitle, choices } = this.state;
 
     const showBlackBox = outputStyle === ActionOutputStyle.Text
-    const showTable = outputStyle === ActionOutputStyle.Table
+    const showTable = outputStyle === ActionOutputStyle.Table || outputStyle === ActionOutputStyle.Log
     const compare = outputStyle === ActionOutputStyle.Compare
 
     return (
@@ -146,13 +155,17 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                         showLoading={this.showLoading}
                         onCommand={this.onCommand}
                         onOutput={this.showOutput}
+                        onStreamOutput={this.showStreamOutput}
                         onChoices={this.showChoices}
                         />
               </TableCell>
               <TableCell className={classes.outputCell}>
                 {loading && <CircularProgress className={classes.loading} />}
                 {showBlackBox && <BlackBox output={output} />}
-                {(showTable || compare) && <TableBox output={output} compare={compare} />}
+                {(showTable || compare) && 
+                    <TableOutput  innerRef={ref => this.tableBox=ref} 
+                                  output={output as any[]}
+                                  compare={compare} />}
                 
                 {/* <TerminalBox 
                   ref='terminal' 

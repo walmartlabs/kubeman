@@ -1,7 +1,7 @@
 import PluginLoader from '../../static/pluginLoader'
 import {ActionContextType, ActionGroupSpec, ActionGroupSpecs, ActionContextOrder,
         isActionGroupSpec, isActionSpec, ActionOutput, ActionOutputStyle, 
-        ActionOutputCollector, ActionChoiceMaker, } from './actionSpec'
+        ActionOutputCollector, ActionStreamOutputCollector, ActionChoiceMaker, } from './actionSpec'
 import Context from "../context/contextStore";
 import ActionContext from './actionContext'
 
@@ -9,6 +9,7 @@ import ActionContext from './actionContext'
 export class ActionLoader {
   static onLoad: (ActionGroupSpecs) => void
   static onOutput: ActionOutputCollector
+  static onStreamOutput: ActionOutputCollector
   static onChoices: ActionChoiceMaker
   static context: Context
   static actionContext: ActionContext = new ActionContext
@@ -22,9 +23,11 @@ export class ActionLoader {
     this.onLoad = callback
   }
 
-  static setOnOutput(callback: ActionOutputCollector) {
-    this.onOutput = callback
-    this.actionContext.onOutput = callback
+  static setOnOutput(onOutput: ActionOutputCollector, onStreamOutput: ActionStreamOutputCollector) {
+    this.onOutput = onOutput
+    this.onStreamOutput = onStreamOutput
+    this.actionContext.onOutput = onOutput
+    this.actionContext.onStreamOutput = onStreamOutput
   }
 
   static setOnChoices(callback: ActionChoiceMaker) {
@@ -130,6 +133,7 @@ export class ActionLoader {
             }
           }
         }
+        action.stop && (action.stop = action.stop.bind(action, this.actionContext))
       }
     })
   }

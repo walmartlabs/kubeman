@@ -2,8 +2,11 @@ import JsonUtil from '../../src/util/jsonUtil'
 import k8sFunctions from '../../src/k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
+import { PodDetails } from '../../src/k8s/k8sObjectTypes';
 
-function generatePodStatusOutput(podsMap) {
+type ClusterNamespacePodsMap = {[cluster: string]: {[namespace: string]: PodDetails[]}}
+
+function generatePodStatusOutput(podsMap: ClusterNamespacePodsMap) {
   const output: ActionOutput = []
   output.push(["Pod", "Created", "Container Status"])
 
@@ -19,21 +22,7 @@ function generatePodStatusOutput(podsMap) {
         output.push(["No pods selected", "", ""])
       } else {
         pods.forEach(pod => {
-          const meta = JsonUtil.extract(pod, "$.metadata", "name", "creationTimestamp")
-          const containerStatuses = JsonUtil.extractMulti(pod, "$.status.containerStatuses[*]",
-                                        "name", "state")
-          const containerStatusTable: string[] = []
-          containerStatuses.forEach(container => {
-            containerStatusTable.push(
-              container.name + ": " + 
-              Object.keys(container.state).map(state => state + ", " + 
-                  Object.keys(container.state[state])
-                    .map(started => started + " " + container.state[state][started])
-                    .join(" ")
-                ).join(" ")
-            )
-          })
-          output.push([meta.name, meta.creationTimestamp, containerStatusTable])
+          output.push([pod.name, pod.creationTimestamp, pod.containerStatuses])
         })
       }
     })
@@ -54,7 +43,7 @@ const plugin : ActionGroupSpec = {
         const pods = actionContext.getPods()
         const k8sClients = actionContext.getK8sClients()
 
-        const podsMap = {}
+        const podsMap : ClusterNamespacePodsMap = {}
         for(const c in clusters) {
           const cluster = clusters[c]
           podsMap[cluster.name] = {}

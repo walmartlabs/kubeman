@@ -11,10 +11,17 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   root: {
     width: '100%',
     height: '100%',
-    overflowY: 'scroll',
-    overflowX: 'scroll',
+    padding: 0,
+    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
+  },
+  filterContainer: {
+    paddingLeft: 5,
+  },
+  tableContainer: {
+    height: '100%',
     padding: 0,
     paddingLeft: 5,
+    margin: 0,
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
   },
   table: {
@@ -24,6 +31,13 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     wordWrap: 'break-word',
   },
   tableBody: {
+    width: '100%',
+    height: '100%',
+    padding: 0,
+    margin: 0,
+    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
+    overflowY: 'scroll',
+    overflowX: 'hidden',
   },
   tableHeaderRow: {
     padding: 0,

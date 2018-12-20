@@ -20,6 +20,7 @@ export enum ActionOutputStyle {
   Text = "Text",
   Table = "Table",
   Compare = "Compare",
+  Log = "Log"
 }
 
 export type ActionOutput = any[][]
@@ -27,7 +28,8 @@ export type ActionChoices = any[]
 export type ActionAct = (actionContext: ActionContext) => void
 export type BoundActionAct = () => void
 
-export type ActionOutputCollector = (output: ActionOutput, style: ActionOutputStyle) => void
+export type ActionOutputCollector = (output: ActionOutput|string[], style: ActionOutputStyle) => void
+export type ActionStreamOutputCollector = (output: ActionOutput|string[]) => void
 export type ActionChoiceMaker = (act: BoundActionAct, title: string, choices: ActionChoices, minChoices: number, maxChoices: number) => void
 export type ActionOnChoice = (title: string, choices: ActionChoices, minChoices: number, maxChoices: number) => void
 
@@ -40,11 +42,13 @@ export interface ActionSpec {
   order?: number
   act: ActionAct
   choose?: ActionAct,
+  stop?: ActionAct,
   [x: string]: any
 }
 
 export interface BoundAction extends ActionSpec {
   act: BoundActionAct
+  stop?: BoundActionAct,
 }
 
 export interface ActionGroupSpec {
@@ -52,6 +56,7 @@ export interface ActionGroupSpec {
   title?: string
   context: ActionContextType
   actions: ActionSpec[]
+  [x: string]: any
 }
 
 export function isActionSpec(obj: any) : obj is ActionSpec {

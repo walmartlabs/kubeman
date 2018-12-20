@@ -1,8 +1,11 @@
+import _ from 'lodash'
 import {DataObject, StringStringArrayMap, ComparisonFunction} from '../../src/k8s/k8sFunctions'
 import ActionContext from '../../src/actions/actionContext'
 import {ActionOutput} from '../../src/actions/actionSpec'
+import {Namespace, Pod, PodTemplate} from "../../src/k8s/k8sObjectTypes"
+import k8sFunctions from '../../src/k8s/k8sFunctions'
 
-export default class K8sComparisonUtil {
+export default class K8sPluginHelper {
   static items: StringStringArrayMap = {}
 
   static async prepareChoices(actionContext: ActionContext, 
@@ -47,10 +50,10 @@ export default class K8sComparisonUtil {
       howMany += max > 0 && min > 0 ? ", and " : ""
       howMany += max > 0 ?  " up to " + max : ""
     }
-    actionContext.onChoices && actionContext.onChoices("Choose" + howMany + name + " to compare", choices, min, max)
+    actionContext.onChoices && actionContext.onChoices("Choose" + howMany + name, choices, min, max)
   }
 
-  static async prepareOutput(actionContext, name, ...fields) {
+  static async generateComparisonOutput(actionContext, name, ...fields) {
     let selections = actionContext.getSelections()
     if(selections.length < 2) {
       actionContext.onOutput(["No " + name + " selected"], 'Text')
@@ -103,5 +106,23 @@ export default class K8sComparisonUtil {
     output.push(outputHeaders)
     output = output.concat(outputRows)
     actionContext.onOutput(output, "Compare")
+  }
+
+  static async choosePod(actionContext: ActionContext) {
+    K8sPluginHelper.prepareChoices(actionContext, 
+      async (cluster, namespace, k8sClient) => {
+        const namespaces = actionContext.getNamespaces()
+        let pods = _.flatMap(namespaces.filter(ns => 
+          ns.cluster.name === cluster && ns.name === namespace),
+          (ns: Namespace) => 
+          _.flatMap(ns.pods, pod => pod.containers.map(c => c+"@"+pod.name)))
+        //TBD: Whether or not support selecting from all pods if no pods in the context for the namespace
+        // if(!pods || pods.length === 0) {
+        //   pods = await k8sFunctions.getAllPodsForNamespace(namespace, k8sClient)
+        //   pods = _.flatMap(pods, pod => pod.containers.map(c => c.name+"@"+pod.name))
+        // }
+        return Promise.resolve(pods)
+      },
+    "Container@Pod", 1, 1)
   }
 }

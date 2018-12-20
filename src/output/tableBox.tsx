@@ -13,17 +13,18 @@ import './tableBox.css'
 interface ITableCellProps extends WithStyles<typeof styles> {
   index: number,
   cell: Cell,
+  isKeyColumn: boolean,
   highlight: boolean,
   compare: boolean,
   colSpan?: number,
 }
 
-function computeCellClass(cell: Cell, highlight: boolean, compare: boolean, classes: any) : string {
+function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, compare: boolean, classes: any) : string {
   let className = classes.tableCell
   if(!cell.isGroup && !cell.isSubGroup ) {
     if(highlight) {
-      className = cell.isFirstColumn ? classes.tableKeyCellHighlight : classes.tableCellHighlight 
-    } else if(cell.isFirstColumn) {
+      className = isKeyColumn ? classes.tableKeyCellHighlight : classes.tableCellHighlight 
+    } else if(isKeyColumn) {
       className = classes.tableKeyCell
     } else if(!compare && cell.isHealthStatusField) {
       className = cell.isHealthy ? classes.tableCellHealthGood : 
@@ -34,8 +35,8 @@ function computeCellClass(cell: Cell, highlight: boolean, compare: boolean, clas
   return className
 }
 
-const TextCell = withStyles(styles)(({index, cell, colSpan, highlight, compare, classes}: ITableCellProps) => {
-  const className = computeCellClass(cell, highlight, compare, classes)
+const TextCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlight, compare, classes}: ITableCellProps) => {
+  const className = computeCellClass(cell, isKeyColumn, highlight, compare, classes)
   
   return cell.render((formattedText) =>
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
@@ -45,8 +46,8 @@ const TextCell = withStyles(styles)(({index, cell, colSpan, highlight, compare, 
   )
 })
 
-const GridCell = withStyles(styles)(({index, cell, colSpan, highlight, compare, classes}: ITableCellProps) => {
-  let className = computeCellClass(cell, highlight, compare, classes)
+const GridCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlight, compare, classes}: ITableCellProps) => {
+  let className = computeCellClass(cell, isKeyColumn, highlight, compare, classes)
   return (
     <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
               className={className}
@@ -77,7 +78,7 @@ interface IState {
   filterText: string
 }
 
-class TableBox extends React.Component<IProps, IState> {
+export class TableBox extends React.Component<IProps, IState> {
 
   state: IState = {
     filterText: ''
@@ -95,6 +96,11 @@ class TableBox extends React.Component<IProps, IState> {
     if(filterText !== '') {
       this.filter(filterText)
     }
+    this.forceUpdate()
+  }
+
+  appendOutput(output: ActionOutput) {
+    this.outputManager.appendRows(output)
     this.forceUpdate()
   }
 
@@ -119,7 +125,7 @@ class TableBox extends React.Component<IProps, IState> {
   renderGroupRow(row: Row, rowIndex: number) {
     const {classes} = this.props
     const components : any[] = []
-    components.push(
+    rowIndex > 0 && components.push(
       <TableRow key={rowIndex+".pre"} className={classes.tableGroupRow}>
       </TableRow>
     )
@@ -129,6 +135,7 @@ class TableBox extends React.Component<IProps, IState> {
       >
         <TextCell index={0} 
                   cell={row.cells[0]}
+                  isKeyColumn={false}
                   highlight={false}
                   compare={false}
                   colSpan={row.columnCount}
@@ -141,7 +148,6 @@ class TableBox extends React.Component<IProps, IState> {
   renderRow(row: Row, rowIndex: number) {
     const {classes, compare} = this.props
     let highlight = compare ? row.lastTwoColumnsDiffer : false
-    
     return (
       <TableRow key={rowIndex} 
           className={classes.tableRow} >
@@ -151,6 +157,7 @@ class TableBox extends React.Component<IProps, IState> {
             <GridCell key={"GridCell"+ci} 
                       index={ci} 
                       cell={cell}
+                      isKeyColumn={cell.isFirstColumn && row.columnCount > 1}
                       highlight={highlight || false}
                       compare={ci !== 0 && compare || false}
                       />
@@ -160,6 +167,7 @@ class TableBox extends React.Component<IProps, IState> {
             <TextCell key={"TextCell"+ci} 
                       index={ci} 
                       cell={cell}
+                      isKeyColumn={cell.isFirstColumn && row.columnCount > 1}
                       highlight={highlight || false} 
                       compare={compare || false}
                       colSpan={1}
@@ -212,29 +220,42 @@ class TableBox extends React.Component<IProps, IState> {
     }
 
     const rows = this.outputManager.filteredRows
+    const columnCount = rows.length > 0 ? rows[0].columnCount : 1
     
     return (
-      <Paper className={classes.root}>
-        <Input  fullWidth
-                placeholder="Type here to filter data from the results" 
-                onChange={this.onFilterChange}
-                className={classes.filterInput}
-        />
-        <Table className={classes.table}>
+      <div className={classes.root}>
+        <Paper  className={classes.filterContainer}>
+          <Input  fullWidth disableUnderline
+                  placeholder="Type here to filter data from the results" 
+                  onChange={this.onFilterChange}
+                  className={classes.filterInput}
+          />
+        </Paper>
+        <Table className={classes.tableContainer}>
           <TableHead>
             {this.renderHeaderRow()}
           </TableHead>
           <TableBody>
-            {rows.map((row, index) => {
-              if(row.isGroupOrSubgroup) {
-                return this.renderGroupRow(row, index)
-              } else {
-                return this.renderRow(row, index)
-              }
-            })}
+            <TableRow>
+              <TableCell colSpan={columnCount} style={{width: '100%', padding: 0}}>
+                <div className={classes.tableBody}>
+                  <Table className={classes.table}>
+                    <TableBody>
+                      {rows.map((row, index) => {
+                        if(row.isGroupOrSubgroup) {
+                          return this.renderGroupRow(row, index)
+                        } else {
+                          return this.renderRow(row, index)
+                        }
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>  
+              </TableCell>
+            </TableRow>
           </TableBody>
         </Table>
-      </Paper>      
+      </div>      
     )
   }
 }

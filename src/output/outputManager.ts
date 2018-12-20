@@ -99,7 +99,12 @@ export class Cell {
     this.isArray = jsonUtil.isArray(content)
     this.isJSON = jsonUtil.isObject(content)
     if(this.isText && (this.isArray || this.isJSON)) {
-      content = JSON.parse(content as string)
+      try {
+        content = JSON.parse(content as string)
+      } catch(error) {
+        console.log("failed to parse content as json... content: %s, error: %s", content, error)
+        this.isArray = this.isJSON = false
+      }
     }
     this.content = content
     if(formattedContent) {
@@ -315,7 +320,6 @@ export class Row {
 }
 
 export default class OutputManager {
-  output: ActionOutput = []
   headers: any[] = []
   rows: Row[] = []
   filteredRows: Row[] = []
@@ -323,13 +327,27 @@ export default class OutputManager {
   appliedFilters: string[][] = []
 
   setOutput(output: ActionOutput) {
-    this.output = output
     this.headers = output && output.length > 0 ? output.slice(0, 1)[0] : []
     this.identifyHealthColumn()
-    this.filteredRows = this.rows = 
-      this.output && this.output.length > 0 ? 
-        this.output.slice(1).map((content, rowIndex) => 
+    this.rows = 
+      output && output.length > 0 ? 
+        output.slice(1).map((content, rowIndex) => 
           new Row(rowIndex, content, this.healthColumnIndex)) : []
+    this.filteredRows = this.rows.concat()
+  }
+
+  appendRows(rows: ActionOutput) {
+    let lastRowIndex = this.rows.length-1
+    rows.forEach(rowContent => {
+      lastRowIndex++
+      const row = new Row(lastRowIndex, rowContent, this.healthColumnIndex)
+      this.rows.push(row)
+      
+      if(this.appliedFilters.length === 0 || row.filter(this.appliedFilters)) {
+        const [highlightedRow, rowChanged] = row.highlightFilters()
+        this.filteredRows.push(highlightedRow)
+      }
+    })
   }
 
   private identifyHealthColumn() {

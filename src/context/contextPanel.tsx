@@ -58,7 +58,7 @@ class ContextPanel extends React.Component<IProps, IState> {
         subheader={
           <ListSubheader classes={{root: classes.listHeader}}>
             <span className={classes.listHeader}>{namespace.name}</span>
-            <span className={classes.listInfoText}>{pods.length} Pod(s)</span>
+            <span className={classes.listInfoText}>{pods.length} Pod(s) selected</span>
           </ListSubheader>
         }>
         {pods.map((pod, index) => (

@@ -12,7 +12,7 @@ interface IState {
 }
 
 interface IProps extends WithStyles<typeof styles> {
-  output: ActionOutput,
+  output: ActionOutput|string[],
 }
 
 const BlackBox = withStyles(styles)(
@@ -36,7 +36,7 @@ class extends React.Component<IProps, IState> {
     )
   }
 
-  writeLines = (output: ActionOutput) => {
+  writeLines = (output: string[]) => {
     return _.flatten(output).map(this.writeLine)
   }
 
@@ -100,9 +100,9 @@ class extends React.Component<IProps, IState> {
       <Card className={classes.card}>
         <CardContent className={classes.cardContent}>
           {colCount === 1 ? 
-            this.writeLines(output)
+            this.writeLines(output as string[])
             : 
-            this.writeFlatTable(output)
+            this.writeFlatTable(output as ActionOutput)
           }
         </CardContent>
       </Card>

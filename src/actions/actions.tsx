@@ -17,7 +17,7 @@ import Context from "../context/contextStore";
 import {ActionLoader} from './actionLoader'
 
 import {ActionGroupSpecs, ActionSpec, BoundAction, ActionGroupSpec, ActionContextType,
-        ActionOutputCollector, ActionChoiceMaker} from './actionSpec'
+        ActionOutputCollector, ActionStreamOutputCollector, ActionChoiceMaker} from './actionSpec'
 
 import styles from './actions.styles'
 import {actionsTheme} from '../theme/theme'
@@ -26,7 +26,7 @@ const actionPluginFolder = "plugins"
 
 interface IState {
   actionGroupSpecs: ActionGroupSpecs,
-  selectedAction?: ActionSpec,
+  selectedAction?: BoundAction,
 }
 
 interface IProps extends WithStyles<typeof styles> {
@@ -34,6 +34,7 @@ interface IProps extends WithStyles<typeof styles> {
   showLoading: () => void
   onCommand: (string) => void
   onOutput: ActionOutputCollector
+  onStreamOutput: ActionStreamOutputCollector
   onChoices: ActionChoiceMaker
 }
 
@@ -50,7 +51,7 @@ class Actions extends React.Component<IProps, IState> {
 
   componentWillReceiveProps(props: IProps) {
     const {context} = props
-    ActionLoader.setOnOutput(props.onOutput)
+    ActionLoader.setOnOutput(props.onOutput, props.onStreamOutput)
     ActionLoader.setOnChoices(props.onChoices)
     ActionLoader.setContext(context)
   }
@@ -65,6 +66,8 @@ class Actions extends React.Component<IProps, IState> {
   }
 
   onAction = (actionContext: string, action: BoundAction) => {
+    const {selectedAction: prevAction} = this.state
+    prevAction && prevAction.stop && prevAction.stop()
     this.setState({selectedAction: action})
     if(action.act) {
       this.props.showLoading()

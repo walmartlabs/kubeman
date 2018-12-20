@@ -1,42 +1,35 @@
 import {Cluster, Namespace, Pod, Item} from "./k8s/k8sObjectTypes";
 import Context from "./context/contextStore";
-import * as k8s from './k8s/k8sClient'
+import * as k8s from './k8s/k8sContextClient'
 import * as jp from 'jsonpath'
 import jsonUtil from './util/jsonUtil'
 
 
 export async function setupRealContext(context: Context) : Promise<Context> {
   const clusters = [
-    new Cluster("eastus2/dev/af1"), 
-    new Cluster("eastus2/dev/af2"),
+    new Cluster("docker-for-desktop-cluster")
   ]
   clusters.forEach(c => context.addCluster(c))
 
   const namespaces = [
     new Namespace("istio-system", clusters[0]), 
     new Namespace("kube-system", clusters[0]), 
-    // new Namespace("kube-public", clusters[0]), 
-    // new Namespace("test-istio", clusters[0]), 
-    // new Namespace("test-non-istio", clusters[0])
-    // new Namespace("istio-system", clusters[1]), 
-    // new Namespace("kube-system", clusters[1]), 
-    // new Namespace("client", clusters[1]), 
-    // new Namespace("one", clusters[1]), 
-    // new Namespace("two", clusters[1])
   ]
   namespaces.forEach(ns => context.addNamespace(ns))
 
 
-  let maxPods = 3
+  let maxPods = 5
   for(const i in namespaces) {
     const ns = namespaces[i]
     const pods = await k8s.getPodsForNamespace(ns)
     maxPods > 1 ? maxPods-- : maxPods++
+    let countAdded = 0
     pods.forEach((pod,i) => {
-      if(i < maxPods) {
-        const meta = jsonUtil.extract(pod, "$.metadata", "name")
-        context.addPod(new Pod(meta.name, ns))
-      }
+      //if(pod.name.includes("controller") || pod.name.includes("gress") || pod.name.includes("istio")) 
+        if(countAdded < maxPods) {
+          context.addPod(pod)
+          countAdded++
+        }
     })
   }
   return Promise.resolve(context)
@@ -117,29 +110,4 @@ export function createTestData(context: Context) : Context {
   context.addPod(pod2401)
 
   return context
-}
-
-
-
-export function testJsonPath(context: Context) {
-  const cluster = new Cluster("eastus2/dev/af1")
-  context.addCluster(cluster)
-
-  const namespace = new Namespace("istio-system", cluster)
-  context.addNamespace(namespace)
-
-  k8s.getPodsForNamespace(namespace)
-  .then(pods => {
-    const pod = pods.filter(pod => pod.metadata.name.includes("pilot"))[0]
-    console.log(pod)
-    let result = jp.apply(pod, "$.status.containerStatuses[*]",
-    value => {
-      console.log("getPodStatus " + JSON.stringify(value))
-      return {name: value.name, state: value.state}
-    })
-    console.log("result = " + JSON.stringify(result))
-    result = jp.query(result, "$[*].value")
-    console.log("result = " + JSON.stringify(result))
-  })
-
 }
