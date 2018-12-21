@@ -3,14 +3,11 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "dev": "electron-webpack dev",
+    "clean": "rm -rf dist/mac",
+    "dev": "yarn clean && electron-webpack dev",
     "compile": "electron-webpack",
     "dist": "yarn compile && electron-builder",
     "dist:dir": "yarn dist --dir -c.compression=store -c.mac.identity=null",
-    "flow": "flow",
-    "build-css": "cd node_modules/semantic-ui && gulp build",
-    "storybook": "start-storybook -p 6006",
-    "build-storybook": "build-storybook"
   },
   "dependencies": {
     "@babel/runtime": "^7.1.5",

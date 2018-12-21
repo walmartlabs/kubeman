@@ -5,7 +5,6 @@ import {ActionContextType, ActionGroupSpec, ActionGroupSpecs, ActionContextOrder
 import Context from "../context/contextStore";
 import ActionContext from './actionContext'
 
-
 export class ActionLoader {
   static onLoad: (ActionGroupSpecs) => void
   static onOutput: ActionOutputCollector
@@ -34,8 +33,8 @@ export class ActionLoader {
     this.onChoices = callback
   }
  
-  static loadActionPlugins() {
-    const plugins = PluginLoader.loadPlugins()
+  static async loadActionPlugins() {
+    const plugins = await PluginLoader.loadPlugins()
     let actionGroupsMap : Map<string, ActionGroupSpec> = new Map
     this.addReloadAction(actionGroupsMap)
 

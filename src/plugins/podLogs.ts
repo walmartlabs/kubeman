@@ -1,11 +1,7 @@
 import k8sFunctions from '../../src/k8s/k8sFunctions'
-import {ActionGroupSpec, ActionContextType, 
-      ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
+import {ActionGroupSpec, ActionContextType, ActionOutputStyle, } from '../../src/actions/actionSpec'
 import K8sPluginHelper from '../util/k8sPluginHelper'
-import {Namespace, Pod, PodTemplate} from "../../src/k8s/k8sObjectTypes"
 import ActionContext from '../../src/actions/actionContext';
-import { any } from 'prop-types';
-import contextMenu from '../../src/main/contextMenu';
 
 
 const plugin : ActionGroupSpec = {
@@ -66,7 +62,6 @@ const plugin : ActionGroupSpec = {
         await plugin.getPodLogs(actionContext, true)
       },
       stop(actionContext) {
-        console.log("closing log stream...")
         if(plugin.logStream) {
           plugin.logStream.stop()
           plugin.logStream = undefined

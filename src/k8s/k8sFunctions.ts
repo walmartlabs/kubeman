@@ -255,7 +255,7 @@ export default class K8sFunctions {
     return configMaps
   }
   
-  static getPodDetails = async (namespace: string, podName: string, k8sClient) => {
+  static getPodDetails = async (namespace: string, podName: string, k8sClient: K8sClient) => {
     const result = await k8sClient.namespace(namespace).pods(podName).get()
     if(result && result.body) {
       return K8sFunctions.extractPodTemplate(result.body)
@@ -404,4 +404,21 @@ export default class K8sFunctions {
       }
     }
   }
+
+  static podExec = async (namespace: string, pod: string, container: string, 
+                          command: string[], k8sClient: K8sClient) : Promise<string[]> => {
+    let result = await k8sClient.namespaces(namespace).pods(pod).exec.post({
+      qs: {
+        container,
+        command,
+        stdout: true,
+        stderr: true,
+      }
+    })
+    if(result && result.body) {
+      result = result.body.split("\n")
+    }
+    return result
+  }
+
 }
