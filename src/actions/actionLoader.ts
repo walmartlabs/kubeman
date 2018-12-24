@@ -36,7 +36,6 @@ export class ActionLoader {
   static loadActionPlugins() {
     const plugins = PluginLoader.loadPlugins()
     let actionGroupsMap : Map<string, ActionGroupSpec> = new Map
-    this.addReloadAction(actionGroupsMap)
 
     plugins.forEach(actionGroupSpec => {
       if(isActionGroupSpec(actionGroupSpec)) {
@@ -80,25 +79,6 @@ export class ActionLoader {
         this.bindActions(actionGroupSpec)
         break
     }
-  }
-
-  static addReloadAction(actionGroupsMap : Map<string, ActionGroupSpec>) {
-    const reloadAction = {
-      order: 1,
-      title: "Common Actions",
-      context: ActionContextType.Common,
-      actions: [
-        {
-          name: "Reload Actions",
-          context: ActionContextType.Common,
-          act: function(onOutput: ActionOutputCollector) {
-            ActionLoader.loadActionPlugins()
-            onOutput([["Actions Reloaded"]], ActionOutputStyle.Text)
-          }.bind(null, this.onOutput)
-        }
-      ]
-    }
-    actionGroupsMap.set(reloadAction.title, reloadAction)
   }
 
   static configureCommonActions(actionGroupSpec: ActionGroupSpec) {
