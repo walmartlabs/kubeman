@@ -4,7 +4,7 @@ import { Table, TableBody, TableRow, TableCell, CircularProgress } from "@materi
 import Switch from '@material-ui/core/Switch';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 
-import Actions from '../actions/actions'
+import StyledActions, {Actions} from '../actions/actions'
 import ActionChoiceDialog from '../actions/actionChoiceDialog'
 import ContextPanel from '../context/contextPanel'
 import ContextSelector from '../context/contextSelector'
@@ -15,6 +15,7 @@ import BlackBox from '../output/blackbox'
 import TableOutput, {TableBox} from '../output/tableBox'
 import {ActionOutput, ActionOutputStyle, ActionOutputCollector, ActionStreamOutputCollector,
         ActionChoiceMaker, ActionChoices, BoundActionAct} from '../actions/actionSpec'
+import {ActionLoader} from '../actions/actionLoader'
 
 import styles from './workspace.styles'
 
@@ -58,6 +59,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
   commandHandler?: ((string) => void) = undefined
   tableBox?: TableBox
+  actions?: Actions
 
   componentDidMount() {
     this.componentWillReceiveProps(this.props)
@@ -108,6 +110,10 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     this.setState({showChoices: false, loading: false})
   }
 
+  onActionTextInput = (text: string) => {
+    this.actions && this.actions.onActionTextInput(text)
+  }
+
   showLoading = () => {
     this.setState({loading: true, outputStyle: ActionOutputStyle.None})
   }
@@ -132,8 +138,10 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
       showChoices, minChoices, maxChoices, choiceTitle, choices } = this.state;
 
     const showBlackBox = outputStyle === ActionOutputStyle.Text
-    const showTable = outputStyle === ActionOutputStyle.Table || outputStyle === ActionOutputStyle.Log
+    const log = outputStyle === ActionOutputStyle.Log
+    const showTable = outputStyle === ActionOutputStyle.Table || log
     const compare = outputStyle === ActionOutputStyle.Compare
+    const acceptInput = this.actions && this.actions.acceptInput() ? true : false
 
     return (
       <div className={classes.root} 
@@ -151,7 +159,8 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
             </TableRow>
             <TableRow className={classes.lowerRow}>
               <TableCell className={classes.actionCell}>
-                <Actions context={context}
+                <StyledActions innerRef={ref => this.actions=ref}
+                        context={context}
                         showLoading={this.showLoading}
                         onCommand={this.onCommand}
                         onOutput={this.showOutput}
@@ -163,9 +172,14 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                 {loading && <CircularProgress className={classes.loading} />}
                 {showBlackBox && <BlackBox output={output} />}
                 {(showTable || compare) && 
-                    <TableOutput  innerRef={ref => this.tableBox=ref} 
+                    <TableOutput  innerRef={ref => this.tableBox=ref}
                                   output={output as any[]}
-                                  compare={compare} />}
+                                  compare={compare} 
+                                  log={log}
+                                  acceptInput={acceptInput}
+                                  onActionTextInput={this.onActionTextInput}
+                    />
+                }
                 
                 {/* <TerminalBox 
                   ref='terminal' 

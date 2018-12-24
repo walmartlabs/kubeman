@@ -11,11 +11,11 @@ function generatePodStatusOutput(podsMap: ClusterNamespacePodsMap) {
   output.push(["Pod", "Created", "Container Status"])
 
   Object.keys(podsMap).forEach(cluster => {
-    output.push(["Cluster: "+cluster, "---", "---"])
+    output.push([">Cluster: "+cluster, "", ""])
 
     const namespaces = Object.keys(podsMap[cluster])
     namespaces.forEach(namespace => {
-      output.push([">Namespace: "+namespace, "---", "---"])
+      output.push([">>Namespace: "+namespace, "", ""])
 
       const pods = podsMap[cluster][namespace]
       if(pods.length === 0) {

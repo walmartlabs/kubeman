@@ -7,27 +7,49 @@ import jsonUtil from './util/jsonUtil'
 
 export async function setupRealContext(context: Context) : Promise<Context> {
   const clusters = [
-    new Cluster("docker-for-desktop-cluster")
+    //new Cluster("docker-for-desktop-cluster")
+    new Cluster("eastus2/dev/af1"), 
+    //new Cluster("eastus2/dev/af5"),
+    new Cluster("vsh01.s05518.us/labs/cluster1")
   ]
   clusters.forEach(c => context.addCluster(c))
 
   const namespaces = [
     new Namespace("istio-system", clusters[0]), 
-    new Namespace("kube-system", clusters[0]), 
+    // new Namespace("kube-system", clusters[0]), 
+    // new Namespace("local", clusters[0]), 
+    // new Namespace("client", clusters[0]), 
+    // new Namespace("tools", clusters[0]),
+    // new Namespace("one", clusters[0]),
+    // new Namespace("two", clusters[0]),
+    new Namespace("istio-system", clusters[1]), 
+    // new Namespace("kube-system", clusters[1]), 
+    // new Namespace("client", clusters[1]), 
+    // new Namespace("one", clusters[1]), 
+    // new Namespace("two", clusters[1])
   ]
   namespaces.forEach(ns => context.addNamespace(ns))
 
+  const preferredPodNames = [
+    "controller", "ingress", "pilot", "policy"
+  ]
 
-  let maxPods = 5
+  const maxPods = 7
+  const maxPerNS = 5
+  let countAdded = 0
+  let countAddedForNS = 0
   for(const i in namespaces) {
+    if(countAdded > maxPods) {
+      break
+    }
+    countAddedForNS = 0
     const ns = namespaces[i]
     const pods = await k8s.getPodsForNamespace(ns)
-    maxPods > 1 ? maxPods-- : maxPods++
-    let countAdded = 0
     pods.forEach((pod,i) => {
-      //if(pod.name.includes("controller") || pod.name.includes("gress") || pod.name.includes("istio")) 
-        if(countAdded < maxPods) {
+      if(preferredPodNames.filter(text => pod.name.includes(text)).length > 0) 
+        if(countAddedForNS < maxPerNS && countAdded < maxPods) {
           context.addPod(pod)
+          countAddedForNS++
           countAdded++
         }
     })

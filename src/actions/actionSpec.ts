@@ -40,15 +40,17 @@ export interface ActionSpec {
   name: string
   context?: ActionContextType
   order?: number
+  choose?: ActionAct
   act: ActionAct
-  choose?: ActionAct,
-  stop?: ActionAct,
+  react?: ActionAct
+  stop?: ActionAct
   [x: string]: any
 }
 
 export interface BoundAction extends ActionSpec {
   act: BoundActionAct
-  stop?: BoundActionAct,
+  stop?: BoundActionAct
+  react?: BoundActionAct
 }
 
 export interface ActionGroupSpec {

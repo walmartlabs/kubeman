@@ -13,11 +13,11 @@ const healthStatusHeaderKeywords = ["status", "health", "condition"]
 
 const healthyKeywords : string[] = [
   "active", "healthy", "good", "green", "up", "run", "start", "success", 
-  "complete", "created", "available", "ready", "normal"
+  "complete", "created", "available", "ready", "normal", "reachable"
 ]
 const unhealthyKeywords : string[] = [
   "inactive", "unhealthy", "bad", "red", "down", "stop", "terminat", "wait", 
-  "warning", "error", "fail", "not available", "unable"
+  "warning", "error", "fail", "not available", "unable", "unreachable"
 ]
 
 hljs.registerLanguage('yaml', yamlHighlight)
@@ -79,9 +79,10 @@ export type CellContent = string|Array<any>|Object
 
 export class Cell {
   index: number
-  isArray: boolean
-  isJSON: boolean
-  isText: boolean
+  isArray: boolean = false
+  isJSON: boolean = false
+  isText: boolean = false
+  isLog: boolean = false
   isGroup = false
   isSubGroup = false  
   isHealthStatusField = false
@@ -93,16 +94,18 @@ export class Cell {
   private isFiltered: boolean = false
   
   constructor(content: CellContent, index:number, formattedContent?: CellContent, 
-              isFiltered?: boolean, isGroup?: boolean, isSubGroup?: boolean, isHealthStatusField?: boolean) {
+              isFiltered?: boolean, isGroup?: boolean, isSubGroup?: boolean, 
+              isHealthStatusField?: boolean, isLog?: boolean) {
     this.index = index
     this.isText = jsonUtil.isText(content)
     this.isArray = jsonUtil.isArray(content)
     this.isJSON = jsonUtil.isObject(content)
+    this.isLog = isLog || false
     if(this.isText && (this.isArray || this.isJSON)) {
       try {
         content = JSON.parse(content as string)
+        this.isText = false
       } catch(error) {
-        console.log("failed to parse content as json... content: %s, error: %s", content, error)
         this.isArray = this.isJSON = false
       }
     }
@@ -112,7 +115,7 @@ export class Cell {
     } else {
       this.formattedContent = content
     }
-    
+        
     if(this.isJSON) {
       this.formattedContent = jsonUtil.isObject(this.formattedContent) ? 
                               yaml.stringify(this.formattedContent) : this.formattedContent.toString()
@@ -167,33 +170,33 @@ export class Cell {
     return [this.content, false]
   }
 
+  formatText(text: any, isJSON: boolean) {
+    if(isJSON) {
+      text = "<pre>" + (this.isFiltered ? text : hljs.highlightAuto(text).value) + "</pre>"
+    } else if(this.isLog) {
+      text = "<pre>" + text + "</pre>"
+    }
+    return text
+  }
+
   render(renderer: ContentRenderer) : any {
     if(this.isArray) {
       return (this.content as any[]).map((item, i) => {
-        const isJSON = jsonUtil.isObject(item) || jsonUtil.isArray(item)
-        let formattedText = this.formattedContent[i]
-        if(isJSON) {
-          formattedText = "<pre>" + 
-            (this.isFiltered ? formattedText : hljs.highlightAuto(formattedText).value)
-            + "</pre>"
-        }
-        return renderer(formattedText, i)
+        return renderer(this.formatText(this.formattedContent[i], 
+                        jsonUtil.isObject(item) || jsonUtil.isArray(item)), i)
       })
     } else {
-      let formattedText = this.formattedContent as string
-      if(this.isJSON) {
-        formattedText = "<pre>" + 
-        (this.isFiltered ? formattedText : hljs.highlightAuto(formattedText).value)
-        + "</pre>"
-      }
-      return renderer(this.isGroup || this.isSubGroup? this.groupText : formattedText, 0)
+      return renderer(this.isGroup || this.isSubGroup ? this.groupText 
+            : this.formatText(this.formattedContent, this.isJSON), 0)
     }
   }
 
   get groupText() {
     let groupTitle = this.isText && this.formattedContent !== "---" ? this.formattedContent as string : ""
-    if(this.isSubGroup) {
+    if(this.isGroup) {
       groupTitle = groupTitle.slice(1)
+    } else if(this.isSubGroup) {
+      groupTitle = groupTitle.slice(2)
     }
     return groupTitle
   }
@@ -223,6 +226,8 @@ export class Cell {
 export class Row {
   index: number
   cells: Cell[]
+  isLog: boolean = false
+  isFirstAppendedRow: boolean = false
 
   private content: CellContent[]
   private healthColumnIndex?: number
@@ -233,20 +238,22 @@ export class Row {
   private _isGroup: boolean = false
   private _isSubgroup: boolean = false
 
-  constructor(index: number, content: CellContent[], healthColumnIndex?: number, formattedContent?: CellContent[],  
-                appliedFilters?: string[]) {
+  constructor(index: number, content: CellContent[], healthColumnIndex?: number, isLog?: boolean, 
+              formattedContent?: CellContent[], appliedFilters?: string[]) {
     this.index = index
     this.content = content
+    this.isLog = isLog || false 
     this.appliedFilters = appliedFilters || []
-    this._isSubgroup = content.length > 0 && content[0].toString().startsWith(">")
-    this._isGroup = !this._isSubgroup && content.includes("---") || false
+    this._isSubgroup = content.length > 0 && content[0].toString().startsWith(">>") || false
+    this._isGroup = !this._isSubgroup && content[0].toString().startsWith(">") || false
 
     this.cells = content.map((cellContent, cellIndex) => 
         new Cell(cellContent, cellIndex,  
           formattedContent ? formattedContent[cellIndex] : undefined,
           this.appliedFilters.length > 0,
           this.isGroup, this.isSubGroup,
-          healthColumnIndex ? healthColumnIndex === cellIndex : false
+          healthColumnIndex ? healthColumnIndex === cellIndex : false,
+          isLog || false
           ))
     this.healthColumnIndex = healthColumnIndex
     this.firstColumn = this.cells.length > 0 ? this.cells[0] : undefined
@@ -283,7 +290,7 @@ export class Row {
   }
 
   filter(filterGroups: string[][]) : boolean {
-    if(this.isGroup) {
+    if(this.isGroup || this.isSubGroup) {
       return true
     } else {
       this.appliedFilters = []
@@ -311,7 +318,7 @@ export class Row {
       rowChanged = rowChanged || newCellData[1]
     })
     if(rowChanged) {
-      return [new Row(this.index, this.content, this.healthColumnIndex, 
+      return [new Row(this.index, this.content, this.healthColumnIndex, this.isLog,
                         formattedCellContent, this.appliedFilters), true]
     } else {
       return [this, false]
@@ -325,25 +332,33 @@ export default class OutputManager {
   filteredRows: Row[] = []
   healthColumnIndex: number = -1
   appliedFilters: string[][] = []
+  isLog: boolean = false
 
-  setOutput(output: ActionOutput) {
+  setOutput(output: ActionOutput, isLog: boolean) {
+    this.isLog = isLog || false
     this.headers = output && output.length > 0 ? output.slice(0, 1)[0] : []
     this.identifyHealthColumn()
     this.rows = 
       output && output.length > 0 ? 
         output.slice(1).map((content, rowIndex) => 
-          new Row(rowIndex, content, this.healthColumnIndex)) : []
+          new Row(rowIndex, content, this.healthColumnIndex, this.isLog)) : []
     this.filteredRows = this.rows.concat()
   }
 
   appendRows(rows: ActionOutput) {
     let lastRowIndex = this.rows.length-1
+    this.rows.forEach(row => row.isFirstAppendedRow = false)
+    let isFirstAppendedRow = false
     rows.forEach(rowContent => {
       lastRowIndex++
-      const row = new Row(lastRowIndex, rowContent, this.healthColumnIndex)
+      const row = new Row(lastRowIndex, rowContent, this.healthColumnIndex, this.isLog)
       this.rows.push(row)
-      
-      if(this.appliedFilters.length === 0 || row.filter(this.appliedFilters)) {
+      if(!isFirstAppendedRow) {
+        row.isFirstAppendedRow = isFirstAppendedRow = true
+      }
+      if(this.appliedFilters.length === 0) {
+        this.filteredRows.push(row)
+      } else if(row.filter(this.appliedFilters)) {
         const [highlightedRow, rowChanged] = row.highlightFilters()
         this.filteredRows.push(highlightedRow)
       }
@@ -365,11 +380,11 @@ export default class OutputManager {
 
   clearFilter() {
     this.appliedFilters = []
-    this.filteredRows = this.rows
+    this.filteredRows = this.rows.concat()
   }
 
   get hasContent() {
-    return this.rows && this.rows.length > 0
+    return this.headers.length > 0 || this.rows.length > 0
   }
 
   get hasFilteredContent() {

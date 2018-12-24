@@ -30,7 +30,7 @@ export function generateDeploymentComparisonOutput(clusters: Cluster[], namespac
   })
 
   Object.keys(nsDeploymentToClusterMap).forEach(namespace => {
-    output.push(["Namespace: " + namespace, "---", "---"])
+    output.push([">Namespace: " + namespace, "", ""])
     const deploymentToClusterMap = nsDeploymentToClusterMap[namespace]
     const deployments = Object.keys(deploymentToClusterMap)
     if(deployments.length === 0) {

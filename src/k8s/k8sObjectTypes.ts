@@ -4,6 +4,10 @@ export class Cluster {
   constructor(name: string) {
     this.name = name
   }
+  namespace(name: string) {
+    const matches = this.namespaces.filter(ns => ns.name === name)
+    return matches.length > 0 ? matches[0] : undefined
+  }
   get group() {
     return null
   }
@@ -23,6 +27,10 @@ export class Namespace {
   constructor(name?: string, cluster?: Cluster) {
     this.name = name || ''
     this.cluster = cluster || new Cluster('');
+  }
+  pod(name: string) {
+    const matches = this.pods.filter(pod => pod.name === name)
+    return matches.length > 0 ? matches[0] : undefined
   }
   get group() {
     return "[" + this.cluster.name + "]"
@@ -83,36 +91,83 @@ export interface Metadata {
   labels: string[]
 }
 
-export interface PodTemplate extends Metadata {
-  containers: any[]
-  initContainers: any[]
-  activeDeadlineSeconds: any
-  affinity: any
-  dnsConfig: any
-  dnsPolicy: any
-  hostAliases: any
-  hostIPC: any
-  hostNetwork: any
-  hostPID: any
-  hostname: string
-  nodeName: string
-  nodeSelector: any
-  priority: any
-  priorityClassName: string
-  readinessGates: any
-  restartPolicy: any
-  runtimeClassName: string
-  schedulerName: string
-  securityContext: any
-  serviceAccount: any
-  serviceAccountName: string
-  shareProcessNamespace: any
-  subdomain: any
-  terminationGracePeriodSeconds: number
-  volumes: any[]  
+export interface ContainerInfo {
+  name: string
+  image: string
+  imagePullPolicy?: string
+  args?: string[]
+  command?: string[]
+  ports?: any[]
+  volumeMounts?: any[]
+  workingDir?: string
+  livenessProbe?: any
+  readinessProbe?: any
+  resources?: any
+  securityContext?: any
 }
 
-export interface PodDetails extends PodTemplate {
-  conditions: any[]
-  containerStatuses: any[]
+export interface ContainerStatus {
+  containerID: string
+  name: string
+  image: string
+  imageID: string
+  ready: boolean
+  restartCount: number
+  state?: any
+  lastState?: any
+}
+
+export interface PodInfo extends Metadata{
+  activeDeadlineSeconds?: any
+  affinity?: any
+  dnsConfig?: any
+  dnsPolicy?: any
+  hostAliases?: any
+  hostIPC?: any
+  hostNetwork?: any
+  hostPID?: any
+  hostname?: string
+  nodeName?: string
+  nodeSelector?: any
+  priority?: any
+  priorityClassName?: string
+  readinessGates?: any
+  restartPolicy?: any
+  runtimeClassName?: string
+  schedulerName?: string
+  securityContext?: any
+  serviceAccount?: any
+  serviceAccountName?: string
+  shareProcessNamespace?: any
+  subdomain?: any
+  terminationGracePeriodSeconds?: number
+}
+
+export interface PodTemplate extends PodInfo {
+  containers: ContainerInfo[]
+  initContainers?: ContainerInfo[]
+  volumes?: any[]  
+}
+
+export interface PodStatus {
+  podIP?: string
+  hostIP?: string
+  message?: string
+  reason?: string
+  phase?: string
+  qosClass?: string
+  startTime?: any
+  conditions?: any[]
+  containerStatuses?: ContainerStatus[]
+  initContainerStatuses?: ContainerStatus[]
+}
+
+export interface PodDetails extends PodTemplate, PodStatus {
+}
+
+export interface PodContainerDetails {
+  podInfo: PodInfo
+  containerInfo: ContainerInfo
+  podStatus?: PodStatus
+  containerStatus?: ContainerStatus
 }

@@ -38,7 +38,7 @@ interface IProps extends WithStyles<typeof styles> {
   onChoices: ActionChoiceMaker
 }
 
-class Actions extends React.Component<IProps, IState> {
+export class Actions extends React.Component<IProps, IState> {
   state: IState = {
     actionGroupSpecs: [],
     selectedAction: undefined,
@@ -65,9 +65,10 @@ class Actions extends React.Component<IProps, IState> {
     this.props.onCommand && this.props.onCommand("clear")
   }
 
-  onAction = (actionContext: string, action: BoundAction) => {
+  onAction = (action: BoundAction) => {
     const {selectedAction: prevAction} = this.state
     prevAction && prevAction.stop && prevAction.stop()
+    ActionLoader.actionContext.inputText = undefined
     this.setState({selectedAction: action})
     if(action.act) {
       this.props.showLoading()
@@ -75,10 +76,23 @@ class Actions extends React.Component<IProps, IState> {
     }
   }
 
+  acceptInput() : boolean {
+    const {selectedAction} = this.state
+    return selectedAction && selectedAction.react ? true : false
+  }
+
+  onActionTextInput = (text: string) => {
+    const {selectedAction: action} = this.state
+    if(action && action.react) {
+      ActionLoader.actionContext.inputText = text
+      action.react()
+    }
+  }
+
   renderExpansionPanel(actionGroupSpec: ActionGroupSpec) {
     const { classes } = this.props;
     const {selectedAction} = this.state
-    const {title, context: actionContext, actions} = actionGroupSpec
+    const {title, actions} = actionGroupSpec
 
 
     return (
@@ -93,7 +107,7 @@ class Actions extends React.Component<IProps, IState> {
               className={selectedAction && action.name === selectedAction.name 
                           && action.context === selectedAction.context ? classes.selectedAction : ''}>
                 <ListItemText className={classes.listText}
-                      onClick={this.onAction.bind(this, actionContext, action as BoundAction)}>
+                      onClick={this.onAction.bind(this, action as BoundAction)}>
                   <Typography>{action.name}</Typography>
                 </ListItemText>
               </ListItem>

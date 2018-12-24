@@ -20,5 +20,5 @@ pre {
   color: olive;
 }
 .gridRow:not(:last-child) {
-  border-bottom: 1px dotted
+  border-bottom: 1px dotted #c8c8ea
 }

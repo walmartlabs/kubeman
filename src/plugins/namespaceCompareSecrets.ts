@@ -43,7 +43,7 @@ const plugin : ActionGroupSpec = {
         output.push(headers)
       
         Object.keys(secretsMap).forEach(namespace => {
-          output.push(["Namespace: " + namespace, "---", "---"])
+          output.push([">Namespace: " + namespace, "", ""])
           const secretToClusterMap = secretsMap[namespace]
           const secrets = secretToClusterMap ? Object.keys(secretToClusterMap) : []
           if(secrets.length === 0) {

@@ -1,7 +1,7 @@
 import PluginLoader from '../../static/pluginLoader'
 import {ActionContextType, ActionGroupSpec, ActionGroupSpecs, ActionContextOrder,
         isActionGroupSpec, isActionSpec, ActionOutput, ActionOutputStyle, 
-        ActionOutputCollector, ActionStreamOutputCollector, ActionChoiceMaker, } from './actionSpec'
+        ActionOutputCollector, ActionStreamOutputCollector, ActionChoiceMaker, BoundActionAct, } from './actionSpec'
 import Context from "../context/contextStore";
 import ActionContext from './actionContext'
 
@@ -116,7 +116,7 @@ export class ActionLoader {
       if(!isActionSpec(action)) {
         console.log("Not ActionSpec: " + JSON.stringify(action))
       } else {
-        const act = action.act.bind(action, this.actionContext)
+        const act: BoundActionAct = action.act.bind(action, this.actionContext)
         action.act = () => {
           if(this.checkSelections({
             checkClusters: true, 
@@ -126,12 +126,14 @@ export class ActionLoader {
           })) {
             if(action.choose) {
               this.actionContext.onChoices = this.onChoices.bind(this, act)
+              this.actionContext.onSkipChoices = act
               action.choose(this.actionContext)
             } else {
               act()
             }
           }
         }
+        action.react && (action.react = action.react.bind(action, this.actionContext))
         action.stop && (action.stop = action.stop.bind(action, this.actionContext))
       }
     })
@@ -140,13 +142,13 @@ export class ActionLoader {
   static checkSelections({checkClusters, checkNamespaces, checkPods}: 
                           {checkClusters?: boolean, checkNamespaces?: boolean, checkPods?: boolean}) {
     let result = true
-    if(checkClusters && this.context.clusters().length === 0) {
+    if(checkClusters && this.context.clusters.length === 0) {
       result = false
       this.onOutput([["No clusters selected"]], ActionOutputStyle.Text)
-    } else if(checkNamespaces && this.context.namespaces().length === 0) {
+    } else if(checkNamespaces && this.context.namespaces.length === 0) {
       result = false
       this.onOutput([["No namespaces selected"]], ActionOutputStyle.Text)
-    } else if(checkPods && this.context.pods().length === 0) {
+    } else if(checkPods && this.context.pods.length === 0) {
       result = false
       this.onOutput([["No pods selected"]], ActionOutputStyle.Text)
     }

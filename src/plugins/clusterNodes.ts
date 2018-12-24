@@ -19,7 +19,7 @@ const plugin : ActionGroupSpec = {
         ])
         for(const i in clusters) {
           const cluster = clusters[i].name
-          output.push(["Cluster: " + cluster, "---", "---"])
+          output.push([">Cluster: " + cluster, "", ""])
           const nodes = await k8sFunctions.getClusterNodes(cluster, k8sClients[i])
           nodes.forEach(node => output.push([
             [node.name, "(" + node.creationTimestamp + ")"],

@@ -20,7 +20,7 @@ const plugin : ActionGroupSpec = {
         ])
         for(const i in clusters) {
           const cluster = clusters[i].name
-          output.push(["Cluster: " + cluster, "---", "---"])
+          output.push([">Cluster: " + cluster, "", ""])
           const namespaces = await k8sFunctions.getClusterNamespaces(cluster, k8sClients[i])
           namespaces.forEach(ns => output.push([ns.name, ns.creationTimestamp, ns.status]))
         }

@@ -1,11 +1,12 @@
 import jsonUtil from '../util/jsonUtil'
 import {K8sClient} from './k8sClient'
-import {Cluster, Namespace, Pod, Metadata, PodDetails, PodTemplate} from "./k8sObjectTypes";
+import {Cluster, Namespace, Pod, Metadata, PodInfo, PodDetails, PodTemplate, PodStatus,
+        ContainerInfo, ContainerStatus, PodContainerDetails} from "./k8sObjectTypes";
 
 export type DataObject = {[key: string]: any}
 export type StringStringStringBooleanMap = {[key: string]: {[key: string]: {[key: string]: boolean}}}
 export type StringStringArrayMap = {[key: string]: {[key: string]: any[]}}
-export type ComparisonFunction = (cluster: string, namespace: string, k8sClient: K8sClient) => any
+export type GetItemsFunction = (cluster: string, namespace: string, k8sClient: K8sClient) => Promise<any[]>
 
 export default class K8sFunctions {
 
@@ -87,7 +88,7 @@ export default class K8sFunctions {
     return services
   }
 
-  static getNamespaceServices = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
+  static getNamespaceServices: GetItemsFunction = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
     const services : any[] = []
     const result = await k8sClient.namespaces(namespace).services.get()
     if(result && result.body) {
@@ -193,7 +194,7 @@ export default class K8sFunctions {
     return deployments
   }
 
-  static getNamespaceDeployments = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
+  static getNamespaceDeployments: GetItemsFunction = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
     const deployments : any[] = []
     const result = await k8sClient.apps.namespaces(namespace).deployments.get()
     if(result && result.body) {
@@ -218,7 +219,7 @@ export default class K8sFunctions {
     return deployments
   }
 
-  static getNamespaceSecrets = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
+  static getNamespaceSecrets: GetItemsFunction = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
     const secrets : any[] = []
     const result = await k8sClient.namespaces(namespace).secrets.get()
     if(result && result.body) {
@@ -238,7 +239,7 @@ export default class K8sFunctions {
     return secrets
   }
 
-  static getNamespaceConfigMaps = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
+  static getNamespaceConfigMaps: GetItemsFunction = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
     const configMaps : any[] = []
     const result = await k8sClient.namespaces(namespace).configmaps.get()
     if(result && result.body) {
@@ -255,10 +256,33 @@ export default class K8sFunctions {
     return configMaps
   }
   
-  static getPodDetails = async (namespace: string, podName: string, k8sClient: K8sClient) => {
+  static getPodDetails = async (namespace: string, pod: string, k8sClient: K8sClient) => {
+    const result = await k8sClient.namespace(namespace).pods(pod).get()
+    if(result && result.body) {
+      return K8sFunctions.extractPodDetails(result.body)
+    }
+    return undefined
+  }
+  
+  static getContainerDetails = async (namespace: string, podName: string, containerName: string, k8sClient: K8sClient) => {
     const result = await k8sClient.namespace(namespace).pods(podName).get()
     if(result && result.body) {
-      return K8sFunctions.extractPodTemplate(result.body)
+      const podTemplate =  K8sFunctions.extractPodTemplate(result.body)
+      if(podTemplate.containers) {
+        const containers = podTemplate.containers.filter(c => c.name === containerName)
+        if(containers.length > 0) {
+          const podStatus = K8sFunctions.extractPodStatus(result.body)
+          const containerStatus = podStatus.containerStatuses && 
+            podStatus.containerStatuses.filter(cs => cs.name === containerName)[0]
+          const containerDetails: PodContainerDetails = {
+            podInfo: K8sFunctions.extractPodInfo(result.body),
+            containerInfo: containers[0],
+            podStatus,
+            containerStatus
+          }
+          return containerDetails
+        }
+      }
     }
     return undefined
   }
@@ -284,29 +308,30 @@ export default class K8sFunctions {
   }
 
   static extractPodDetails = (pod) : PodDetails => {
-    const conditions = jsonUtil.extractMulti(pod, "$.status.conditions[*]",
-                            "type", "status", "message")
-                        .map(jsonUtil.convertObjectToString)
-    const containerStatuses = jsonUtil.extractMulti(pod, "$.status.containerStatuses[*]", "name", "state")
-                                .map(jsonUtil.convertObjectToString)
     return {
       ...K8sFunctions.extractPodTemplate(pod),
-      conditions,
-      containerStatuses
+      ...K8sFunctions.extractPodStatus(pod)
     }
   }
 
   static extractPodTemplate = (podTemplate) : PodTemplate => {
-    const meta = K8sFunctions.extractMetadata(podTemplate) as Metadata
-    const initContainers = jsonUtil.extract(podTemplate, "$.spec.initContainers", 
+    const initContainers: ContainerInfo[] = jsonUtil.extract(podTemplate, "$.spec.initContainers", 
                           "name", "image", "securityContext")
-    const containers = jsonUtil.extractMulti(podTemplate, "$.spec.containers[*]", 
+    const containers: ContainerInfo[] = jsonUtil.extractMulti(podTemplate, "$.spec.containers[*]", 
                           "name", "image", "imagePullPolicy", "ports", "resources", 
                           "volumeMounts", "securityContext")
     return {
-      ...meta,
+      ...K8sFunctions.extractPodInfo(podTemplate),
       containers: containers,
       initContainers: initContainers,
+      volumes: podTemplate.spec.volumes,
+    }
+  }
+
+  static extractPodInfo = (podTemplate) : PodInfo => {
+    const meta = K8sFunctions.extractMetadata(podTemplate) as Metadata
+    return {
+      ...meta,
       activeDeadlineSeconds: podTemplate.spec.activeDeadlineSeconds,
       affinity: podTemplate.spec.affinity,
       dnsConfig: podTemplate.spec.dnsConfig,
@@ -330,7 +355,28 @@ export default class K8sFunctions {
       shareProcessNamespace: podTemplate.spec.shareProcessNamespace,
       subdomain: podTemplate.spec.subdomain,
       terminationGracePeriodSeconds: podTemplate.spec.terminationGracePeriodSeconds,
-      volumes: podTemplate.spec.volumes,
+    }
+  }
+
+  static extractPodStatus = (pod) : PodStatus => {
+    const conditions = jsonUtil.extractMulti(pod, "$.status.conditions[*]",
+                            "type", "status", "message")
+                        .map(jsonUtil.convertObjectToString)
+    const containerStatuses: ContainerStatus[] = jsonUtil.extractMulti(pod, "$.status.containerStatuses[*]", "name", "state")
+                                .map(jsonUtil.convertObjectToString)
+    const initContainerStatuses: ContainerStatus[] = jsonUtil.extractMulti(pod, "$.status.initContainerStatuses[*]", "name", "state")
+                                .map(jsonUtil.convertObjectToString)
+    return {
+      podIP: pod.status.podIP,
+      hostIP: pod.status.hostIP,
+      message: pod.status.message,
+      reason: pod.status.reason,
+      phase: pod.status.phase,
+      qosClass: pod.status.qosClass,
+      startTime: pod.status.startTime,
+      conditions,
+      containerStatuses,
+      initContainerStatuses,
     }
   }
 
@@ -405,8 +451,8 @@ export default class K8sFunctions {
     }
   }
 
-  static podExec = async (namespace: string, pod: string, container: string, 
-                          command: string[], k8sClient: K8sClient) : Promise<string[]> => {
+  static podExec = async (namespace: string, pod: string, container: string, k8sClient: K8sClient, 
+                          command: string[]) : Promise<string> => {
     let result = await k8sClient.namespaces(namespace).pods(pod).exec.post({
       qs: {
         container,
@@ -416,7 +462,9 @@ export default class K8sFunctions {
       }
     })
     if(result && result.body) {
-      result = result.body.split("\n")
+      return result.body
+    } else {
+      return "No Results"
     }
     return result
   }

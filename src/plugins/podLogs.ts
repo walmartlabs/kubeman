@@ -10,26 +10,16 @@ const plugin : ActionGroupSpec = {
   logStream: undefined,
 
   async getPodLogs(actionContext: ActionContext, tail: boolean) {
-    let selections = actionContext.getSelections()
+    const selections = await K8sPluginHelper.getPodSelections(actionContext)
     if(selections.length < 1) {
       actionContext.onOutput && actionContext.onOutput([["No pod selected"]], ActionOutputStyle.Text)
       return
     }
-    const title = selections[0][0] as string
-    const podAndContainer = title.split("@")
-    const container = podAndContainer[0]
-    const pod = podAndContainer[1]
-    const namespace = selections[0][1].replace("Namespace: ", "")
-    const cluster = selections[0][2].replace("Cluster: ", "")
+    const selection = selections[0]
+    actionContext.onOutput && actionContext.onOutput([["Logs for " + selection.title]], ActionOutputStyle.Log)
   
-    const clusters = actionContext.getClusters()
-    const clusterIndex = clusters.map((c,i) => c.name === cluster ? i : -1)
-            .filter(i => i >= 0)[0]
-    const k8sClient = actionContext.getK8sClients()[clusterIndex]
-    
-    actionContext.onOutput && actionContext.onOutput([["Logs for " + title]], ActionOutputStyle.Log)
-  
-    const logStream = await k8sFunctions.getPodLog(namespace, pod, container, k8sClient, tail)
+    const logStream = await k8sFunctions.getPodLog(selection.namespace, selection.pod, 
+                              selection.container, selection.k8sClient, tail)
     logStream.onLog(lines => {
       lines = lines.split("\n")
               .filter(line => line.length > 0)
@@ -49,7 +39,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "Check Pod Logs",
       order: 1,
-      choose: K8sPluginHelper.choosePod,
+      choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, false)
       }
@@ -57,7 +47,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "Tail Pod Logs",
       order: 2,
-      choose: K8sPluginHelper.choosePod,
+      choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, true)
       },

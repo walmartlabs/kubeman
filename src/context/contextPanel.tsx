@@ -36,7 +36,7 @@ class ContextPanel extends React.Component<IProps, IState> {
   componentWillReceiveProps(props: IProps) {
     const {context} = props;
     const {activeTab} = this.state
-    const clusters = context.clusters()
+    const clusters = context.clusters
     if(activeTab >= clusters.length) {
       this.setState({ activeTab: 0});
     }
@@ -50,7 +50,7 @@ class ContextPanel extends React.Component<IProps, IState> {
 
   renderNamespace = (namespace: Namespace) => {
     const {classes, context} = this.props
-    const pods = context.podsForNamespace(namespace)
+    const pods = namespace.pods
 
     return (
       <List dense 
@@ -75,7 +75,7 @@ class ContextPanel extends React.Component<IProps, IState> {
   render() {
     const {classes, context, onSelectContext} = this.props;
     const {activeTab} = this.state
-    const clusters = context.clusters();
+    const clusters = context.clusters
 
     return (
       <div>
@@ -107,8 +107,7 @@ class ContextPanel extends React.Component<IProps, IState> {
             clusters.length > 0 &&
               clusters.map((cluster, index) => {
                 if(activeTab === index) {
-                  const namespaces = context.namespacesForCluster(cluster)
-                  return namespaces && namespaces.map(namespace => 
+                  return cluster.namespaces.map(namespace => 
                       <Grid key={namespace.name+index} item xs={12} md={12} className={classes.gridItem}>
                         {this.renderNamespace(namespace)}
                       </Grid>

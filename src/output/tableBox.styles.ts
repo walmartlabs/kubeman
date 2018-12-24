@@ -55,7 +55,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     height: 24,
     backgroundBlendMode: 'multiply',
     color: '#ffffff !important',
-    background: 'linear-gradient(45deg, #0e2fd8 80%, #0b25a8 99%)',
+    background: 'linear-gradient(45deg, #2952a3 80%, #142952 99%)',
   },
   tableSubgroupRow: {
     padding: 0,
@@ -87,6 +87,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
   tableKeyCellHighlight: {
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#bcccdc',
+    width: '22%',
     '&:after': {
       content: "'*'",
       color: 'red'
@@ -119,6 +120,14 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
   filterInput: {
     fontSize: '0.9rem',
+  },
+  loading: {
+    position: 'absolute',
+    top: '60%',
+    left: '60%',
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    backgroundColor: 'transparent',
   },
 })
 

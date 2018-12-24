@@ -105,7 +105,8 @@ export class ClusterContext {
 
 
 export default class Context {
-  private _clusters: Map<Cluster, ClusterContext> = new Map()
+  private clusterMap: Map<string, Cluster> = new Map
+  private _clusters: Map<Cluster, ClusterContext> = new Map
   hasClusters: boolean = false
   hasNamespaces: boolean = false
   hasPods: boolean = false
@@ -113,26 +114,23 @@ export default class Context {
 
   updateFlags() {
     this.hasClusters = this._clusters.size > 0
-    this.hasNamespaces = this.namespaces().length > 0
-    this.hasPods = this.pods().length > 0
+    this.hasNamespaces = this.namespaces.length > 0
+    this.hasPods = this.pods.length > 0
   }
 
   storeClusters(clusters: Map<string, Cluster>) {
     this.clearClusters()
-    clusters.forEach(cluster => this._clusters.set(cluster, new ClusterContext))
-    this.updateFlags()
+    clusters.forEach(this.addCluster)
   }
 
   storeNamespaces(namespaces: Map<string, Namespace>) {
     this.clearNamespaces()
-    namespaces.forEach(this.addNamespace.bind(this))
-    this.updateFlags()
+    namespaces.forEach(this.addNamespace)
   }
 
   storePods(pods: Map<string, Pod>) {
     this.clearPods()
-    pods.forEach(this.addPod.bind(this))
-    this.updateFlags()
+    pods.forEach(this.addPod)
   }
 
   store(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, pods: Map<string, Pod>) {
@@ -143,6 +141,7 @@ export default class Context {
 
   clearClusters() {
     this._clusters.clear()
+    this.clusterMap.clear()
     this.updateFlags()
   }
 
@@ -159,12 +158,13 @@ export default class Context {
     this.updateFlags()
   }
 
-  addCluster(cluster: Cluster) {
+  addCluster = (cluster: Cluster) => {
     this._clusters.set(cluster, new ClusterContext)
+    this.clusterMap.set(cluster.name, cluster)
     this.updateFlags()
   }
 
-  addNamespace(namespace: Namespace) {
+  addNamespace = (namespace: Namespace) => {
     const clusterContext = this._clusters.get(namespace.cluster)
     if(!clusterContext) {
       console.log("Cluster %s not found for ns %s", namespace.cluster.name, namespace.name)
@@ -175,7 +175,7 @@ export default class Context {
     this.updateFlags()
   }
   
-  addPod(pod: Pod) {
+  addPod = (pod: Pod) => {
     const clusterContext = this._clusters.get(pod.namespace.cluster)
     if(!clusterContext) {
       throw new ReferenceError("Cluster not found: " + pod.namespace.cluster)
@@ -183,61 +183,27 @@ export default class Context {
     clusterContext.addPod(pod)
     this.updateFlags()
   }
-  
-  * getClusters() {
-    for(let c of this._clusters.keys()) {
-      yield c
-    }
+
+  get clusters() : Cluster[] {
+    return Array.from(this.clusterMap.values())
   }
 
-  clusters() : Cluster[] {
-    return Array.from(this._clusters.keys())
+  cluster(clusterName: string) {
+    return this.clusterMap.get(clusterName)
   }
 
- 
-  clusterNames() : string[] {
-    return Array.from(this._clusters.keys()).map(c => c.text())
+  get namespaces() : Namespace[] {
+    return _.flatMap(Array.from(this.clusterMap.values()), c => c.namespaces)
   }
 
-  clusterContext(cluster: Cluster) : ClusterContext|undefined {
-    return this._clusters.get(cluster)
+  namespace(clusterName: string, nsName: string) {
+    const cluster = this.cluster(clusterName)
+    const namespaces = cluster && cluster.namespaces.filter(ns => ns.name === nsName)
+    return namespaces && namespaces.length > 0 && namespaces[0]
   }
 
-  namespaces() : Namespace[] {
-    return _.flatMap(Array.from(this._clusters.values()), cc => cc.namespaces())
-  }
-
-  namespacesForCluster(cluster: Cluster) : Namespace[] {
-    const clusterContext = this._clusters.get(cluster)
-    return clusterContext ? clusterContext.namespaces() : []
-  }
-  
-  namespaceNames() : string[] {
-    return _.flatMap(Array.from(this._clusters.values()), cc => cc.namespaces()).map(ns => ns.text())
-  }
-
-  pods() : Pod[] {
-    return _.flatMap(Array.from(this._clusters.values()), cc => cc.pods())
-  }
-
-  podsForNamespace(namespace: Namespace) : Pod[] {
-    const namespaceContext = this.namespaceContext(namespace)
-    return namespaceContext ? namespaceContext.pods() : []
-  }
-  
-  podNames() : string[] {
-    return _.flatMap(Array.from(this._clusters.values()), cc => 
-                _.flatMap(Array.from(cc._namespaces.values()), 
-                    nc => nc.pods())).map(pod => pod.text())
-  }
-
-  namespaceContext(namespace: Namespace) : NamespaceContext|undefined {
-    const clusterContext = this._clusters.get(namespace.cluster)
-    return clusterContext ? clusterContext.namespace(namespace):undefined
-  }
-
-  namespace(cluster: Cluster, namespace: Namespace) : NamespaceContext|undefined {
-    const clusterContext = this._clusters.get(cluster)
-    return clusterContext ? clusterContext.namespace(namespace):undefined
+  get pods() : Pod[] {
+    return _.flatMap(Array.from(this.clusterMap.values()), 
+              c => _.flatMap(c.namespaces, ns => ns.pods))
   }
 }

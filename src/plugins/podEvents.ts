@@ -12,14 +12,14 @@ function generatePodEventsOutput(podsMap) {
   Object.keys(podsMap).forEach(cluster => {
     const namespaces = Object.keys(podsMap[cluster])
     namespaces.forEach(namespace => {
-      output.push(["Cluster: "+cluster + ", Namespace: "+namespace, "---", "---"])
+      output.push([">Cluster: "+cluster + ", Namespace: "+namespace, "", ""])
 
       const pods = Object.keys(podsMap[cluster][namespace])
       if(pods.length === 0) {
         output.push(["No pods selected", "", ""])
       } else {
         pods.forEach(pod => {
-          output.push([">Pod: "+pod, "---", "---"])
+          output.push([">>Pod: "+pod, "", ""])
           const events = podsMap[cluster][namespace][pod]
           events.forEach(event => output.push([
             [event.reason, event.lastTimestamp, "(" + event.count + ")"],
