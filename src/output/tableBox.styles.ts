@@ -56,6 +56,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     backgroundBlendMode: 'multiply',
     color: '#ffffff !important',
     background: 'linear-gradient(45deg, #2952a3 80%, #142952 99%)',
+    cursor: 'pointer',
   },
   tableSubgroupRow: {
     padding: 0,
@@ -108,6 +109,12 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     padding: '0px',
     backgroundColor: palette.type ==='dark' ? '#805500' : '#ff8000',
     borderBottom: palette.type ==='dark' ? borderDark : borderLight,
+  },
+  tableCellHidden: {
+    padding: 0, 
+    cursor: 'pointer',
+    textAlign: 'center',
+    backgroundColor: palette.type ==='dark' ? palette.background.default : '#bcccdc',
   },
   searchHighlight: {
     backgroundColor: palette.type ==='dark' ? '#804d00' : '#FFCC80',

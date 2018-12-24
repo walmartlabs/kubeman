@@ -4,11 +4,10 @@ import K8sPluginHelper from '../../src/util/k8sPluginHelper'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
-  title: "Compare Namespace Objects",
   actions: [
     {
       name: "Compare Two Secrets",
-      order: 1,
+      order: 11,
       async choose(actionContext) {
         await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceSecrets, "Secrets", 2, 2, "name")
       },
@@ -19,7 +18,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Compare Two Config Maps",
-      order: 2,
+      order: 12,
       async choose(actionContext) {
         await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceConfigMaps, "Config Maps", 2, 2, "name")
       },
@@ -30,18 +29,18 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Compare Two Services",
-      order: 3,
+      order: 13,
       async choose(actionContext) {
         await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceServices, "Services", 2, 2, "name")
       },
 
       async act(actionContext) {
-        K8sPluginHelper.generateComparisonOutput(actionContext, "Secrets")
+        K8sPluginHelper.generateComparisonOutput(actionContext, "Services")
       },
     },
     {
       name: "Compare Two Deployments",
-      order: 4,
+      order: 14,
       async choose(actionContext) {
         await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceDeployments, "Deployments", 2, 2, "name")
       },

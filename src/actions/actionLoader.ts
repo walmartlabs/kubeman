@@ -1,4 +1,4 @@
-import PluginLoader from '../../static/pluginLoader'
+import PluginLoader from './pluginLoader'
 import {ActionContextType, ActionGroupSpec, ActionGroupSpecs, ActionContextOrder,
         isActionGroupSpec, isActionSpec, ActionOutput, ActionOutputStyle, 
         ActionOutputCollector, ActionStreamOutputCollector, ActionChoiceMaker, BoundActionAct, } from './actionSpec'
@@ -33,8 +33,8 @@ export class ActionLoader {
     this.onChoices = callback
   }
  
-  static async loadActionPlugins() {
-    const plugins = await PluginLoader.loadPlugins()
+  static loadActionPlugins() {
+    const plugins = PluginLoader.loadPlugins()
     let actionGroupsMap : Map<string, ActionGroupSpec> = new Map
     this.addReloadAction(actionGroupsMap)
 

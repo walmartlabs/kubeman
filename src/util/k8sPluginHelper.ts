@@ -6,11 +6,19 @@ import {Namespace, Pod, PodTemplate, PodDetails, PodContainerDetails} from "../.
 import k8sFunctions from '../../src/k8s/k8sFunctions'
 import { K8sClient } from '../../src/k8s/k8sClient'
 
+export interface ItemSelection {
+  title: string
+  namespace: string
+  cluster: string
+  [key: string]: string
+  item?: any
+}
+
 export interface PodSelection {
   title: string
   container: string
   pod: string
-  podContainerDetails?: PodContainerDetails
+  podContainerDetails?: PodDetails|PodContainerDetails
   namespace: string
   cluster: string
   k8sClient: K8sClient
@@ -54,9 +62,8 @@ export default class K8sPluginHelper {
     return choices
   }
 
-  static async prepareChoices(actionContext: ActionContext, 
-                                    k8sFunction: GetItemsFunction, 
-                                    name: string, min: number, max: number, ...fields) {
+  static async prepareChoices(actionContext: ActionContext, k8sFunction: GetItemsFunction, 
+                              name: string, min: number, max: number, ...fields) {
     
     const choices: any[] = await K8sPluginHelper.storeItems(actionContext, k8sFunction, fields)
     let howMany = ""
@@ -71,11 +78,43 @@ export default class K8sPluginHelper {
   }
 
   static async generateComparisonOutput(actionContext, name, ...fields) {
-    let selections = actionContext.getSelections()
+    let selections = K8sPluginHelper.getSelections(actionContext, fields)
     if(selections.length < 2) {
       actionContext.onOutput(["No " + name + " selected"], 'Text')
       return
     }
+    let output: ActionOutput = []
+    const outputHeaders = ["Keys"]
+    const outputRows: ActionOutput = []
+    outputRows.push(["Cluster"])
+    outputRows.push(["Namespace"])
+
+    const firstItem = selections[0].item
+    const outputKeys = typeof firstItem !== 'string' ? Object.keys(firstItem) : []
+    outputKeys.forEach(key => outputRows.push([key]))
+
+    selections.forEach(selection => {
+      outputHeaders.push(selection.item ? selection.item.name || selection.item : 'N/A')
+      outputRows[0].push(selection.cluster||'')
+      outputRows[1].push(selection.namespace||'')
+      if(selection.item && typeof selection.item !== 'string') {
+        outputKeys.forEach((key, index) => outputRows[index+2].push(selection.item[key] ||''))
+      }
+    })
+    outputRows.forEach((row,i) => {
+      const hasAnyValue = row.slice(1).map(value => value && value !== '')
+                                .reduce((r1,r2) => r1 || r2, false)
+      if(!hasAnyValue) {
+        delete outputRows[i]
+      }
+    })
+    output.push(outputHeaders)
+    output = output.concat(outputRows)
+    actionContext.onOutput(output, "Compare")
+  }
+
+  static getSelections(actionContext: ActionContext, ...fields) : ItemSelection[] {
+    let selections = actionContext.getSelections()
     selections = selections.map(selection => {
       const data: DataObject = {}
       let lastIndex = 0
@@ -88,41 +127,15 @@ export default class K8sPluginHelper {
         data.name = selection[0]
         lastIndex++
       }
+      data.title = data.name || selection[0]
       data.namespace = selection[lastIndex].replace("Namespace: ", "")
       data.cluster = selection[lastIndex+1].replace("Cluster: ", "")
+      const items = K8sPluginHelper.items[data.cluster][data.namespace]
+                  .filter(item => (item.name || item) === data.title)
+      items.length > 0 && (data.item = items[0])
       return data
     })
-    let output: ActionOutput = []
-    const outputHeaders = ["Keys"]
-    const outputRows: ActionOutput = []
-    outputRows.push(["Cluster"])
-    outputRows.push(["Namespace"])
-
-    const firstItem = K8sPluginHelper.items[selections[0].cluster][selections[0].namespace][0]
-    const outputKeys = typeof firstItem !== 'string' ? Object.keys(firstItem) : []
-    outputKeys.forEach(key => outputRows.push([key]))
-
-    selections.forEach(selection =>
-      K8sPluginHelper.items[selection.cluster][selection.namespace]
-        .filter(item => (item.name || item) === selection.name)
-        .forEach(item => {
-          outputHeaders.push(item.name || item)
-          outputRows[0].push(selection.cluster||'')
-          outputRows[1].push(selection.namespace||'')
-          if(typeof item !== 'string') {
-            outputKeys.forEach((key, index) => outputRows[index+2].push(item[key] ||''))
-          }
-        }))
-    outputRows.forEach((row,i) => {
-      const hasAnyValue = row.slice(1).map(value => value && value !== '')
-                                .reduce((r1,r2) => r1 || r2, false)
-      if(!hasAnyValue) {
-        delete outputRows[i]
-      }
-    })
-    output.push(outputHeaders)
-    output = output.concat(outputRows)
-    actionContext.onOutput(output, "Compare")
+    return selections
   }
 
   static async choosePod(min: number = 1, max: number = 1, chooseContainers: boolean = false, actionContext: ActionContext) {
@@ -141,6 +154,11 @@ export default class K8sPluginHelper {
             pods = _.flatMap(
                     namespaces.filter(ns => ns.cluster.name === cluster && ns.name === namespace),
                     ns => ns.pods)
+            for(const i in pods) {
+              let pod = pods[i]
+              pod = await k8sFunctions.getPodDetails(namespace, pod.name, k8sClient)
+              pods[i] = pod
+            }
           }
           if(chooseContainers) {
             pods = _.flatMap(pods, pod => pod.containers.map(c => {
@@ -174,7 +192,7 @@ export default class K8sPluginHelper {
     }
   }
 
-  static async getPodSelections(actionContext: ActionContext, loadDetails: boolean = false) {
+  static async getPodSelections(actionContext: ActionContext, loadDetails: boolean = false, loadContainers: boolean = true) {
     const selections = actionContext.getSelections()
     const pods : PodSelection[] = []
     for(const i in selections) {
@@ -186,10 +204,13 @@ export default class K8sPluginHelper {
               .filter(i => i >= 0)[0]
       const k8sClient = actionContext.getK8sClients()[clusterIndex]
       const title = selection[0].name ? selection[0].name : selection[0] as string
-      const podAndContainer = title.split("@")
-      const container = podAndContainer[0]
-      const pod = podAndContainer[1]
-      const podContainerDetails : PodContainerDetails|undefined = loadDetails ? await k8sFunctions.getContainerDetails(namespace, pod, container, k8sClient) : undefined
+      const podAndContainer = loadContainers ? title.split("@") : undefined
+      const container = loadContainers ? podAndContainer[0] : undefined
+      const pod = loadContainers ? podAndContainer[1] : title
+      const podContainerDetails : PodDetails|PodContainerDetails|undefined = loadDetails ? 
+              loadContainers ? await k8sFunctions.getContainerDetails(namespace, pod, container, k8sClient) 
+                              : await k8sFunctions.getPodDetails(namespace, pod, k8sClient)
+                              : undefined
       pods.push({
         title,
         container,

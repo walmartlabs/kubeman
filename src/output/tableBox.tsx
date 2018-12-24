@@ -162,6 +162,13 @@ export class TableBox extends React.Component<IProps, IState> {
     this.isScrolled = true
   }
 
+  onGroupClick = (groupIndex?: number) => {
+    if(groupIndex) {
+      this.outputManager.showeHideGroup(groupIndex)
+      this.forceUpdate()
+    }
+  }
+
   renderGroupRow(row: Row, rowIndex: number) {
     const {classes} = this.props
     const components : any[] = []
@@ -172,6 +179,7 @@ export class TableBox extends React.Component<IProps, IState> {
     components.push(
       <TableRow key={rowIndex+".group"} 
                 className={row.isGroup ? classes.tableGroupRow : classes.tableSubgroupRow}
+                onClick={this.onGroupClick.bind(this, row.isGroup ? row.groupIndex : undefined)}
       >
         <TextCell index={0} 
                   cell={row.cells[0]}
@@ -264,7 +272,8 @@ export class TableBox extends React.Component<IProps, IState> {
     const columnCount = rows.length > 0 ? rows[0].columnCount : 1
     const inputMessage = "Enter text to filter results" + 
                         (acceptInput ? ", or /<command> to send a command" : "")
-    
+    let hiddenIndicatorShown = false
+
     return (
       <div className={classes.root}>
         <Paper  className={classes.filterContainer}>
@@ -288,11 +297,12 @@ export class TableBox extends React.Component<IProps, IState> {
                     <TableBody>
                       {rows.map((row, index) => {
                         if(row.isGroupOrSubgroup) {
+                          hiddenIndicatorShown = false
                           return this.renderGroupRow(row, index)
                         } else {
-                          const rows : any[] = []
+                          const tableRows : any[] = []
                           if(row.isFirstAppendedRow) {
-                            rows.push(
+                            tableRows.push(
                               <TableRow key={index+"scroll"} style={{height: 0}}>
                                 <TableCell style={{height: 0, padding: 0}}>
                                   <div ref={ref => this.scrollToRef = ref}/>
@@ -300,8 +310,24 @@ export class TableBox extends React.Component<IProps, IState> {
                               </TableRow>
                             )
                           }
-                          rows.push(this.renderRow(row, index))
-                          return rows
+                          if(row.isHidden) {
+                            if(!hiddenIndicatorShown) {
+                              hiddenIndicatorShown = true
+                              tableRows.push(
+                                <TableRow key={index+"hidden"}>
+                                  <TableCell className={classes.tableCellHidden}
+                                             colSpan={columnCount}
+                                             onClick={this.onGroupClick.bind(this, row.groupIndex)}
+                                  >
+                                  ...
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            }
+                          } else {
+                            tableRows.push(this.renderRow(row, index))
+                          }
+                          return tableRows
                         }
                       })}
                     </TableBody>

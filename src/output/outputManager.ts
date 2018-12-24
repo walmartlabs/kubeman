@@ -12,11 +12,11 @@ import jsonUtil from '../util/jsonUtil'
 const healthStatusHeaderKeywords = ["status", "health", "condition"]
 
 const healthyKeywords : string[] = [
-  "active", "healthy", "good", "green", "up", "run", "start", "success", 
+  "active", "healthy", "good", "up", "running", "start", "success", 
   "complete", "created", "available", "ready", "normal", "reachable"
 ]
 const unhealthyKeywords : string[] = [
-  "inactive", "unhealthy", "bad", "red", "down", "stop", "terminat", "wait", 
+  "inactive", "unhealthy", "bad", "down", "stop", "terminat", "wait", 
   "warning", "error", "fail", "not available", "unable", "unreachable"
 ]
 
@@ -228,6 +228,8 @@ export class Row {
   cells: Cell[]
   isLog: boolean = false
   isFirstAppendedRow: boolean = false
+  groupIndex: number = 0
+  isHidden: boolean = false
 
   private content: CellContent[]
   private healthColumnIndex?: number
@@ -238,10 +240,12 @@ export class Row {
   private _isGroup: boolean = false
   private _isSubgroup: boolean = false
 
-  constructor(index: number, content: CellContent[], healthColumnIndex?: number, isLog?: boolean, 
+  constructor(index: number, content: CellContent[], groupIndex: number, 
+              healthColumnIndex?: number, isLog?: boolean, 
               formattedContent?: CellContent[], appliedFilters?: string[]) {
     this.index = index
     this.content = content
+    this.groupIndex = groupIndex
     this.isLog = isLog || false 
     this.appliedFilters = appliedFilters || []
     this._isSubgroup = content.length > 0 && content[0].toString().startsWith(">>") || false
@@ -318,8 +322,8 @@ export class Row {
       rowChanged = rowChanged || newCellData[1]
     })
     if(rowChanged) {
-      return [new Row(this.index, this.content, this.healthColumnIndex, this.isLog,
-                        formattedCellContent, this.appliedFilters), true]
+      return [new Row(this.index, this.content, this.groupIndex, this.healthColumnIndex, 
+                      this.isLog, formattedCellContent, this.appliedFilters), true]
     } else {
       return [this, false]
     }
@@ -333,15 +337,22 @@ export default class OutputManager {
   healthColumnIndex: number = -1
   appliedFilters: string[][] = []
   isLog: boolean = false
+  groupCount: number = 0
 
   setOutput(output: ActionOutput, isLog: boolean) {
     this.isLog = isLog || false
     this.headers = output && output.length > 0 ? output.slice(0, 1)[0] : []
     this.identifyHealthColumn()
+    this.groupCount = 0
     this.rows = 
       output && output.length > 0 ? 
-        output.slice(1).map((content, rowIndex) => 
-          new Row(rowIndex, content, this.healthColumnIndex, this.isLog)) : []
+        output.slice(1).map((content, rowIndex) => {
+          const row = new Row(rowIndex, content, this.groupCount, this.healthColumnIndex, this.isLog)
+          if(row.isGroup) {
+            row.groupIndex = ++this.groupCount
+          }
+          return row
+        }) : []
     this.filteredRows = this.rows.concat()
   }
 
@@ -351,7 +362,10 @@ export default class OutputManager {
     let isFirstAppendedRow = false
     rows.forEach(rowContent => {
       lastRowIndex++
-      const row = new Row(lastRowIndex, rowContent, this.healthColumnIndex, this.isLog)
+      const row = new Row(lastRowIndex, rowContent, this.groupCount, this.healthColumnIndex, this.isLog)
+      if(row.isGroup) {
+        row.groupIndex = ++this.groupCount
+      }
       this.rows.push(row)
       if(!isFirstAppendedRow) {
         row.isFirstAppendedRow = isFirstAppendedRow = true
@@ -416,5 +430,15 @@ export default class OutputManager {
         this.filteredRows[i] = highlightedRow
       }
     })
+  }
+
+  getRowsForGroup(groupIndex: number) {
+    return this.rows.filter(row => row.groupIndex === groupIndex)
+  }
+
+  showeHideGroup(groupIndex: number) {
+    this.rows.filter(row => row.groupIndex === groupIndex)
+      .filter((row,index) => index > 0)
+      .forEach(row => row.isHidden = !row.isHidden)
   }
 }

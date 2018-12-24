@@ -1,4 +1,3 @@
-import JsonUtil from '../../src/util/jsonUtil'
 import k8sFunctions from '../../src/k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
@@ -35,7 +34,7 @@ const plugin : ActionGroupSpec = {
   context: ActionContextType.Pod,
   actions: [
     {
-      name: "Get Pod Status",
+      name: "List/View Pod(s) Status",
       order: 2,
       async act(actionContext) {
         const clusters = actionContext.getClusters()

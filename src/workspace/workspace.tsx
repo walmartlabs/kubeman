@@ -9,13 +9,10 @@ import ActionChoiceDialog from '../actions/actionChoiceDialog'
 import ContextPanel from '../context/contextPanel'
 import ContextSelector from '../context/contextSelector'
 import Context from "../context/contextStore";
-import Terminal from '../output/terminal'
-import TerminalBox from "../output/terminalBox";
 import BlackBox from '../output/blackbox'
 import TableOutput, {TableBox} from '../output/tableBox'
 import {ActionOutput, ActionOutputStyle, ActionOutputCollector, ActionStreamOutputCollector,
         ActionChoiceMaker, ActionChoices, BoundActionAct} from '../actions/actionSpec'
-import {ActionLoader} from '../actions/actionLoader'
 
 import styles from './workspace.styles'
 
@@ -37,7 +34,6 @@ interface IProps extends WithStyles<typeof styles> {
 }
 interface IRefs {
   [k: string]: any
-  terminal: TerminalBox|undefined
   contextSelector: ContextSelector|undefined
 }
 
@@ -180,29 +176,6 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                                   onActionTextInput={this.onActionTextInput}
                     />
                 }
-                
-                {/* <TerminalBox 
-                  ref='terminal' 
-                  style={{
-                    overflow: 'hidden',
-                    position: 'relative',
-                    width: '80%',
-                    height: '80%'
-                  }}
-                  options={{cols:'60', rows:'40'}}
-                /> */}
-                {/* <Terminal ref='terminal' 
-                  style={{
-                    overflow: 'hidden',
-                    position: 'relative',
-                    width: '80%',
-                    height: '80%'
-                  }}
-                  options={{cols:'60', rows:'40'}}
-                  addons={['fit', 'fullscreen', 'search']}
-                  connected={true}
-                  registerCommandHandler={this.registerCommandHandler.bind(this)}
-                /> */}
               </TableCell>
             </TableRow>
             <TableRow className={classes.bottomRow}>

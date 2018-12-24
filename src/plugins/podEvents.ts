@@ -1,6 +1,5 @@
 import k8sFunctions from '../../src/k8s/k8sFunctions'
-import {ActionGroupSpec, ActionContextType, 
-  ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
+import {ActionGroupSpec, ActionContextType, ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
 
 function generatePodEventsOutput(podsMap) {
   const output: ActionOutput = []
@@ -41,7 +40,7 @@ const plugin : ActionGroupSpec = {
   context: ActionContextType.Pod,
   actions: [
     {
-      name: "Get Pod Events",
+      name: "List/View Pod(s) Events",
       order: 1,
       async act(actionContext) {
         const clusters = actionContext.getClusters()

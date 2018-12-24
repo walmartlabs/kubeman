@@ -53,7 +53,7 @@ const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
   actions: [
     {
-      name: "Compare Services",
+      name: "List/Compare Services",
       order: 3,
       async act(actionContext) {
         const clusters = actionContext.getClusters()

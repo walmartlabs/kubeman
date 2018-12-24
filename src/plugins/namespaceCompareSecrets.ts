@@ -6,8 +6,8 @@ const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
   actions: [
     {
-      name: "Compare Secrets",
-      order: 2,
+      name: "List/Compare Secrets",
+      order: 5,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         const k8sClients = actionContext.getK8sClients()

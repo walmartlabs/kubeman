@@ -1,6 +1,6 @@
 import k8sFunctions from '../../src/k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, } from '../../src/actions/actionSpec'
-import K8sPluginHelper from '../util/k8sPluginHelper'
+import K8sPluginHelper from '../../src/util/k8sPluginHelper'
 import ActionContext from '../../src/actions/actionContext';
 
 
@@ -38,7 +38,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Check Pod Logs",
-      order: 1,
+      order: 4,
       choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, false)
@@ -46,7 +46,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Tail Pod Logs",
-      order: 2,
+      order: 5,
       choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, true)

@@ -1,7 +1,7 @@
 import k8sFunctions from '../../src/k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, } from '../../src/actions/actionSpec'
-import K8sPluginHelper from '../util/k8sPluginHelper'
-import ActionContext from '../../src/actions/actionContext';
+import K8sPluginHelper from '../../src/util/k8sPluginHelper'
+import { PodContainerDetails } from '../../src/k8s/k8sObjectTypes';
 
 
 const plugin : ActionGroupSpec = {
@@ -9,8 +9,8 @@ const plugin : ActionGroupSpec = {
 
   actions: [
     {
-      name: "Pod Reachability",
-      order: 2,
+      name: "Test Pods Reachability",
+      order: 7,
       
       choose: K8sPluginHelper.choosePod.bind(null, 2, 5, true),
       
@@ -38,11 +38,12 @@ const plugin : ActionGroupSpec = {
           }
           for(const j in selections) {
             const target = selections[j]
-            if(i === j || !target.podContainerDetails || !target.podContainerDetails.podStatus 
-              || !target.podContainerDetails.podStatus.podIP) {
+            const podContainerDetails = target.podContainerDetails as PodContainerDetails
+            if(i === j || !podContainerDetails || !podContainerDetails.podStatus 
+              || !podContainerDetails.podStatus.podIP) {
               continue
             }
-            const ip = target.podContainerDetails.podStatus.podIP
+            const ip = podContainerDetails.podStatus.podIP
             const result = await k8sFunctions.podExec(selection.namespace, selection.pod, selection.container, 
               selection.k8sClient, ["ping", "-c 2", ip])
             const pingSuccess = result.includes("2 received")
