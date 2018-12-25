@@ -5,14 +5,15 @@ import { PodContainerDetails } from '../../src/k8s/k8sObjectTypes';
 
 
 const plugin : ActionGroupSpec = {
-  context: ActionContextType.Pod,
+  context: ActionContextType.Namespace,
+  title: "Pod Actions",
 
   actions: [
     {
       name: "Test Pods Reachability",
       order: 7,
       
-      choose: K8sPluginHelper.choosePod.bind(null, 2, 5, true),
+      choose: K8sPluginHelper.choosePod.bind(null, 2, 5, true, true),
       
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext, true)

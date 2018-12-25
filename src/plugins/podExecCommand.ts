@@ -4,7 +4,8 @@ import K8sPluginHelper from '../../src/util/k8sPluginHelper'
 
 
 const plugin : ActionGroupSpec = {
-  context: ActionContextType.Pod,
+  context: ActionContextType.Namespace,
+  title: "Pod Actions",
   actions: [
     {
       name: "Execute Pod Command",
@@ -14,7 +15,7 @@ const plugin : ActionGroupSpec = {
       container: undefined,
       k8sClient: undefined,
       
-      choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true),
+      choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true, false),
       
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext)
@@ -32,7 +33,6 @@ const plugin : ActionGroupSpec = {
       
       async react(actionContext) {
         const command = actionContext.inputText ? actionContext.inputText.split(" ") : []
-
         const result = await k8sFunctions.podExec(this.namespace, this.pod, this.container, this.k8sClient, command)
         actionContext.onStreamOutput && actionContext.onStreamOutput([[">"+ actionContext.inputText]])
         const output = result.length > 0 ? [[result]] : [["No Results"]]

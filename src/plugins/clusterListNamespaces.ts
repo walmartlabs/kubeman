@@ -7,7 +7,7 @@ const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,
   actions: [
     {
-      order: 2,
+      order: 3,
       name: "List Namespaces",
       async act(actionContext: ActionContext) {
         const clusters = actionContext.getClusters()

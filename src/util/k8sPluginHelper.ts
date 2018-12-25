@@ -138,7 +138,8 @@ export default class K8sPluginHelper {
     return selections
   }
 
-  static async choosePod(min: number = 1, max: number = 1, chooseContainers: boolean = false, actionContext: ActionContext) {
+  static async choosePod(min: number = 1, max: number = 1, chooseContainers: boolean = false, 
+                          loadDetails: boolean = false, actionContext: ActionContext) {
     const contextPods = actionContext.getPods()
     const containers = _.flatMap(contextPods, pod => pod.containers)
     const contextHasLess = chooseContainers ? containers.length < min : contextPods.length < min
@@ -154,10 +155,10 @@ export default class K8sPluginHelper {
             pods = _.flatMap(
                     namespaces.filter(ns => ns.cluster.name === cluster && ns.name === namespace),
                     ns => ns.pods)
-            for(const i in pods) {
-              let pod = pods[i]
-              pod = await k8sFunctions.getPodDetails(namespace, pod.name, k8sClient)
-              pods[i] = pod
+            if(loadDetails) {
+              for(const i in pods) {
+                pods[i] = await k8sFunctions.getPodDetails(namespace, pods[i].name, k8sClient)
+              }
             }
           }
           if(chooseContainers) {
@@ -173,10 +174,15 @@ export default class K8sPluginHelper {
         chooseContainers ? "Container@Pod" : "Pod(s)", min, max, "name"
       )
     } else {
-      const selections = await K8sPluginHelper.storeItems(actionContext, (clusterName, nsName) => {
+      const selections = await K8sPluginHelper.storeItems(actionContext, async (clusterName, nsName, k8sClient) => {
         const cluster = actionContext.context && actionContext.context.cluster(clusterName)
         const namespace = cluster && cluster.namespace(nsName)
-        let pods = namespace ? namespace.pods : []
+        let pods: any[] = namespace ? namespace.pods : []
+        if(namespace && loadDetails) {
+          for(const i in pods) {
+            pods[i] = await k8sFunctions.getPodDetails(namespace.name, pods[i].name, k8sClient)
+          }
+        }
         if(chooseContainers) {
           pods = _.flatMap(pods, pod => pod.containers.map(c => {
             return {

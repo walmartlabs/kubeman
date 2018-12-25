@@ -3,13 +3,14 @@ import K8sPluginHelper from '../../src/util/k8sPluginHelper'
 import { PodDetails } from '../../src/k8s/k8sObjectTypes';
 
 const plugin : ActionGroupSpec = {
-  context: ActionContextType.Pod,
+  context: ActionContextType.Namespace,
+  title: "Pod Actions",
   actions: [
     {
-      name: "List/View Pod(s) Details",
+      name: "View Pod(s) Details",
       order: 3,
       
-      choose: K8sPluginHelper.choosePod.bind(null, 1, 10, false),
+      choose: K8sPluginHelper.choosePod.bind(null, 1, 10, false, true),
 
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext, true, false)

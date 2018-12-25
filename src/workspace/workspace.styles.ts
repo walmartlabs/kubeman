@@ -42,7 +42,7 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
   actionCell: {
     verticalAlign: 'top',
     width: '20%',
-    minWidth: 280,
+    minWidth: 260,
     height: '100%',
     padding: 0,
     margin: 0,

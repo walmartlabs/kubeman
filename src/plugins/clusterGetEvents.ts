@@ -20,14 +20,20 @@ const plugin : ActionGroupSpec = {
           const cluster = clusters[i].name
           output.push([">Cluster: " + cluster, "", ""])
           const events = await k8sFunctions.getClusterEvents(cluster, k8sClients[i])
-          events.forEach(event => output.push([
-            [event.reason, event.lastTimestamp, event.count ? "(" + event.count + ")" : ""],
-            event.type ? [
-              "type: " + event.type,
-              "source: " + event.source,
-              "message: " + event.message,
-            ] : [],
-          ]))
+          events.forEach(event => {
+            if(event.reason === "No Events") {
+              output.push([event.reason])
+            } else {
+              output.push([
+                [event.reason, event.lastTimestamp, event.count ? "(" + event.count + ")" : ""],
+                event.type ? [
+                  "type: " + event.type,
+                  "source: " + event.source,
+                  "message: " + event.message,
+                ] : [],
+              ])
+            }
+          })
         }
         actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Table)
       },

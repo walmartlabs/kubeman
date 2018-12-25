@@ -314,7 +314,7 @@ export class TableBox extends React.Component<IProps, IState> {
                             if(!hiddenIndicatorShown) {
                               hiddenIndicatorShown = true
                               tableRows.push(
-                                <TableRow key={index+"hidden"}>
+                                <TableRow key={index+"hidden"} style={{height: 30}}>
                                   <TableCell className={classes.tableCellHidden}
                                              colSpan={columnCount}
                                              onClick={this.onGroupClick.bind(this, row.groupIndex)}

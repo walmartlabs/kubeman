@@ -22,7 +22,7 @@ const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,
   actions: [
     {
-      order: 3,
+      order: 4,
       name: "List/Compare Namespaces",
       async act(actionContext) {
         const clusters = actionContext.getClusters()

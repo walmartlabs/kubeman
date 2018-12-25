@@ -26,14 +26,20 @@ const plugin : ActionGroupSpec = {
             if(namespace.cluster.name === cluster.name) {
               output.push([">>Namespace: "+namespace.name, ""])
               const events = await k8sFunctions.getNamespaceEvents(namespace.name, k8sClients[i])
-              events.forEach(event => output.push([
-                [event.reason, event.lastTimestamp, event.count ? "(" + event.count + ")" : ""],
-                event.type ? [
-                  "type: " + event.type,
-                  "source: " + event.source,
-                  "message: " + event.message,
-                ] : [],
-              ]))
+              events.forEach(event => {
+                if(event.reason === "No Events") {
+                  output.push([event.reason])
+                } else {
+                  output.push([
+                    [event.reason, event.lastTimestamp, event.count ? "(" + event.count + ")" : ""],
+                    event.type ? [
+                      "type: " + event.type,
+                      "source: " + event.source,
+                      "message: " + event.message,
+                    ] : [],
+                  ])
+                }
+              })
             }
           }
         }

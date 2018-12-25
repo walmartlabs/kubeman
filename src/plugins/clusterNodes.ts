@@ -7,7 +7,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Get Nodes Details",
-      order: 4,
+      order: 2,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         const k8sClients = actionContext.getK8sClients()

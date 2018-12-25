@@ -388,22 +388,19 @@ export default class K8sFunctions {
         const eventsData = jsonUtil.extractMulti(items, "$[*]", "type", "source", "reason", "message", "count", "lastTimestamp")
         eventsData.forEach(event => {
           events.push({
+            count: event.count,
             reason: event.reason,
             type: event.type, 
             source: event.source.component, 
             message: event.message,
-            count: event.count,
+            involvedObject: event.involvedObject,
+            firstTimestamp: event.firstTimestamp,
             lastTimestamp: event.lastTimestamp,
           })
         })
       } else {
         events.push({
-          reason: "No Events",
-          type: "", 
-          source: "", 
-          message: "",
-          count: "",
-          lastTimestamp: "",
+          reason: "No Events"
         })
       }
     }

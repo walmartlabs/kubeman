@@ -5,7 +5,8 @@ import ActionContext from '../../src/actions/actionContext';
 
 
 const plugin : ActionGroupSpec = {
-  context: ActionContextType.Pod,
+  context: ActionContextType.Namespace,
+  title: "Pod Actions",
 
   logStream: undefined,
 
@@ -39,7 +40,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "Check Pod Logs",
       order: 4,
-      choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true),
+      choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true, false),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, false)
       }
@@ -47,7 +48,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "Tail Pod Logs",
       order: 5,
-      choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true),
+      choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true, false),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, true)
       },
