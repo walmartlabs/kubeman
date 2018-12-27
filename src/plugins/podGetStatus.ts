@@ -1,7 +1,7 @@
-import K8sPluginHelper from '../../src/util/k8sPluginHelper'
+import K8sPluginHelper from '../k8s/k8sPluginHelper'
 import {ActionGroupSpec, ActionContextType, 
-        ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
-import { PodDetails } from '../../src/k8s/k8sObjectTypes';
+        ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
+import { PodDetails } from '../k8s/k8sObjectTypes';
 
 type ClusterNamespacePodsMap = {[cluster: string]: {[namespace: string]: PodDetails[]}}
 

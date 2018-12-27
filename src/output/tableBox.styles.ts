@@ -85,10 +85,12 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   tableKeyCell: {
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#bcccdc',
     width: '22%',
+    minWidth: 120,
   },
   tableKeyCellHighlight: {
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#bcccdc',
     width: '22%',
+    minWidth: 120,
     '&:after': {
       content: "'*'",
       color: 'red'
@@ -98,17 +100,20 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     padding: '0px',
     borderBottom: palette.type ==='dark' ? borderDark : borderLight,
     borderLeft: '1px solid red',
+    minWidth: 120,
     //backgroundColor: palette.type ==='dark' ? "#6c6313" : "#FFFDE7",
   },
   tableCellHealthGood: {
     padding: '0px',
     backgroundColor: palette.type ==='dark' ? '#2E7D32' : '#DCEDC8',
     borderBottom: palette.type ==='dark' ? borderDark : borderLight,
+    minWidth: 120,
   },
   tableCellHealthBad: {
     padding: '0px',
     backgroundColor: palette.type ==='dark' ? '#805500' : '#ff8000',
     borderBottom: palette.type ==='dark' ? borderDark : borderLight,
+    minWidth: 120,
   },
   tableCellHidden: {
     padding: 0, 

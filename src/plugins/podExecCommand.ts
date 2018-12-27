@@ -1,6 +1,6 @@
-import k8sFunctions from '../../src/k8s/k8sFunctions'
-import {ActionGroupSpec, ActionContextType, ActionOutputStyle, } from '../../src/actions/actionSpec'
-import K8sPluginHelper from '../../src/util/k8sPluginHelper'
+import k8sFunctions from '../k8s/k8sFunctions'
+import {ActionGroupSpec, ActionContextType, ActionOutputStyle, } from '../actions/actionSpec'
+import K8sPluginHelper from '../k8s/k8sPluginHelper'
 
 
 const plugin : ActionGroupSpec = {

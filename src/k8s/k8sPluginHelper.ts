@@ -1,10 +1,10 @@
 import _ from 'lodash'
-import {DataObject, StringStringArrayMap, GetItemsFunction} from '../../src/k8s/k8sFunctions'
-import ActionContext from '../../src/actions/actionContext'
-import {ActionOutput} from '../../src/actions/actionSpec'
-import {Namespace, Pod, PodTemplate, PodDetails, PodContainerDetails} from "../../src/k8s/k8sObjectTypes"
-import k8sFunctions from '../../src/k8s/k8sFunctions'
-import { K8sClient } from '../../src/k8s/k8sClient'
+import {DataObject, StringStringArrayMap, GetItemsFunction} from './k8sFunctions'
+import ActionContext from '../actions/actionContext'
+import {ActionOutput} from '../actions/actionSpec'
+import {Namespace, Pod, PodTemplate, PodDetails, PodContainerDetails} from "./k8sObjectTypes"
+import k8sFunctions from './k8sFunctions'
+import { K8sClient } from './k8sClient'
 
 export interface ItemSelection {
   title: string
@@ -52,7 +52,7 @@ export default class K8sPluginHelper {
         if(fields.length > 0) {
           fields.forEach(field => choiceItem.push(item[field]))
         } else {
-          choiceItem.push(item)
+          choiceItem.push(item.name || item)
         }
         choiceItem.push("Namespace: " + namespace.name)
         choiceItem.push("Cluster: " + nsCluster)
@@ -187,7 +187,7 @@ export default class K8sPluginHelper {
           pods = _.flatMap(pods, pod => pod.containers.map(c => {
             return {
               ...pod,
-              name: c+"@"+pod.name,
+              name: (c.name ? c.name : c)+"@"+pod.name,
             }
           }))
         }

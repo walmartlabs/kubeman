@@ -1,7 +1,7 @@
-import k8sFunctions from '../../src/k8s/k8sFunctions'
+import k8sFunctions from '../k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, 
-        ActionOutput, ActionOutputStyle } from '../../src/actions/actionSpec'
-import ActionContext from '../../src/actions/actionContext'
+        ActionOutput, ActionOutputStyle } from '../actions/actionSpec'
+import ActionContext from '../actions/actionContext'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,

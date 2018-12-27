@@ -1,5 +1,5 @@
-import {ActionGroupSpec, ActionContextType} from '../../src/actions/actionSpec'
-import K8sPluginHelper from '../../src/util/k8sPluginHelper'
+import {ActionGroupSpec, ActionContextType} from '../actions/actionSpec'
+import K8sPluginHelper from '../k8s/k8sPluginHelper'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,

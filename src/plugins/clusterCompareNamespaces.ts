@@ -1,7 +1,7 @@
-import k8sFunctions from '../../src/k8s/k8sFunctions'
-import {K8sClient} from '../../src/k8s/k8sClient'
+import k8sFunctions from '../k8s/k8sFunctions'
+import {K8sClient} from '../k8s/k8sClient'
 import {ActionGroupSpec, ActionContextType, 
-        ActionOutput, ActionOutputStyle, } from '../../src/actions/actionSpec'
+        ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
 
 async function compareClusterNamespaces(cluster1: string, k8sClient1: K8sClient, 
                                         cluster2: string, k8sClient2: K8sClient, 
