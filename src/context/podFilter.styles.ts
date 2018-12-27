@@ -34,7 +34,15 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
   button: {
     marginBottom: 5,
-  }
+  },
+  sectionTitle: {
+    color: 'white !important',
+    backgroundColor: '#4b6082',
+    margin: 5,
+    padding: 5,
+    fontSize: typography.pxToRem(15),
+    fontWeight: typography.fontWeightRegular,
+  },
 })
 
 export default styles

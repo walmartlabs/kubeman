@@ -1,5 +1,20 @@
-export class Cluster {
+export enum KubeComponentType {
+  Cluster = "Cluster",
+  Namespace = "Namespace",
+  Pod = "Pod",
+  Item = "Item"
+}
+
+export interface KubeComponent {
   name: string
+  type: KubeComponentType
+  text()
+  toString()
+}
+
+export class Cluster implements KubeComponent {
+  name: string
+  type: KubeComponentType = KubeComponentType.Cluster
   namespaces: Namespace[] = []
   constructor(name: string) {
     this.name = name
@@ -19,8 +34,9 @@ export class Cluster {
   }
 }
 
-export class Namespace {
+export class Namespace implements KubeComponent {
   name: string
+  type: KubeComponentType = KubeComponentType.Namespace
   cluster: Cluster
   pods: Pod[] = []
   items: Item[] = []
@@ -43,8 +59,9 @@ export class Namespace {
   }
 }
 
-export class Pod {
+export class Pod implements KubeComponent {
   name: string
+  type: KubeComponentType = KubeComponentType.Pod
   namespace: Namespace
   containers: string[] = []
 
@@ -64,8 +81,9 @@ export class Pod {
   }
 }
 
-export class Item {
+export class Item implements KubeComponent {
   name: string
+  type: KubeComponentType = KubeComponentType.Item
   namespace: Namespace
   constructor(name?: string, namespace?: Namespace) {
     this.name = name || ''
@@ -82,7 +100,6 @@ export class Item {
   }
 }
 
-export type KubeComponent = Cluster|Namespace|Pod
 export type KubeComponentArray = Array<KubeComponent>
 
 export interface Metadata {
