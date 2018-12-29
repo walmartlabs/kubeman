@@ -40,7 +40,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "Check Pod Logs",
       order: 4,
-      choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true, false),
+      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 1, true, false),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, false)
       }
@@ -48,7 +48,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "Tail Pod Logs",
       order: 5,
-      choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true, false),
+      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 1, true, false),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, true)
       },

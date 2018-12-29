@@ -12,12 +12,16 @@ import jsonUtil from '../util/jsonUtil'
 const healthStatusHeaderKeywords = ["status", "health", "condition"]
 
 const healthyKeywords : string[] = [
-  "active", "healthy", "good", "up", "running", "start", "success", 
+  "active", "healthy", "good", "running", "started", "starting", "restarted", "success", 
   "complete", "created", "available", "ready", "normal", "reachable"
 ]
 const unhealthyKeywords : string[] = [
-  "inactive", "unhealthy", "bad", "down", "stop", "terminat", "wait", 
-  "warning", "error", "fail", "not available", "unable", "unreachable"
+  "inactive", "unhealthy", "bad", "stop", "terminated", "terminating", "wait", 
+  "warning", "error", "fail", "not available", "unavailable", "unable", "unreachable"
+]
+
+const ignoreKeywords: string[] = [
+  "maxunavailable"
 ]
 
 hljs.registerLanguage('yaml', yamlHighlight)
@@ -192,7 +196,7 @@ export class Cell {
   }
 
   get groupText() {
-    let groupTitle = this.isText && this.formattedContent !== "---" ? this.formattedContent as string : ""
+    let groupTitle = this.isText ? this.formattedContent as string : ""
     if(this.isGroup) {
       groupTitle = groupTitle.slice(1)
     } else if(this.isSubGroup) {
@@ -208,10 +212,12 @@ export class Cell {
   get isHealthy() {
     return healthyKeywords.filter(word => this.stringContent.includes(word)).length > 0
           && unhealthyKeywords.filter(word => this.stringContent.includes(word)).length == 0
+          && ignoreKeywords.filter(word => this.stringContent.includes(word)).length == 0
   }
 
   get isUnhealthy() {
     return unhealthyKeywords.filter(word => this.stringContent.includes(word)).length > 0
+            && ignoreKeywords.filter(word => this.stringContent.includes(word)).length == 0
   }
 
   get isFirstColumn() {

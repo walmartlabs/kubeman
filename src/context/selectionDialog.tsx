@@ -287,7 +287,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                     table={clusters}
                     selections={selectedClusters}
                     grouped={false}
-                    maxSelect={2}
+                    maxSelect={3}
                     onSelection={this.onClusterSelection}
                 />
               </div>}

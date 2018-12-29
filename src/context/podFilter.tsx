@@ -124,7 +124,7 @@ class PodFilter extends React.Component<PodFilterProps, PodFilterState> {
     const parts = parse(item.name, matches);
     return (
       <MenuItem selected={isHighlighted} component="div">
-        <div>
+        <div style={{width: '100%'}}>
           {parts.map((part, index) => {
             return part.highlight ? (
               <span key={String(index)} style={{ fontWeight: 500 }}
@@ -138,6 +138,11 @@ class PodFilter extends React.Component<PodFilterProps, PodFilterState> {
               </strong>
             )
           })}
+          {item instanceof Pod && 
+            <span style={{ fontWeight: 300, float: 'right' }} className={classes.suggestionItem}>
+              {item.namespace.name}
+            </span>
+          }
         </div>
       </MenuItem>
     )

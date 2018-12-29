@@ -1,3 +1,5 @@
+import * as k8s from "./k8sClient";
+
 export enum KubeComponentType {
   Cluster = "Cluster",
   Namespace = "Namespace",
@@ -16,8 +18,10 @@ export class Cluster implements KubeComponent {
   name: string
   type: KubeComponentType = KubeComponentType.Cluster
   namespaces: Namespace[] = []
+  k8sClient: k8s.K8sClient
   constructor(name: string) {
     this.name = name
+    this.k8sClient = {} as k8s.K8sClient
   }
   namespace(name: string) {
     const matches = this.namespaces.filter(ns => ns.name === name)
@@ -187,4 +191,30 @@ export interface PodContainerDetails {
   containerInfo: ContainerInfo
   podStatus?: PodStatus
   containerStatus?: ContainerStatus
+}
+
+export interface Port {
+  name: string,
+  protocol: string,
+  port: number,
+  targetPort?: number,
+  nodePort?: number,
+}
+
+export interface ServiceDetails extends Metadata {
+  clusterIP: string,
+  externalIPs?: any,
+  externalName?: string,
+  externalTrafficPolicy?: any,
+  healthCheckNodePort?: any,
+  loadBalancerIP?: any,
+  loadBalancerSourceRanges?: any,
+  ports: Port[],
+  publishNotReadyAddresses?: any,
+  selector?: any,
+  sessionAffinity?: any,
+  sessionAffinityConfig?: any,
+  type: any,
+  loadBalancer?: any,
+
 }

@@ -43,7 +43,9 @@ class ContextPanel extends React.Component<IProps, IState> {
   }
 
   onTabChange = (event, value) => {
-    if(value !== 2) {
+    const {context} = this.props;
+    
+    if(value !== context.clusters.length) {
       this.setState({ activeTab: value });
     }
   };

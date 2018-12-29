@@ -29,6 +29,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     paddingLeft: 5,
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
     wordWrap: 'break-word',
+    wordBreak: 'break-all',
   },
   tableBody: {
     width: '100%',
@@ -117,7 +118,6 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
   tableCellHidden: {
     padding: 0, 
-    cursor: 'pointer',
     textAlign: 'center',
     backgroundColor: palette.type ==='dark' ? palette.background.default : '#bcccdc',
   },

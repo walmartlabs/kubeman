@@ -30,7 +30,11 @@ export function generateDeploymentComparisonOutput(clusters: Cluster[], namespac
   })
 
   Object.keys(nsDeploymentToClusterMap).forEach(namespace => {
-    output.push([">Namespace: " + namespace, "", ""])
+    const groupTitle = [">Namespace: " + namespace]
+    clusters.forEach(cluster => {
+      groupTitle.push("")
+    })
+    output.push(groupTitle)
     const deploymentToClusterMap = nsDeploymentToClusterMap[namespace]
     const deployments = Object.keys(deploymentToClusterMap)
     if(deployments.length === 0) {
@@ -54,13 +58,12 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "List/Compare Deployments",
-      order: 4,
+      order: 11,
       async act(actionContext: ActionContext) {
         const clusters = actionContext.getClusters()
-        const k8sClients = actionContext.getK8sClients()
         const namespaces = actionContext.getNamespaces()
 
-        const deployments = await k8sFunctions.getDeploymentsGroupedByClusterNamespace(clusters, k8sClients, namespaces)
+        const deployments = await k8sFunctions.getDeploymentsGroupedByClusterNamespace(clusters, namespaces)
 
         const output = generateDeploymentComparisonOutput(clusters, namespaces, deployments)
         actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Compare)

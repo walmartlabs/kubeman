@@ -15,7 +15,7 @@ const plugin : ActionGroupSpec = {
       container: undefined,
       k8sClient: undefined,
       
-      choose: K8sPluginHelper.choosePod.bind(null, 1, 1, true, false),
+      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 1, true, false),
       
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext)

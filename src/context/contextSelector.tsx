@@ -48,10 +48,10 @@ export default class ContextSelector extends React.Component<IProps, IState> {
   }
 
   
-  onSelection(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, 
+  async onSelection(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, 
               pods: Map<string, Pod>, filter: string) {
     const {context} = this.state
-    context.store(clusters, namespaces, pods)
+    await context.store(clusters, namespaces, pods)
     this.props.onUpdateContext(context)
     this.setState({
       context, 

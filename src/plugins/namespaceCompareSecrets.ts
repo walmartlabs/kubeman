@@ -7,10 +7,9 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "List/Compare Secrets",
-      order: 5,
+      order: 12,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
-        const k8sClients = actionContext.getK8sClients()
         const namespaces = actionContext.getNamespaces()
 
         const secretsMap = {}
@@ -21,10 +20,8 @@ const plugin : ActionGroupSpec = {
           if(!secretsMap[namespace.name]) {
             secretsMap[namespace.name] = {}
           }
-
-          const k8sClient = clusters.map((c,i) => c.name === nsCluster ? i : -1)
-                                    .filter(i => i >= 0).map(i => k8sClients[i])[0]
-          
+          const k8sClient = clusters.filter(cluster => cluster.name === nsCluster)
+                                      .map(cluster => cluster.k8sClient)[0]
           const secrets = await k8sFunctions.getNamespaceSecrets(namespace.cluster.name, namespace.name, k8sClient)
           secrets.forEach(secret => {
             secret.name = secret.name.slice(0, secret.name.lastIndexOf('-'))
@@ -43,7 +40,11 @@ const plugin : ActionGroupSpec = {
         output.push(headers)
       
         Object.keys(secretsMap).forEach(namespace => {
-          output.push([">Namespace: " + namespace, "", ""])
+          const groupTitle = [">Namespace: " + namespace]
+          clusters.forEach(cluster => {
+            groupTitle.push("")
+          })
+          output.push(groupTitle)
           const secretToClusterMap = secretsMap[namespace]
           const secrets = secretToClusterMap ? Object.keys(secretToClusterMap) : []
           if(secrets.length === 0) {

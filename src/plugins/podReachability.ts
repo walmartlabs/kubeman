@@ -13,7 +13,7 @@ const plugin : ActionGroupSpec = {
       name: "Test Pods Reachability",
       order: 7,
       
-      choose: K8sPluginHelper.choosePod.bind(null, 2, 5, true, true),
+      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 2, 5, true, true),
       
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext, true)

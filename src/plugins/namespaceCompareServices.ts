@@ -30,7 +30,11 @@ export function generateServiceComparisonOutput(clusters, namespaces, clusterSer
   })
 
   Object.keys(nsServiceToClusterMap).forEach(namespace => {
-    output.push([">Namespace: " + namespace, "", ""])
+    const groupTitle = [">Namespace: " + namespace]
+    clusters.forEach(cluster => {
+      groupTitle.push("")
+    })
+    output.push(groupTitle)
     const serviceToClusterMap = nsServiceToClusterMap[namespace]
     const services = serviceToClusterMap ? Object.keys(serviceToClusterMap) : []
     if(services.length === 0) {
@@ -54,13 +58,12 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "List/Compare Services",
-      order: 3,
+      order: 10,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
-        const k8sClients = actionContext.getK8sClients()
         const namespaces = actionContext.getNamespaces()
 
-        const clusterServices = await k8sFunctions.getServicesGroupedByClusterNamespace(clusters, k8sClients, namespaces)
+        const clusterServices = await k8sFunctions.getServicesGroupedByClusterNamespace(clusters, namespaces)
 
         const output = generateServiceComparisonOutput(clusters, namespaces, clusterServices)
         actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Compare)

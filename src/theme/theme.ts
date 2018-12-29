@@ -65,11 +65,11 @@ class SelectionDialogTheme {
         MuiDialog: {
           paper: {
             height: '80vh',
-            minHeight: '80vh',
-            maxHeight: '80vh',
             width: '80vh',
-            minWidth: '80vh',
-            maxWidth: '80vh',
+            minHeight: '60vh',
+            minWidth: '60vh',
+            maxHeight: '80vh',
+            maxWidth: '80vh !important',
           }
         },
         MuiTabs: {
@@ -136,6 +136,8 @@ class ActionsTheme {
             height: '40px !important',
             lineHeight: 1,
             margin: '0px !important',
+            boxShadow: '1px 0px 0px 2px rgba(0, 0, 255, 0.8)',
+            right: 1,
           },
           expandIcon: {
             color: '#D8DDF3 !important',

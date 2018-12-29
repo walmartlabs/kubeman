@@ -10,7 +10,7 @@ const plugin : ActionGroupSpec = {
       name: "View Pod(s) Details",
       order: 3,
       
-      choose: K8sPluginHelper.choosePod.bind(null, 1, 10, false, true),
+      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 10, false, true),
 
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext, true, false)

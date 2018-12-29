@@ -10,7 +10,6 @@ const plugin : ActionGroupSpec = {
       order: 2,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
-        const k8sClients = actionContext.getK8sClients()
         const output: ActionOutput = []
         output.push([
           ["Node", "(CreationTime)"],
@@ -18,9 +17,9 @@ const plugin : ActionGroupSpec = {
           "Conditions",
         ])
         for(const i in clusters) {
-          const cluster = clusters[i].name
-          output.push([">Cluster: " + cluster, "", ""])
-          const nodes = await k8sFunctions.getClusterNodes(cluster, k8sClients[i])
+          const cluster = clusters[i]
+          output.push([">Cluster: " + cluster.name, "", ""])
+          const nodes = await k8sFunctions.getClusterNodes(cluster.name, cluster.k8sClient)
           nodes.forEach(node => output.push([
             [node.name, "(" + node.creationTimestamp + ")"],
             Object.keys(node.network)

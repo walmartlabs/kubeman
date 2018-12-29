@@ -39,7 +39,7 @@ const TextCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlig
   const className = computeCellClass(cell, isKeyColumn, highlight, compare, classes)
   return cell.render((formattedText) => {
     return (
-      <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
+      <TableCell key={"textcell"+index} component="th" scope="row" colSpan={colSpan}
                 className={className}
                 style={{paddingLeft: cell.isGroup ? '2px' : '10px'}}
                 dangerouslySetInnerHTML={{__html:formattedText}} />
@@ -49,7 +49,7 @@ const TextCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlig
 const GridCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlight, compare, classes}: ITableCellProps) => {
   let className = computeCellClass(cell, isKeyColumn, highlight, compare, classes)
   return (
-    <TableCell key={"col"+index} component="th" scope="row" colSpan={colSpan}
+    <TableCell key={"gridcell"+index} component="th" scope="row" colSpan={colSpan}
               className={className}
               style={{paddingLeft: 2, paddingRight: 2}} >
       <Table>
@@ -269,10 +269,11 @@ export class TableBox extends React.Component<IProps, IState> {
     }
 
     const rows = this.outputManager.filteredRows
-    const columnCount = rows.length > 0 ? rows[0].columnCount : 1
+    const columnCount = this.outputManager.headers.length
     const inputMessage = "Enter text to filter results" + 
                         (acceptInput ? ", or /<command> to send a command" : "")
     let hiddenIndicatorShown = false
+    let parentIsGroup = false
 
     return (
       <div className={classes.root}>
@@ -298,6 +299,7 @@ export class TableBox extends React.Component<IProps, IState> {
                       {rows.map((row, index) => {
                         if(row.isGroupOrSubgroup) {
                           hiddenIndicatorShown = false
+                          parentIsGroup = row.isGroup && !row.isSubGroup
                           return this.renderGroupRow(row, index)
                         } else {
                           const tableRows : any[] = []
@@ -316,8 +318,9 @@ export class TableBox extends React.Component<IProps, IState> {
                               tableRows.push(
                                 <TableRow key={index+"hidden"} style={{height: 30}}>
                                   <TableCell className={classes.tableCellHidden}
-                                             colSpan={columnCount}
-                                             onClick={this.onGroupClick.bind(this, row.groupIndex)}
+                                            style={{cursor: parentIsGroup ? 'pointer' : 'inherit'}}
+                                            colSpan={columnCount}
+                                            onClick={() => parentIsGroup && this.onGroupClick(row.groupIndex)}
                                   >
                                   ...
                                   </TableCell>

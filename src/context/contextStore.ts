@@ -1,5 +1,6 @@
 import _ from 'lodash'
 import {Cluster, Namespace, Pod, Item} from "../k8s/k8sObjectTypes";
+import * as k8s from '../k8s/k8sClient'
 
 
 export class NamespaceContext {
@@ -118,9 +119,11 @@ export default class Context {
     this.hasPods = this.pods.length > 0
   }
 
-  storeClusters(clusters: Map<string, Cluster>) {
+  async storeClusters(clusters: Map<string, Cluster>) {
     this.clearClusters()
-    clusters.forEach(this.addCluster)
+    for(const i in clusters) {
+      await this.addCluster(clusters[i])
+    }
   }
 
   storeNamespaces(namespaces: Map<string, Namespace>) {
@@ -133,8 +136,8 @@ export default class Context {
     pods.forEach(this.addPod)
   }
 
-  store(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, pods: Map<string, Pod>) {
-    this.storeClusters(clusters)
+  async store(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, pods: Map<string, Pod>) {
+    await this.storeClusters(clusters)
     this.storeNamespaces(namespaces)
     this.storePods(pods)
   }
@@ -158,7 +161,8 @@ export default class Context {
     this.updateFlags()
   }
 
-  addCluster = (cluster: Cluster) => {
+  addCluster = async (cluster: Cluster) => {
+    cluster.k8sClient = await k8s.getClientForCluster(cluster)
     this._clusters.set(cluster, new ClusterContext)
     this.clusterMap.set(cluster.name, cluster)
     this.updateFlags()

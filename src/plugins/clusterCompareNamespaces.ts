@@ -1,5 +1,6 @@
 import k8sFunctions from '../k8s/k8sFunctions'
 import {K8sClient} from '../k8s/k8sClient'
+import K8sPluginHelper from '../k8s/k8sPluginHelper'
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
 
@@ -22,13 +23,14 @@ const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,
   actions: [
     {
+      name: "Compare Namespaces",
       order: 4,
-      name: "List/Compare Namespaces",
-      async act(actionContext) {
-        const clusters = actionContext.getClusters()
-        const k8sClients = actionContext.getK8sClients()
+      
+      choose: K8sPluginHelper.chooseClusters,
 
-        if(clusters.length < 2 || k8sClients.length < 2) {
+      async act(actionContext) {
+        const clusters = K8sPluginHelper.getSelectedClusters(actionContext)
+        if(clusters.length < 2) {
           actionContext.onOutput && actionContext.onOutput([["Not enough clusters to compare"]], ActionOutputStyle.Text)
           return
         }
@@ -37,7 +39,8 @@ const plugin : ActionGroupSpec = {
         const cluster1 = clusters[0].name
         const cluster2 = clusters[1].name
         output.push(["Namespaces", "Cluster: " + cluster1, "Cluster: " + cluster2])
-        await compareClusterNamespaces(cluster1, k8sClients[0], cluster2, k8sClients[1], output)
+        await compareClusterNamespaces(cluster1, clusters[0].k8sClient, 
+                                        cluster2, clusters[1].k8sClient, output)
         actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Compare)
       },
     },

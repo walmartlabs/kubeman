@@ -63,7 +63,9 @@ export class ActionLoader {
   }
 
   static configureActions(actionGroupSpec: ActionGroupSpec) {
-    actionGroupSpec.order = ActionContextOrder[actionGroupSpec.context || ActionContextType.Other]
+    if(!actionGroupSpec.order) {
+      actionGroupSpec.order = ActionContextOrder[actionGroupSpec.context || ActionContextType.Other]
+    }
     if(actionGroupSpec.title) {
       actionGroupSpec.order && actionGroupSpec.order++
     }

@@ -16,9 +16,6 @@ export default class ActionContext {
   getNamespaces: () => Namespace[] = () => this.context ? this.context.namespaces : []
   
   getPods: () => Pod[] = () => this.context ? this.context.pods : []
-  
-  getK8sClients: () => k8s.K8sClient[] = () => 
-        this.context ? this.context.clusters.map(k8s.getClientForCluster) : []
 
   getSelections: () => ActionChoices = () =>  this.context ? this.context.selections : []
 

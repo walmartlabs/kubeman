@@ -1,25 +1,25 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle} from '../actions/actionSpec'
 import ActionContext from '../actions/actionContext'
 import k8sFunctions from '../k8s/k8sFunctions'
+import K8sPluginHelper from '../k8s/k8sPluginHelper'
 import {generateDeploymentComparisonOutput} from './namespaceCompareDeployments'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,
   actions: [
     {
-      name: "List/Compare Deployments",
+      name: "Compare Deployments",
       order: 6,
-      async act(actionContext: ActionContext) {
-        const clusters = actionContext.getClusters()
-        const k8sClients = actionContext.getK8sClients()
+      
+      choose: K8sPluginHelper.chooseClusters,
 
-        if(clusters.length < 2 || k8sClients.length < 2) {
-          actionContext.onOutput && 
-            actionContext.onOutput([["Not enough clusters to compare"]], ActionOutputStyle.Text)
+      async act(actionContext: ActionContext) {
+        const clusters = K8sPluginHelper.getSelectedClusters(actionContext)
+        if(clusters.length < 2) {
+          actionContext.onOutput && actionContext.onOutput([["Not enough clusters to compare"]], ActionOutputStyle.Text)
           return
         }
-
-        const deployments = await k8sFunctions.getDeploymentsGroupedByClusterNamespace(clusters, k8sClients)
+        const deployments = await k8sFunctions.getDeploymentsGroupedByClusterNamespace(clusters)
         const namespaces : any[] = []
         Object.keys(deployments).map(cluster => Object.keys(deployments[cluster]))
         .forEach(cnamespaces => cnamespaces.forEach(namespace => 

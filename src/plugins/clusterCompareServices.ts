@@ -1,24 +1,25 @@
 import k8sFunctions from '../k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
+import K8sPluginHelper from '../k8s/k8sPluginHelper'
 import {generateServiceComparisonOutput} from './namespaceCompareServices'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,
   actions: [
     {
-      name: "List/Compare Services",
+      name: "Compare Services",
       order: 5,
-      async act(actionContext) {
-        const clusters = actionContext.getClusters()
-        const k8sClients = actionContext.getK8sClients()
+      
+      choose: K8sPluginHelper.chooseClusters,
 
-        if(clusters.length < 2 || k8sClients.length < 2) {
+      async act(actionContext) {
+        const clusters = K8sPluginHelper.getSelectedClusters(actionContext)
+        if(clusters.length < 2) {
           actionContext.onOutput && actionContext.onOutput([["Not enough clusters to compare"]], ActionOutputStyle.Text)
           return
         }
-
-        const clusterServices = await k8sFunctions.getServicesGroupedByClusterNamespace(clusters, k8sClients)
+        const clusterServices = await k8sFunctions.getServicesGroupedByClusterNamespace(clusters)
         const namespaces: any[] = []
         Object.keys(clusterServices).map(cluster => Object.keys(clusterServices[cluster]))
         .forEach(cnamespaces => cnamespaces.forEach(namespace => 

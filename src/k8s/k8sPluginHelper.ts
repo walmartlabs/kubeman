@@ -2,7 +2,7 @@ import _ from 'lodash'
 import {DataObject, StringStringArrayMap, GetItemsFunction} from './k8sFunctions'
 import ActionContext from '../actions/actionContext'
 import {ActionOutput} from '../actions/actionSpec'
-import {Namespace, Pod, PodTemplate, PodDetails, PodContainerDetails} from "./k8sObjectTypes"
+import {Cluster, Namespace, Pod, PodTemplate, PodDetails, PodContainerDetails, KubeComponent} from "./k8sObjectTypes"
 import k8sFunctions from './k8sFunctions'
 import { K8sClient } from './k8sClient'
 
@@ -29,7 +29,6 @@ export default class K8sPluginHelper {
 
   private static async storeItems(actionContext: ActionContext, getItems: GetItemsFunction, ...fields) {
     const clusters = actionContext.getClusters()
-    const k8sClients = actionContext.getK8sClients()
     const namespaces = actionContext.getNamespaces()
     this.items = {}
     const choices: any[] = []
@@ -42,9 +41,8 @@ export default class K8sPluginHelper {
       if(!this.items[nsCluster][namespace.name]) {
         this.items[nsCluster][namespace.name] = []
       }
-
-      const k8sClient = clusters.map((c,i) => c.name === nsCluster ? i : -1)
-                                .filter(i => i >= 0).map(i => k8sClients[i])[0]
+      const k8sClient = clusters.filter(c => c.name === nsCluster)
+                                .map(c => c.k8sClient)[0]
       
       const items = this.items[nsCluster][namespace.name] = await getItems(nsCluster, namespace.name, k8sClient)
       items.forEach(item => {
@@ -138,6 +136,26 @@ export default class K8sPluginHelper {
     return selections
   }
 
+  static async chooseClusters(actionContext: ActionContext) {
+    const clusters = actionContext.getClusters()
+    const choices: any[] = []
+    clusters.forEach(cluster => {
+      choices.push([cluster.name])
+    })
+    if(clusters.length > 2) {
+      actionContext.onChoices && actionContext.onChoices("Choose 2 Clusters", choices, 2, 2)
+    } else {
+      actionContext.context && (actionContext.context.selections = choices)
+      actionContext.onSkipChoices && actionContext.onSkipChoices()
+    }
+  }
+
+  static getSelectedClusters(actionContext: ActionContext) : Cluster[] {
+    const selections = _.flatten(actionContext.getSelections())
+    const clusters = actionContext.getClusters()
+    return selections.map(s => clusters.filter(cluster => cluster.name === s)[0])
+  }
+
   static async choosePod(min: number = 1, max: number = 1, chooseContainers: boolean = false, 
                           loadDetails: boolean = false, actionContext: ActionContext) {
     const contextPods = actionContext.getPods()
@@ -206,9 +224,8 @@ export default class K8sPluginHelper {
       const namespace = selection[1].replace("Namespace: ", "")
       const cluster = selection[2].replace("Cluster: ", "")
       const clusters = actionContext.getClusters()
-      const clusterIndex = clusters.map((c,i) => c.name === cluster ? i : -1)
-              .filter(i => i >= 0)[0]
-      const k8sClient = actionContext.getK8sClients()[clusterIndex]
+      const k8sClient = clusters.filter(c => c.name === cluster)
+                                  .map(cluster => cluster.k8sClient)[0]
       const title = selection[0].name ? selection[0].name : selection[0] as string
       const podAndContainer = loadContainers ? title.split("@") : undefined
       const container = loadContainers ? podAndContainer[0] : undefined

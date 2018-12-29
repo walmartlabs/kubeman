@@ -63,7 +63,9 @@ export default class JsonUtil {
   static convertObjectToArray = JsonUtil._convertObjectToArray.bind(null, 0, false)
   static convertObjectToString(object) {
     return JsonUtil._convertObjectToArray(0, true, object)
-            .map(item => item instanceof Array ? item.join("; ") : (item as string).replace(',', ' '))
+            .map(item => item instanceof Array ? item.join("; ") : 
+                          typeof item === 'string' ? (item as string).replace(',', ' ') : 
+                          JsonUtil.convertObjectToString(item))
             .join(". ")
   }
 }
