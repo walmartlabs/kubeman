@@ -38,7 +38,7 @@ export function generateServiceComparisonOutput(clusters, namespaces, clusterSer
     const serviceToClusterMap = nsServiceToClusterMap[namespace]
     const services = serviceToClusterMap ? Object.keys(serviceToClusterMap) : []
     if(services.length === 0) {
-      output.push(["No Services", "", ""])
+      output.push(["No Services", ...clusters.map(() => "")])
     } else {
       services.forEach(service => {
         const clusterMap = serviceToClusterMap[service]

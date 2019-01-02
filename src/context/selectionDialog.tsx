@@ -198,6 +198,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     } else {
       SelectionManager.deselectCluster(cluster)
     }
+    this.setState({reportClusterError: SelectionManager.isAnyClusterInError})
   }
 
   onNamespaceSelection = (namespace: Namespace) => {
@@ -245,9 +246,10 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
   }
 
   render() {
-    const { classes, open, forced } = this.props;
     const useDarkTheme = global['useDarkTheme']
-    const { activeTab, initialLoading, reportClusterError, reportNamespaceError, filter } = this.state
+    const { classes, open, forced } = this.props;
+    const { activeTab, initialLoading, filter, 
+            reportClusterError, reportNamespaceError } = this.state
     const selectedClusters = SelectionManager.selectedClusters
     const selectedNamespaces = SelectionManager.selectedNamespaces
     const selectedPods = SelectionManager.selectedPods
@@ -281,6 +283,11 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
             {initialLoading && <CircularProgress className={classes.loading} />}
             {!initialLoading && activeTab === SelectionTabs.Clusters &&  
               <div>
+                {reportClusterError && 
+                <FormHelperText style={{fontSize: 14, marginTop: 20, color: 'red'}}>
+                  Failed to load data for the following cluster(s): {clustersInError}
+                </FormHelperText>
+                }
                 <SelectionTable 
                     innerRef={this.refs.clusterSelector}
                     title="Clusters" 

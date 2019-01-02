@@ -62,8 +62,7 @@ export default class K8sPluginHelper {
 
   static async prepareChoices(actionContext: ActionContext, k8sFunction: GetItemsFunction, 
                               name: string, min: number, max: number, ...fields) {
-    
-    const choices: any[] = await K8sPluginHelper.storeItems(actionContext, k8sFunction, fields)
+    const choices: any[] = await K8sPluginHelper.storeItems(actionContext, k8sFunction, ...fields)
     let howMany = ""
     if(min === max && max > 0) {
       howMany = " " + max + " "
@@ -84,8 +83,7 @@ export default class K8sPluginHelper {
     let output: ActionOutput = []
     const outputHeaders = ["Keys"]
     const outputRows: ActionOutput = []
-    outputRows.push(["Cluster"])
-    outputRows.push(["Namespace"])
+    outputRows.push(["cluster"])
 
     const firstItem = selections[0].item
     const outputKeys = typeof firstItem !== 'string' ? Object.keys(firstItem) : []
@@ -94,9 +92,8 @@ export default class K8sPluginHelper {
     selections.forEach(selection => {
       outputHeaders.push(selection.item ? selection.item.name || selection.item : 'N/A')
       outputRows[0].push(selection.cluster||'')
-      outputRows[1].push(selection.namespace||'')
       if(selection.item && typeof selection.item !== 'string') {
-        outputKeys.forEach((key, index) => outputRows[index+2].push(selection.item[key] ||''))
+        outputKeys.forEach((key, index) => outputRows[index+1].push(selection.item[key] ||''))
       }
     })
     outputRows.forEach((row,i) => {

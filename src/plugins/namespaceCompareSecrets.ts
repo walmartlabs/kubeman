@@ -48,7 +48,7 @@ const plugin : ActionGroupSpec = {
           const secretToClusterMap = secretsMap[namespace]
           const secrets = secretToClusterMap ? Object.keys(secretToClusterMap) : []
           if(secrets.length === 0) {
-            output.push(["No Secrets", "", ""])
+            output.push(["No Secrets", ...clusters.map(() => "")])
           } else {
             secrets.forEach(secret => {
               const clusterMap = secretToClusterMap[secret]

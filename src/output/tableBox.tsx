@@ -80,20 +80,21 @@ interface IProps extends WithStyles<typeof styles> {
 }
 
 interface IState {
-  filterText: string
+  filterInput: string
   loading: boolean
 }
 
 export class TableBox extends React.Component<IProps, IState> {
 
   state: IState = {
-    filterText: '',
+    filterInput: '',
     loading: false
   }
   outputManager: OutputManager = new OutputManager
   filterTimer: any = undefined
   isScrolled: boolean = false
   scrollToRef: any
+  filterText: string = ''
 
   componentDidMount() {
     this.componentWillReceiveProps(this.props)
@@ -101,10 +102,10 @@ export class TableBox extends React.Component<IProps, IState> {
 
   componentWillReceiveProps(props: IProps) {
     this.outputManager.setOutput(props.output, props.log)
-    const {filterText} = this.state
-    if(filterText.length > 0 && this.isFilterInput(filterText)) {
-      this.filter(filterText)
+    if(this.filterText.length > 0 && this.isFilterInput(this.filterText)) {
+      this.filter()
     }
+    this.setState({filterInput: this.filterText})
     this.forceUpdate()
   }
 
@@ -114,13 +115,19 @@ export class TableBox extends React.Component<IProps, IState> {
     this.scrollToBottom()
   }
 
+  clearFilter() {
+   this.outputManager.clearFilter()
+   this.filterText = ''
+   this.forceUpdate()
+  }
+
   isFilterInput(text: string) : boolean {
     return !text.startsWith("/")
   }
 
-  filter = (inputText: string) => {
-    this.outputManager.filter(inputText)
-    this.setState({filterText: inputText})
+  filter = () => {
+    this.outputManager.filter(this.filterText)
+    this.forceUpdate()
   }
 
   onFilter = (text: string) => {
@@ -128,28 +135,28 @@ export class TableBox extends React.Component<IProps, IState> {
       clearTimeout(this.filterTimer)
     }
     if(text.length === 0) {
-      this.outputManager.clearFilter()
-      this.setState({filterText: ''})
+      this.clearFilter()
     } else {
-      this.filterTimer = setTimeout(this.filter.bind(this, text), 500)
+      this.filterText = text
+      this.filterTimer = setTimeout(this.filter, 500)
     }
   }
 
   onTextInput = (event: ChangeEvent<HTMLInputElement>) => {
-    const text = event.target.value.trim()
+    const text = event.target.value
     if(this.isFilterInput(text)) {
       this.onFilter(text)
     } else {
       this.outputManager.clearFilter()
-      this.setState({filterText: text})
     }
+    this.setState({filterInput: text})
   }
 
   onKeyPress = (event: KeyboardEvent<HTMLInputElement>) => {
     if(event.which === 13 /*Enter*/) {
-      const {filterText} = this.state
+      const {filterInput} = this.state
       this.setState({loading: true})
-      this.props.onActionTextInput(filterText.slice(1))
+      this.props.onActionTextInput(filterInput.slice(1))
     }
   }
 
@@ -230,9 +237,11 @@ export class TableBox extends React.Component<IProps, IState> {
   renderHeaderRow() {
     const {classes} = this.props
     const headers = this.outputManager.headers
+    const filterMatchedColumns = this.outputManager.matchedColumns
     return (
       <TableRow className={classes.tableHeaderRow}>
         {headers.map((header, i) => {
+          const columnMatchedFilter = filterMatchedColumns.has(i)
           if(header instanceof Array){
             return(
             <TableCell key={i} style={{width: i === 0 ? '25%' : 'auto'}}>
@@ -242,6 +251,8 @@ export class TableBox extends React.Component<IProps, IState> {
                   {text}
                 </span>
               )}
+              {columnMatchedFilter && 
+                <span style={{display: 'block', fontSize: '0.7rem'}}>[matches]</span>}
               </Typography>
             </TableCell>
             )
@@ -249,7 +260,9 @@ export class TableBox extends React.Component<IProps, IState> {
             return(
             <TableCell key={i} style={{width: i === 0 ? '25%' : 'auto'}}>
               <Typography className={classes.tableHeaderText}>
-                {header}
+                {header} 
+                {columnMatchedFilter && 
+                  <span style={{display: 'block', fontSize: '0.7rem'}}>[matches]</span>}
               </Typography>
             </TableCell>
             )
@@ -279,6 +292,7 @@ export class TableBox extends React.Component<IProps, IState> {
       <div className={classes.root}>
         <Paper  className={classes.filterContainer}>
           <Input  fullWidth disableUnderline
+                  value={this.state.filterInput}
                   placeholder={inputMessage}
                   className={classes.filterInput}
                   onChange={this.onTextInput}

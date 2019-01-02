@@ -16,7 +16,7 @@ function getUserKubeConfig() {
 
 export function getAllClusters() : Cluster[] {
   const kubeConfig = getUserKubeConfig()
-  return jp.query(kubeConfig, '$.clusters[*].name').map(name => new Cluster(name))
+  return jp.query(kubeConfig, '$.contexts[*].context.cluster').map(name => new Cluster(name))
   /*
   const kubeConfig = {
     apiVersion: 'v1',

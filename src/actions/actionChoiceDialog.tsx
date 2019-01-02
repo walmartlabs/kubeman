@@ -1,13 +1,13 @@
 import React, { ChangeEvent } from 'react';
-import { isNullOrUndefined } from 'util';
 
-import { withStyles, WithStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
-import { AppBar, Button, Input, FormControlLabel, Checkbox, Typography, } from '@material-ui/core';
+import { withStyles, WithStyles} from '@material-ui/core/styles'
+import { Button, Input, FormControlLabel, Checkbox, Typography, } from '@material-ui/core';
 import { Dialog, DialogTitle, DialogContent, DialogActions, } from '@material-ui/core';
 import { Table, TableBody, TableCell, TableRow } from '@material-ui/core';
 
 import {ActionChoices} from './actionSpec'
 import styles from './actionChoiceDialog.styles'
+import {filter} from '../util/filterUtil'
 
 
 interface IProps extends WithStyles<typeof styles> {
@@ -55,16 +55,10 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
     this.setState({selections})
   }
 
-  filter = (inputText: string) => {
+  filter = (filterText: string) => {
     const {choices} = this.props
-    const filteredChoices = choices.filter(choice => {
-      if(choice instanceof Array) {
-        return choice.map(item => item.includes(inputText)).reduce((r1,r2) => r1||r2)
-      } else {
-        choice.includes(inputText)
-      }
-    })
-    this.setState({filterText: inputText, filteredChoices})
+    let filteredChoices: any[] = filter(filterText, choices)
+    this.setState({filterText: filterText, filteredChoices})
   }
 
   onFilterChange = (event: ChangeEvent<HTMLInputElement>) => {

@@ -16,7 +16,7 @@ export default class K8sFunctions {
         meta.labels = jsonUtil.convertObjectToArray(meta.labels)
       }
     }
-    const metaFields = ["name", "creationTimestamp", "labels"]
+    const metaFields = ["name", "namespace", "creationTimestamp", "labels"]
     if(data instanceof Array) {
       const metas : Metadata[] = jsonUtil.extractMulti(data, "$[*].metadata", ...metaFields)
       metas.forEach(prettifyLabels)

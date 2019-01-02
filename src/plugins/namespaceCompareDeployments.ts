@@ -9,7 +9,7 @@ export function generateDeploymentComparisonOutput(clusters: Cluster[], namespac
   const output: ActionOutput = []
   const headers = ["Namespace/Deployment"]
   clusters.forEach(cluster => {
-    headers.push("In " + cluster.name)
+    headers.push("Cluster: " + cluster.name)
   })
   output.push(headers)
 
@@ -38,7 +38,7 @@ export function generateDeploymentComparisonOutput(clusters: Cluster[], namespac
     const deploymentToClusterMap = nsDeploymentToClusterMap[namespace]
     const deployments = Object.keys(deploymentToClusterMap)
     if(deployments.length === 0) {
-      output.push(["No Deployments", "", ""])
+      output.push(["No Deployments", ...clusters.map(() => "")])
     } else {
       deployments.forEach(deployment => {
         const clusterMap = deploymentToClusterMap[deployment]

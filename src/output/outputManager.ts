@@ -87,9 +87,10 @@ export class Cell {
   isJSON: boolean = false
   isText: boolean = false
   isLog: boolean = false
-  isGroup = false
-  isSubGroup = false  
-  isHealthStatusField = false
+  isGroup: boolean = false
+  isSubGroup: boolean = false  
+  isHealthStatusField: boolean = false
+  isMatched: boolean = false
 
   //isArrayOfJSON: boolean = false
   private content: CellContent
@@ -142,9 +143,11 @@ export class Cell {
 
   match(filters: string[]) : string[] {
     const appliedFilters : string[] = []
+    this.isMatched = false
     filters.map(filter => {
       if(this.stringContent.includes(filter)) {
         appliedFilters.push(filter)
+        this.isMatched = true
       }
     })
     return appliedFilters
@@ -236,6 +239,7 @@ export class Row {
   isFirstAppendedRow: boolean = false
   groupIndex: number = 0
   isHidden: boolean = false
+  matchedColumns: Set<number> = new Set
 
   private content: CellContent[]
   private healthColumnIndex?: number
@@ -299,11 +303,18 @@ export class Row {
     return this.cells.length
   }
 
+  clearFilter() {
+    this.appliedFilters = []
+    this.matchedColumns.clear()
+    this.cells.forEach(cell => cell.isMatched = false)
+  }
+
   filter(filterGroups: string[][]) : boolean {
     if(this.isGroup || this.isSubGroup) {
       return true
     } else {
       this.appliedFilters = []
+      this.matchedColumns.clear()
       let anyMatched = false, allMatched = false
       filterGroups.forEach(filters => {
         const matchedFilters : Set<String> = new Set
@@ -312,6 +323,7 @@ export class Row {
         const rowMatched = matchedFilters.size === filters.length
         if(rowMatched) {
           this.appliedFilters = this.appliedFilters.concat(filters).filter(filter => filter.length > 0)
+          this.cells.forEach((cell, index) => cell.isMatched && this.matchedColumns.add(index))
         }
         anyMatched = anyMatched || rowMatched
       })
@@ -342,6 +354,7 @@ export default class OutputManager {
   filteredRows: Row[] = []
   healthColumnIndex: number = -1
   appliedFilters: string[][] = []
+  matchedColumns: Set<number> = new Set
   isLog: boolean = false
   groupCount: number = 0
 
@@ -381,6 +394,7 @@ export default class OutputManager {
       } else if(row.filter(this.appliedFilters)) {
         const [highlightedRow, rowChanged] = row.highlightFilters()
         this.filteredRows.push(highlightedRow)
+        row.matchedColumns.forEach(index  => this.matchedColumns.add(index))
       }
     })
   }
@@ -400,7 +414,9 @@ export default class OutputManager {
 
   clearFilter() {
     this.appliedFilters = []
+    this.rows.forEach(row => row.clearFilter())
     this.filteredRows = this.rows.concat()
+    this.matchedColumns.clear()
   }
 
   get hasContent() {
@@ -413,7 +429,6 @@ export default class OutputManager {
 
   filter = (inputText: string) => {
     inputText = inputText.toLowerCase()
-    const matchAny = inputText.includes(" or ")
     const filters : string[][] = 
                   inputText.toLowerCase().split(" or ")
                   .filter(group => group.length > 0)
@@ -425,6 +440,8 @@ export default class OutputManager {
     } else {
       this.appliedFilters = filters
       this.filteredRows = this.rows.filter((row,i) => row.filter(filters))
+      this.matchedColumns.clear()
+      this.filteredRows.forEach(row => row.matchedColumns.forEach(index  => this.matchedColumns.add(index)))
       this.highlightFilter()
     }
   }

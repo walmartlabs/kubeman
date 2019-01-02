@@ -24,8 +24,7 @@ const plugin : ActionGroupSpec = {
         selections.forEach(selection => {
           const output: ActionOutput = []
           output.push([">" + selection.title, ""])
-          output.push(["Cluster", selection.cluster])
-          output.push(["Namespace", selection.namespace])
+          output.push(["cluster", selection.cluster])
           const item = selection.item
           if(item) {
             Object.keys(item).forEach((key, index) => output.push([key, item[key] ||'']))

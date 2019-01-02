@@ -69,15 +69,13 @@ export class ActionLoader {
     if(actionGroupSpec.title) {
       actionGroupSpec.order && actionGroupSpec.order++
     }
-    actionGroupSpec.title = actionGroupSpec.title || (actionGroupSpec.context + " Actions")
+    actionGroupSpec.title = actionGroupSpec.title || (actionGroupSpec.context + " Recipes")
 
     switch(actionGroupSpec.context) {
       case ActionContextType.Common:
         this.configureCommonActions(actionGroupSpec)
         break
-      case ActionContextType.Cluster:
-      case ActionContextType.Namespace:
-      case ActionContextType.Pod:
+      default:
         this.bindActions(actionGroupSpec)
         break
     }
@@ -101,7 +99,7 @@ export class ActionLoader {
         const act: BoundActionAct = action.act.bind(action, this.actionContext)
         action.act = () => {
           if(this.checkSelections({
-            checkClusters: true, 
+            checkClusters: true,
             checkNamespaces: actionGroupSpec.context === ActionContextType.Namespace
                             || actionGroupSpec.context === ActionContextType.Pod,
             checkPods: actionGroupSpec.context === ActionContextType.Pod,

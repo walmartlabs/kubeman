@@ -4,7 +4,7 @@ import {ActionGroupSpec, ActionContextType, ActionOutput, ActionOutputStyle, } f
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
-  title: "Pod Actions",
+  title: "Pod Recipes",
   actions: [
     {
       name: "View Pod(s) Events",

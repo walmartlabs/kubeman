@@ -6,7 +6,7 @@ import { PodContainerDetails } from '../k8s/k8sObjectTypes';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
-  title: "Pod Actions",
+  title: "Pod Recipes",
 
   actions: [
     {
@@ -28,12 +28,19 @@ const plugin : ActionGroupSpec = {
           const selection = selections[sourceIndex]
           actionContext.onStreamOutput && actionContext.onStreamOutput([[
             ">From: " + selection.title + ", Cluster: " + selection.cluster, "",""]])
-          const result = await k8sFunctions.podExec(selection.namespace, selection.pod, selection.container, 
-                              selection.k8sClient, ["ping", "-c 1", "127.0.0.1"])
-          const pingExists = result.includes("transmitted")
-          if(!pingExists) {
+          try {
+            const result = await k8sFunctions.podExec(selection.namespace, selection.pod, selection.container, 
+                                selection.k8sClient, ["ping", "-c 1", "127.0.0.1"])
+            const pingExists = result.includes("transmitted")
+            if(!pingExists) {
+              actionContext.onStreamOutput && actionContext.onStreamOutput([
+                ["", "Cannot test reachability from " + selection.title + " because ping command not found", ""]
+              ])
+              continue
+            }
+          } catch(error) {
             actionContext.onStreamOutput && actionContext.onStreamOutput([
-              ["", "Cannot test reachability from " + selection.title + " because ping command not found", ""]
+              ["", "Error from pod " + selection.title + ": " + error.message, ""]
             ])
             continue
           }

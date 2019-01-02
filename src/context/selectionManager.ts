@@ -3,6 +3,7 @@ import deburr from 'lodash/deburr';
 
 import {Cluster, Namespace, Pod, KubeComponent, KubeComponentType} from "../k8s/k8sObjectTypes";
 import * as k8s from '../k8s/k8sContextClient'
+import {filter} from '../util/filterUtil'
 
 export type PodData = Map<string, Pod>
 export type NamespacePodData = [Namespace, PodData]
@@ -105,14 +106,14 @@ export default class SelectionManager {
           .catch(err => {
             this.loadingCounter--
             console.log("Failed to load pods for some namespaces: " + err)
-            reject(false)
+            resolve(false)
           })
         })
         .catch(error => {
           this.clustersInError.push(cluster.text())
           this.loadingCounter--
           console.log("Error while loading namespaces for cluster %s: %s", cluster.text(), error)
-          reject(false)
+          resolve(false)
         })
     })
   }
@@ -129,7 +130,7 @@ export default class SelectionManager {
       .catch(error => {
         this.namespacesInError.push(namespace.text())
         console.log("Error while loading pods for namespace %s: %s", namespace.name, error)
-        reject(false)
+        resolve(false)
       })
     })
   }  
@@ -216,18 +217,8 @@ export default class SelectionManager {
   }
 
   static filter(filterText: string, type: KubeComponentType) : KubeComponent[] {
-    filterText = filterText ? deburr(filterText.trim()).toLowerCase() : ''
-    const pieces = filterText.split("or")
-    const results: Map<string, KubeComponent> = new Map
-    pieces.forEach(piece => {
-      const filters = piece.split(" ")
-      let items: KubeComponent[] = type === KubeComponentType.Namespace ? this.allNamespaces : this.allPods
-      filters.forEach(filter => {
-        items = items.filter(item => item.name.includes(filter))
-      })
-      items.forEach(item => results.set(item.text(), item))
-    })
-    return Array.from(results.values())
+    const items: KubeComponent[] = type === KubeComponentType.Namespace ? this.allNamespaces : this.allPods
+    return filter(filterText, items, 'name') as KubeComponent[]
   }
 
   static getMatchingNamespaces(filterText: string) : Namespace[] {

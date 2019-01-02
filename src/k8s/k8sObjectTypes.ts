@@ -211,7 +211,7 @@ export interface ServiceDetails extends Metadata {
   loadBalancerSourceRanges?: any,
   ports: Port[],
   publishNotReadyAddresses?: any,
-  selector?: any,
+  selector?: any[],
   sessionAffinity?: any,
   sessionAffinityConfig?: any,
   type: any,

@@ -129,6 +129,7 @@ export class Actions extends React.Component<IProps, IState> {
     actionShowNoShow.set(ActionContextType.Cluster, context.hasClusters)
     actionShowNoShow.set(ActionContextType.Namespace, context.hasNamespaces)
     actionShowNoShow.set(ActionContextType.Pod, context.hasPods)
+    actionShowNoShow.set(ActionContextType.Istio, context.hasClusters)
     actionShowNoShow.set(ActionContextType.Other, context.hasClusters)
 
     return (

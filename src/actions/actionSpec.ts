@@ -5,6 +5,7 @@ export enum ActionContextType {
   Cluster = "Cluster",
   Namespace = "Namespace",
   Pod = "Pod",
+  Istio = "Istio",
   Other = "Other",
 }
 
@@ -12,8 +13,9 @@ export const ActionContextOrder = {}
 ActionContextOrder[ActionContextType.Common] = 1
 ActionContextOrder[ActionContextType.Cluster] = 10
 ActionContextOrder[ActionContextType.Namespace] = 100
-ActionContextOrder[ActionContextType.Pod] = 1000
-ActionContextOrder[ActionContextType.Other] = 10000
+ActionContextOrder[ActionContextType.Pod] = 200
+ActionContextOrder[ActionContextType.Istio] = 300
+ActionContextOrder[ActionContextType.Other] = 1000
 
 export enum ActionOutputStyle {
   None = "None",

@@ -4,7 +4,7 @@ import { PodDetails } from '../k8s/k8sObjectTypes';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
-  title: "Pod Actions",
+  title: "Pod Recipes",
   actions: [
     {
       name: "View Pod(s) Details",
@@ -26,9 +26,8 @@ const plugin : ActionGroupSpec = {
           const cluster = selection.cluster
           const podDetails = selection.podContainerDetails as PodDetails
           const output: ActionOutput = []
-          output.push([">" + pod, ""])
-          output.push(["Cluster", cluster])
-          output.push(["Namespace", namespace])
+          output.push([">" + pod +", Cluster: " + cluster, ""])
+          output.push(["cluster", cluster])
           if(podDetails) {
             Object.keys(podDetails).forEach((key, index) => output.push([key, podDetails[key] ||'']))
           }

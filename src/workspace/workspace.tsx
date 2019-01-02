@@ -111,6 +111,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
 
   showLoading = () => {
+    this.tableBox && this.tableBox.clearFilter()
     this.setState({loading: true, outputStyle: ActionOutputStyle.None})
   }
 

@@ -6,7 +6,7 @@ import ActionContext from '../actions/actionContext';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
-  title: "Pod Actions",
+  title: "Pod Recipes",
 
   logStream: undefined,
 

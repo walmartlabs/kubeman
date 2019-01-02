@@ -5,7 +5,7 @@ import K8sPluginHelper from '../k8s/k8sPluginHelper'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
-  title: "Pod Actions",
+  title: "Pod Recipes",
   actions: [
     {
       name: "Execute Pod Command",
@@ -33,10 +33,16 @@ const plugin : ActionGroupSpec = {
       
       async react(actionContext) {
         const command = actionContext.inputText ? actionContext.inputText.split(" ") : []
-        const result = await k8sFunctions.podExec(this.namespace, this.pod, this.container, this.k8sClient, command)
-        actionContext.onStreamOutput && actionContext.onStreamOutput([[">"+ actionContext.inputText]])
-        const output = result.length > 0 ? [[result]] : [["No Results"]]
-        actionContext.onStreamOutput && actionContext.onStreamOutput(output)
+        try {
+          const result = await k8sFunctions.podExec(this.namespace, this.pod, this.container, this.k8sClient, command)
+          actionContext.onStreamOutput && actionContext.onStreamOutput([[">"+ actionContext.inputText]])
+          const output = result.length > 0 ? [[result]] : [["No Results"]]
+          actionContext.onStreamOutput && actionContext.onStreamOutput(output)
+        } catch(error) {
+          actionContext.onStreamOutput && actionContext.onStreamOutput([[
+            "Error for pod " + this.pod + ": " + error.message
+          ]])
+        }
       },
     }
   ]

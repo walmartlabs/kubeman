@@ -7,7 +7,7 @@ type ClusterNamespacePodsMap = {[cluster: string]: {[namespace: string]: PodDeta
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
-  title: "Pod Actions",
+  title: "Pod Recipes",
   actions: [
     {
       name: "View Pod(s) Status",

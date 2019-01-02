@@ -119,10 +119,16 @@ export default class Context {
     this.hasPods = this.pods.length > 0
   }
 
+  async store(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, pods: Map<string, Pod>) {
+    await this.storeClusters(clusters)
+    this.storeNamespaces(namespaces)
+    this.storePods(pods)
+  }
+
   async storeClusters(clusters: Map<string, Cluster>) {
     this.clearClusters()
-    for(const i in clusters) {
-      await this.addCluster(clusters[i])
+    for(const cluster of clusters.values()) {
+      await this.addCluster(cluster)
     }
   }
 
@@ -134,12 +140,6 @@ export default class Context {
   storePods(pods: Map<string, Pod>) {
     this.clearPods()
     pods.forEach(this.addPod)
-  }
-
-  async store(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, pods: Map<string, Pod>) {
-    await this.storeClusters(clusters)
-    this.storeNamespaces(namespaces)
-    this.storePods(pods)
   }
 
   clearClusters() {

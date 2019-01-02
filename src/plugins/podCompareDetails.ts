@@ -3,7 +3,7 @@ import K8sPluginHelper from '../k8s/k8sPluginHelper'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
-  title: "Pod Actions",
+  title: "Pod Recipes",
   actions: [
     {
       name: "Compare Two Pods",
