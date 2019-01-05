@@ -12,7 +12,7 @@ const plugin : ActionGroupSpec = {
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 2, 2, false, true),
 
       async act(actionContext) {
-        K8sPluginHelper.generateComparisonOutput(actionContext, "Pods")
+        K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Pods")
       },
     }
   ]

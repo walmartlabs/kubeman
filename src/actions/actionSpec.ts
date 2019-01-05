@@ -46,6 +46,8 @@ export interface ActionSpec {
   act: ActionAct
   react?: ActionAct
   stop?: ActionAct
+  onOutput?: ActionOutputCollector
+  onStreamOutput?: ActionStreamOutputCollector
   [x: string]: any
 }
 

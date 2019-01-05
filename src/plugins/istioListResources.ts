@@ -1,11 +1,12 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import IstioFunctions from '../k8s/istioFunctions';
 import ActionContext from '../actions/actionContext';
+import IstioPluginHelper from '../k8s/istioPluginHelper';
 
-async function listResources(title: string, getResources: (k8sClient) => Promise<any[]>,
-                              actionContext: ActionContext) {
+async function listResources(title: string, getResources: (k8sClient) => Promise<any[]>, 
+                            onOutput, onStreamOutput, actionContext: ActionContext) {
   const clusters = actionContext.getClusters()
-  actionContext.onOutput && actionContext.onOutput([["", title]], ActionOutputStyle.Table)
+  onOutput([["", title]], ActionOutputStyle.Table)
   for(const i in clusters) {
     const cluster = clusters[i]
     const output: ActionOutput = []
@@ -17,7 +18,7 @@ async function listResources(title: string, getResources: (k8sClient) => Promise
       output.push([">>" + (resource.name || ""), ""])
       Object.keys(resource).forEach(key => resource[key] && output.push([key, resource[key]]))
     })
-    actionContext.onStreamOutput  && actionContext.onStreamOutput(output)
+    onStreamOutput(output)
   }
 }
 
@@ -28,49 +29,58 @@ const plugin : ActionGroupSpec = {
     {
       name: "List Gateways",
       order: 1,
-      act: listResources.bind(null, "Istio Gateways List", IstioFunctions.listAllGateways)
+      act(actionContext) {
+        listResources("Istio Gateways List", IstioFunctions.listAllGateways, this.onOutput, this.onStreamOutput, actionContext)
+      }
     },
     {
       name: "List VirtualServices",
       order: 2,
-      
-      act: listResources.bind(null, "Istio VirtualServices List", IstioFunctions.listAllVirtualServices)
+      act(actionContext) {
+        listResources("Istio VirtualServices List", IstioPluginHelper.getAllVirtualServices, this.onOutput, this.onStreamOutput, actionContext)
+      }
     },
     {
       name: "List DestinationRules",
       order: 3,
-      
-      act: listResources.bind(null, "Istio DestinationRules List", IstioFunctions.listAllDestinationRules)
+      act(actionContext) {
+        listResources("Istio DestinationRules List", IstioFunctions.listAllDestinationRules, this.onOutput, this.onStreamOutput, actionContext)
+      }
     },
     {
       name: "List ServiceEntries",
       order: 4,
-      
-      act: listResources.bind(null, "Istio ServiceEntries List", IstioFunctions.listAllServiceEntries)
+      act(actionContext) {
+        listResources("Istio ServiceEntries List", IstioFunctions.listAllServiceEntries, this.onOutput, this.onStreamOutput, actionContext)
+      }
     },
     {
       name: "List EnvoyFilters",
       order: 5,
-      
-      act: listResources.bind(null, "Istio EnvoyFilters List", IstioFunctions.listAllEnvoyFilters)
+      act(actionContext) {
+        listResources("Istio EnvoyFilters List", IstioFunctions.listAllEnvoyFilters, this.onOutput, this.onStreamOutput, actionContext)
+      }
     },
     {
       name: "List Policies",
       order: 6,
-      
-      act: listResources.bind(null, "Istio Policies List", IstioFunctions.listAllPolicies)
+      act(actionContext) {
+        listResources("Istio Policies List", IstioFunctions.listAllPolicies, this.onOutput, this.onStreamOutput, actionContext)
+      }
     },
     {
       name: "List MeshPolicies",
       order: 7,
-      
-      act: listResources.bind(null, "Istio MeshPolicies List", IstioFunctions.listAllMeshPolicies)
+      act(actionContext) {
+        listResources("Istio MeshPolicies List", IstioFunctions.listAllMeshPolicies, this.onOutput, this.onStreamOutput, actionContext)
+      }
     },
     {
       name: "List Rules",
       order: 8,
-      
-      act: listResources.bind(null, "Istio Rules List", IstioFunctions.listAllRules)
+      act(actionContext) {
+        listResources("Istio Rules List", IstioFunctions.listAllRules, this.onOutput, this.onStreamOutput, actionContext)
+      }
     }
   ]
 }

@@ -1,5 +1,4 @@
 import _ from 'lodash'
-import deburr from 'lodash/deburr';
 
 import {Cluster, Namespace, Pod, KubeComponent, KubeComponentType} from "../k8s/k8sObjectTypes";
 import * as k8s from '../k8s/k8sContextClient'

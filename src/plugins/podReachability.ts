@@ -18,28 +18,28 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext, true)
         if(selections.length < 2) {
-          actionContext.onOutput && actionContext.onOutput([["Not enough pods selected"]], ActionOutputStyle.Text)
+          this.onOutput && this.onOutput([["Not enough pods selected"]], ActionOutputStyle.Text)
           return
         }
-        actionContext.onOutput && actionContext.onOutput([["Pod Reachability Test", "", ""]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Pod Reachability Test", "", ""]], ActionOutputStyle.Log)
 
         for(const i in selections) {
           const sourceIndex = parseInt(i)
           const selection = selections[sourceIndex]
-          actionContext.onStreamOutput && actionContext.onStreamOutput([[
+          this.onStreamOutput && this.onStreamOutput([[
             ">From: " + selection.title + ", Cluster: " + selection.cluster, "",""]])
           try {
             const result = await k8sFunctions.podExec(selection.namespace, selection.pod, selection.container, 
                                 selection.k8sClient, ["ping", "-c 1", "127.0.0.1"])
             const pingExists = result.includes("transmitted")
             if(!pingExists) {
-              actionContext.onStreamOutput && actionContext.onStreamOutput([
+              this.onStreamOutput && this.onStreamOutput([
                 ["", "Cannot test reachability from " + selection.title + " because ping command not found", ""]
               ])
               continue
             }
           } catch(error) {
-            actionContext.onStreamOutput && actionContext.onStreamOutput([
+            this.onStreamOutput && this.onStreamOutput([
               ["", "Error from pod " + selection.title + ": " + error.message, ""]
             ])
             continue
@@ -55,7 +55,7 @@ const plugin : ActionGroupSpec = {
             const result = await k8sFunctions.podExec(selection.namespace, selection.pod, selection.container, 
               selection.k8sClient, ["ping", "-c 2", ip])
             const pingSuccess = result.includes("2 received")
-            actionContext.onStreamOutput && actionContext.onStreamOutput([[
+            this.onStreamOutput && this.onStreamOutput([[
               [target.pod, "IP: "+ip, "Cluster: " + target.cluster],
               result,
               pingSuccess ? "Reachable" : "Unreachable"

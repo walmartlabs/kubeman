@@ -68,4 +68,28 @@ export default class JsonUtil {
                           JsonUtil.convertObjectToString(item))
             .join(". ")
   }
+
+  static flattenObject(object) {
+    if(object) {
+      if(object instanceof Array) {
+        return object.map(JsonUtil.flattenObject)
+      } else if(typeof object === 'object') {
+        const result = {}
+        Object.keys(object).forEach(key => {
+          let value = JsonUtil.flattenObject(object[key])
+          if(value) {
+            if(typeof value === 'object' && !(value instanceof Array)) {
+              Object.keys(value).forEach(subkey => {
+                result[key+"."+subkey] = value[subkey]
+              })
+            } else {
+              result[key] = value
+            }
+          }
+        })
+        return result
+      }
+    }
+    return object
+  }
 }

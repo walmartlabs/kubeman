@@ -66,7 +66,7 @@ const plugin : ActionGroupSpec = {
         const deployments = await k8sFunctions.getDeploymentsGroupedByClusterNamespace(clusters, namespaces)
 
         const output = generateDeploymentComparisonOutput(clusters, namespaces, deployments)
-        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Compare)
+        this.onOutput && this.onOutput(output, ActionOutputStyle.Compare)
       },
     }
   ]

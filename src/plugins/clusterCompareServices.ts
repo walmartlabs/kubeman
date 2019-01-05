@@ -16,7 +16,7 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const clusters = K8sPluginHelper.getSelectedClusters(actionContext)
         if(clusters.length < 2) {
-          actionContext.onOutput && actionContext.onOutput([["Not enough clusters to compare"]], ActionOutputStyle.Text)
+          this.onOutput && this.onOutput([["Not enough clusters to compare"]], ActionOutputStyle.Text)
           return
         }
         const clusterServices = await k8sFunctions.getServicesGroupedByClusterNamespace(clusters)
@@ -26,7 +26,7 @@ const plugin : ActionGroupSpec = {
           namespaces.push({name: namespace})))
 
         const output: ActionOutput = generateServiceComparisonOutput(clusters, namespaces, clusterServices)
-        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Compare)
+        this.onOutput && this.onOutput(output, ActionOutputStyle.Compare)
       },
     },
   ]

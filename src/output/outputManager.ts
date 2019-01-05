@@ -13,15 +13,19 @@ const healthStatusHeaderKeywords = ["status", "health", "condition"]
 
 const healthyKeywords : string[] = [
   "active", "healthy", "good", "running", "started", "starting", "restarted", "success", 
-  "complete", "created", "available", "ready", "normal", "reachable"
+  "complete", "created", "available", "ready", "normal", "reachable", "permitted", "correct"
 ]
 const unhealthyKeywords : string[] = [
-  "inactive", "unhealthy", "bad", "stop", "terminated", "terminating", "wait", 
-  "warning", "error", "fail", "not available", "unavailable", "unable", "unreachable"
+  "inactive", "unhealthy", "bad", "stop", "terminated", "terminating", "wait", "conflict",
+  "warning", "error", "fail", "not available", "unavailable", "unable", "unreachable", "incorrect", "mismatch"
 ]
 
-const ignoreKeywords: string[] = [
+const healthyIgnoreKeywords: string[] = [
   "maxunavailable"
+]
+
+const unhealthyIgnoreKeywords: string[] = [
+  "maxunavailable", "unavailable:"
 ]
 
 hljs.registerLanguage('yaml', yamlHighlight)
@@ -92,7 +96,6 @@ export class Cell {
   isHealthStatusField: boolean = false
   isMatched: boolean = false
 
-  //isArrayOfJSON: boolean = false
   private content: CellContent
   private formattedContent: CellContent
   private stringContent: string = ''
@@ -214,13 +217,13 @@ export class Cell {
 
   get isHealthy() {
     return healthyKeywords.filter(word => this.stringContent.includes(word)).length > 0
-          && unhealthyKeywords.filter(word => this.stringContent.includes(word)).length == 0
-          && ignoreKeywords.filter(word => this.stringContent.includes(word)).length == 0
+          && healthyIgnoreKeywords.filter(word => this.stringContent.includes(word)).length == 0
+          && !this.isUnhealthy
   }
 
   get isUnhealthy() {
     return unhealthyKeywords.filter(word => this.stringContent.includes(word)).length > 0
-            && ignoreKeywords.filter(word => this.stringContent.includes(word)).length == 0
+            && unhealthyIgnoreKeywords.filter(word => this.stringContent.includes(word)).length == 0
   }
 
   get isFirstColumn() {

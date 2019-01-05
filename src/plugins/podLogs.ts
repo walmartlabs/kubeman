@@ -1,5 +1,5 @@
 import k8sFunctions from '../k8s/k8sFunctions'
-import {ActionGroupSpec, ActionContextType, ActionOutputStyle, } from '../actions/actionSpec'
+import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionSpec, } from '../actions/actionSpec'
 import K8sPluginHelper from '../k8s/k8sPluginHelper'
 import ActionContext from '../actions/actionContext';
 
@@ -10,14 +10,14 @@ const plugin : ActionGroupSpec = {
 
   logStream: undefined,
 
-  async getPodLogs(actionContext: ActionContext, tail: boolean) {
+  async getPodLogs(actionContext: ActionContext, action: ActionSpec, tail: boolean) {
     const selections = await K8sPluginHelper.getPodSelections(actionContext)
     if(selections.length < 1) {
-      actionContext.onOutput && actionContext.onOutput([["No pod selected"]], ActionOutputStyle.Text)
+      action.onOutput && action.onOutput([["No pod selected"]], ActionOutputStyle.Text)
       return
     }
     const selection = selections[0]
-    actionContext.onOutput && actionContext.onOutput([["Logs for " + selection.title]], ActionOutputStyle.Log)
+    action.onOutput && action.onOutput([["Logs for " + selection.title]], ActionOutputStyle.Log)
   
     const logStream = await k8sFunctions.getPodLog(selection.namespace, selection.pod, 
                               selection.container, selection.k8sClient, tail)
@@ -25,7 +25,7 @@ const plugin : ActionGroupSpec = {
       lines = lines.split("\n")
               .filter(line => line.length > 0)
               .map(line => [line])
-      actionContext.onStreamOutput && actionContext.onStreamOutput(lines)
+      action.onStreamOutput && action.onStreamOutput(lines)
     })
     if(tail) {
       this.logStream = logStream
@@ -42,7 +42,7 @@ const plugin : ActionGroupSpec = {
       order: 4,
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 1, true, false),
       async act(actionContext) {
-        await plugin.getPodLogs(actionContext, false)
+        await plugin.getPodLogs(actionContext, this, false)
       }
     },
     {
@@ -50,7 +50,7 @@ const plugin : ActionGroupSpec = {
       order: 5,
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 1, true, false),
       async act(actionContext) {
-        await plugin.getPodLogs(actionContext, true)
+        await plugin.getPodLogs(actionContext, this, true)
       },
       stop(actionContext) {
         if(plugin.logStream) {

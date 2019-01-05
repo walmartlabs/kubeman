@@ -25,6 +25,4 @@ ipc.on('show-context-menu', (event: Electron.Event, point: {x: number, y: number
   
   const win = BrowserWindow.fromWebContents(event.sender)
   contextMenu.popup({window: win})
-  //event.returnValue = 'Sync Response shown!'
-  //event.sender.send('asynchronous-reply', 'Async Response')
 })

@@ -20,7 +20,7 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext)
         if(selections.length < 1) {
-          actionContext.onOutput && actionContext.onOutput([["No pod selected"]], ActionOutputStyle.Text)
+          this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
           return
         }
         const selection = selections[0]
@@ -28,18 +28,18 @@ const plugin : ActionGroupSpec = {
         this.pod = selection.pod
         this.namespace = selection.namespace
         this.k8sClient = selection.k8sClient
-        actionContext.onOutput && actionContext.onOutput([["Container@Pod: "+selection.title]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Container@Pod: "+selection.title]], ActionOutputStyle.Log)
       },
       
       async react(actionContext) {
         const command = actionContext.inputText ? actionContext.inputText.split(" ") : []
         try {
           const result = await k8sFunctions.podExec(this.namespace, this.pod, this.container, this.k8sClient, command)
-          actionContext.onStreamOutput && actionContext.onStreamOutput([[">"+ actionContext.inputText]])
+          this.onStreamOutput && this.onStreamOutput([[">"+ actionContext.inputText]])
           const output = result.length > 0 ? [[result]] : [["No Results"]]
-          actionContext.onStreamOutput && actionContext.onStreamOutput(output)
+          this.onStreamOutput && this.onStreamOutput(output)
         } catch(error) {
-          actionContext.onStreamOutput && actionContext.onStreamOutput([[
+          this.onStreamOutput && this.onStreamOutput([[
             "Error for pod " + this.pod + ": " + error.message
           ]])
         }

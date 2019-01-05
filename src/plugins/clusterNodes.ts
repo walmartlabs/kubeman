@@ -31,7 +31,7 @@ const plugin : ActionGroupSpec = {
                   " (" + node.condition[key].message + ")"),
           ]))
         }
-        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Table)
+        this.onOutput && this.onOutput(output, ActionOutputStyle.Table)
       },
     },
   ]

@@ -31,7 +31,7 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const clusters = K8sPluginHelper.getSelectedClusters(actionContext)
         if(clusters.length < 2) {
-          actionContext.onOutput && actionContext.onOutput([["Not enough clusters to compare"]], ActionOutputStyle.Text)
+          this.onOutput && this.onOutput([["Not enough clusters to compare"]], ActionOutputStyle.Text)
           return
         }
 
@@ -41,7 +41,7 @@ const plugin : ActionGroupSpec = {
         output.push(["Namespaces", "Cluster: " + cluster1, "Cluster: " + cluster2])
         await compareClusterNamespaces(cluster1, clusters[0].k8sClient, 
                                         cluster2, clusters[1].k8sClient, output)
-        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Compare)
+        this.onOutput && this.onOutput(output, ActionOutputStyle.Compare)
       },
     },
   ]

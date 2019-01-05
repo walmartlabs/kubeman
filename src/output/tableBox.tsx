@@ -22,15 +22,19 @@ interface ITableCellProps extends WithStyles<typeof styles> {
 function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, compare: boolean, classes: any) : string {
   let className = classes.tableCell
   if(!cell.isGroup && !cell.isSubGroup ) {
+    if(isKeyColumn) {
+      className = className + " " + classes.tableKeyCell
+    }
     if(highlight) {
-      className = isKeyColumn ? classes.tableKeyCellHighlight : classes.tableCellHighlight 
-    } else if(isKeyColumn) {
-      className = classes.tableKeyCell
-    } else if(!compare && cell.isHealthStatusField) {
-      className = cell.isHealthy ? classes.tableCellHealthGood : 
-                      cell.isUnhealthy ? classes.tableCellHealthBad : classes.tableCell
+      className = className + " " + (isKeyColumn ? classes.tableKeyCellHighlight : classes.tableCellHighlight)
     } 
-    compare && (className = className + " " + classes.tableCellCompare)
+    if(!isKeyColumn && compare) {
+      className = className + " " + classes.tableCellCompare
+    }
+    if(!isKeyColumn && !compare && cell.isHealthStatusField) {
+      className = className + " " + (cell.isHealthy ? classes.tableCellHealthGood : 
+                      cell.isUnhealthy ? classes.tableCellHealthBad : classes.tableCell)
+    } 
   }
   return className
 }

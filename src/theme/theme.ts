@@ -136,8 +136,6 @@ class ActionsTheme {
             height: '40px !important',
             lineHeight: 1,
             margin: '0px !important',
-            boxShadow: '1px 0px 0px 2px rgba(0, 0, 255, 0.8)',
-            right: 1,
           },
           expandIcon: {
             color: '#D8DDF3 !important',
@@ -174,9 +172,8 @@ class ActionsTheme {
             paddingTop: 0,
             paddingBottom: 5,
             paddingLeft: 10,
-            backgroundColor: useDarkTheme ? '#404fa5'  : '#daddf1',
-            //borderBottom: '1px solid #9c9c9c',
-            boxShadow: useDarkTheme ? '0px 1px 2px 0px rgba(255, 255, 255, 0.8)' : '0px 1px 2px 0px rgba(0, 0, 255, 0.8)',
+            backgroundColor: useDarkTheme ? '#1d2349'  : '#daddf1',
+            boxShadow: useDarkTheme ? '0px 1px 1px 0px rgba(255, 255, 255, 0.5)' : '0px 1px 1px 0px rgba(0, 0, 255, 0.5)',
             '&:hover':{
               color: 'black'
             },

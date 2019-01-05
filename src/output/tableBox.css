@@ -14,10 +14,10 @@ pre {
   color: rgba(15, 15, 150, 0.7);
 }
 .json-boolean {
-  color: teal;
+  color: rgba(15, 15, 150, 0.7);;
 }
 .json-string {
-  color: olive;
+  color: #666600;
 }
 .gridRow:not(:last-child) {
   border-bottom: 1px dotted #808080

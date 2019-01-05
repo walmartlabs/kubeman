@@ -14,9 +14,13 @@ export default class K8sFunctions {
     const prettifyLabels = (meta: DataObject) => {
       if(meta.labels) {
         meta.labels = jsonUtil.convertObjectToArray(meta.labels)
+      } 
+      if(meta.annotations) {
+        delete meta.annotations["kubectl.kubernetes.io/last-applied-configuration"]
+        meta.annotations = jsonUtil.convertObjectToArray(meta.annotations)
       }
     }
-    const metaFields = ["name", "namespace", "creationTimestamp", "labels"]
+    const metaFields = ["name", "namespace", "creationTimestamp", "labels", "annotations"]
     if(data instanceof Array) {
       const metas : Metadata[] = jsonUtil.extractMulti(data, "$[*].metadata", ...metaFields)
       metas.forEach(prettifyLabels)
@@ -36,7 +40,7 @@ export default class K8sFunctions {
       items.forEach(item => {
         const meta = K8sFunctions.extractMetadata(item) as Metadata
         const spec = jsonUtil.extract(item, "$.spec", "podCIDR")
-        const status = jsonUtil.extract(item, "$.status", "addresses", "conditions", "nodeInfo")
+        const status = jsonUtil.extract(item, "$.status", "addresses", "conditions", "nodeInfo", "capacity")
         const node = {
           ...meta,
           network: {
@@ -48,6 +52,7 @@ export default class K8sFunctions {
             containerRuntimeVersion: status.nodeInfo.containerRuntimeVersion,
             kubeletVersion: status.nodeInfo.kubeletVersion,
             kubeProxyVersion: status.nodeInfo.kubeProxyVersion,
+            capacity: JSON.stringify(status.capacity)
           }
         }
         status.addresses.forEach(a => node.network[a.type] = a.address)
@@ -347,6 +352,26 @@ export default class K8sFunctions {
       result.body.items.forEach(item => pods.push(K8sFunctions.extractPodDetails(item)))
     }
     return pods
+  }
+
+  static async getPodsAndContainersForService(namespace: string, service: ServiceDetails, 
+                                            k8sClient: K8sClient, loadDetails: boolean = false) {
+    if(!service.selector || service.selector.length === 0) {
+      return {}
+    }
+    const servicePods = await K8sFunctions.getPodsByLabels(namespace, 
+                            service.selector.map(selector => selector.replace(": ","="))
+                              .join(","), k8sClient)
+    if(!servicePods || servicePods.length === 0) {
+      return {}
+    }
+    const podContainers = servicePods[0].containers
+    if(!podContainers || podContainers.length === 0) {
+      return {}
+    }
+    const pods = loadDetails ? servicePods : servicePods.map(p => p.name)
+    const containers = loadDetails ? podContainers : podContainers.map(c => c.name)
+    return {pods, containers}
   }
 
   static extractPodDetails = (pod) : PodDetails => {

@@ -60,7 +60,7 @@ const plugin : ActionGroupSpec = {
             })
           }
         })
-        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Compare)
+        this.onOutput && this.onOutput(output, ActionOutputStyle.Compare)
       },
     }
   ]

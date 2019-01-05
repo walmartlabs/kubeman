@@ -1,0 +1,206 @@
+import _ from 'lodash'
+import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
+import K8sFunctions from '../k8s/k8sFunctions'
+import IstioFunctions from '../k8s/istioFunctions'
+import IstioPluginHelper from '../k8s/istioPluginHelper'
+import K8sPluginHelper, {ItemSelection} from '../k8s/k8sPluginHelper'
+import { ContainerInfo, PodDetails, ServiceDetails } from '../k8s/k8sObjectTypes';
+import { K8sClient } from '../k8s/k8sClient';
+import ActionContext from '../actions/actionContext';
+import JsonUtil from '../util/jsonUtil';
+
+const plugin : ActionGroupSpec = {
+  context: ActionContextType.Istio,
+  title: "Istio Recipes",
+  actions: [
+    {
+      name: "Analyze Service",
+      order: 15,
+      
+      async choose(actionContext) {
+        if(actionContext.getNamespaces().length === 0) {
+          this.onOutput && this.onOutput(["No Namespace selected"], ActionOutputStyle.Text)
+        } else {
+          await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getNamespaceServices, "Services", 1, 1, "name")
+        }
+      },
+
+      async act(actionContext) {
+        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
+        if(selections.length < 1) {
+          this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
+          return
+        }
+        const service = selections[0].item
+        const namespace = selections[0].namespace
+        const cluster = actionContext.getClusters()
+                            .filter(c => c.name === selections[0].cluster)[0]
+        this.onOutput && this.onOutput([["Service: " + service.name 
+                              + ", Namespace: " + namespace + ", Cluster: " + cluster.name]], ActionOutputStyle.Table)
+        this.onStreamOutput && this.onStreamOutput([[">Service Details"], [service]])
+
+
+        const podsAndContainers = await this.outputPodsAndContainers(service, namespace, cluster.k8sClient)
+        const vsGateways = await this.outputVirtualServicesAndGateways(service, namespace, cluster.k8sClient)
+        this.outputRoutingAnalysis(service, podsAndContainers, vsGateways)
+
+        if(vsGateways.ingressCerts.length > 0) {
+          await this.outputCertsStatus(vsGateways.ingressCerts, cluster.k8sClient)
+        }
+
+        await this.outputServiceMtlsStatus(service, cluster.k8sClient)
+        await this.outputPolicies(service, cluster.k8sClient)
+        await this.outputDestinationRules(service, namespace, cluster.k8sClient)
+      },
+
+      async outputPodsAndContainers(service: ServiceDetails, namespace: string, k8sClient: K8sClient) {
+        const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(
+                                        namespace, service, k8sClient, true)
+        const containers = podsAndContainers.containers as ContainerInfo[]
+        if(containers) {
+          const isSidecarPresent = containers.filter(c => c.name === "istio-proxy").length === 1
+          this.onStreamOutput && this.onStreamOutput([[">Envoy Sidecar Status"],
+          [isSidecarPresent ? "Sidecar Proxy Present" : "Sidecar Proxy Not Deployed"]]) 
+          this.onStreamOutput && this.onStreamOutput([[">Service Containers"]]) 
+          containers.map(c => this.onStreamOutput && this.onStreamOutput([[">>"+c.name],[c]]))
+        }
+        const pods = podsAndContainers.pods as PodDetails[]
+        if(pods) {
+          this.onStreamOutput && this.onStreamOutput([[">Service Pods"]]) 
+          pods.map(pod => this.onStreamOutput && this.onStreamOutput([[">>"+pod.name],[pod]]))
+        }
+        return podsAndContainers
+      },
+
+      async outputVirtualServicesAndGateways(service: ServiceDetails, namespace: string, k8sClient: K8sClient) {
+        const virtualServices = await IstioFunctions.getVirtualServicesForService(service.name, namespace, k8sClient)
+        const gateways = await IstioFunctions.getGatewaysForVirtualServices(virtualServices, k8sClient)
+
+        this.onStreamOutput && this.onStreamOutput([[">Referencing VirtualServices + Gateways"]]) 
+        virtualServices.length === 0 && 
+          this.onStreamOutput && this.onStreamOutput([["No VirtualServices/Gateways"]])
+        
+        const ingressCerts: {[key: string] : string} = {}
+        virtualServices.forEach(vs => {
+          const vsGateways = gateways.map(g => {
+            const matchingServers = g.servers
+            .filter(server => server.port && server.port.protocol === vs.http ? 'HTTP' : vs.tls ? 'HTPS' : 'TCP')
+            .filter(server => server.hosts && 
+              server.hosts.filter(host => host.includes('*') || vs.hosts.includes(host)).length > 0)
+            if(matchingServers.length > 0) {
+              if(g.selector && g.selector.istio && g.selector.istio === 'ingressgateway') {
+                matchingServers.filter(s => s.tls)
+                  .forEach(server => ingressCerts[server.tls.privateKey]=server.tls.serverCertificate)
+              }
+              return {
+                name: g.name,
+                namespace: g.namespace,
+                "servers (showing matching hosts)": matchingServers
+              }
+            } else {
+              return {}
+            }
+          }).filter(g => g.name)
+
+          const gateway = vsGateways.length > 0 ? vsGateways[0] : "No Gateway"
+          this.onStreamOutput && this.onStreamOutput([
+            [">>VirtualService: " + vs.name + ", " + (gateway['name'] ? "Gateway: " + gateway['name'] : gateway)],
+            [[vs, gateway]]
+          ])
+        })
+        return {
+          virtualServices,
+          gateways,
+          ingressCerts: Object.keys(ingressCerts).map(key => [key, ingressCerts[key]])
+        }
+      },
+
+      outputRoutingAnalysis(service: ServiceDetails, podsAndContainers: any, vsGateways: any) {
+        this.onStreamOutput && this.onStreamOutput([[">Routing Analysis"]]) 
+        const containerPorts = _.flatten((podsAndContainers.containers as ContainerInfo[])
+                                  .map(c => c.ports ? c.ports.map(p => p.containerPort) : []))
+        const serviceTargetPorts = service.ports.map(p => p.targetPort)
+        const invalidServiceTargetPorts = serviceTargetPorts.filter(p => !containerPorts.includes(p))
+        this.onStreamOutput && this.onStreamOutput([[
+          invalidServiceTargetPorts.length > 0 ?
+            "Found service target ports that are mismatched and don't exist as container ports: " + invalidServiceTargetPorts.join(", ")
+            : "Service target ports correctly match container ports."
+        ]])
+
+        const servicePorts = service.ports.map(p => p.port)
+        const vsDestinationPorts = 
+          _.flatten(
+            _.flatten(vsGateways.virtualServices.filter(vs => vs.http).map(vs => vs.http)
+                      .concat(vsGateways.virtualServices.filter(vs => vs.tls).map(vs => vs.tls))
+                      .concat(vsGateways.virtualServices.filter(vs => vs.tcp).map(vs => vs.tcp)))
+            .filter(routeDetails => routeDetails.route)
+            .map(routeDetails => routeDetails.route)
+          )
+          .filter(route => route.destination && route.destination.port)
+          .map(route => route.destination.port.number)
+        const invalidVSDestPorts = vsDestinationPorts.filter(p => !servicePorts.includes(p))
+        this.onStreamOutput && this.onStreamOutput([[
+          invalidVSDestPorts.length > 0 ?
+            "Found VirtualService destination ports that are mismatched and don't exist as service ports: " + invalidVSDestPorts.join(", ")
+            : "VirtualService destination ports correctly match service ports."
+        ]])
+      },
+
+      async outputCertsStatus(ingressCerts: [[string,  string]], k8sClient: K8sClient) {
+        this.onStreamOutput && this.onStreamOutput([[">Service Ingress Certs"], [JsonUtil.convertObjectToArray(ingressCerts)]])
+
+        const ingressPods = await IstioPluginHelper.getIstioServicePods("istio=ingressgateway", k8sClient, true)
+        this.onStreamOutput && this.onStreamOutput([[">Service Ingress Certs Deployment Status"]])
+        const certPaths: string[] = []
+        ingressCerts.forEach(pair => {
+          certPaths.push(pair[0].trim())
+          certPaths.push(pair[1].trim())
+        })
+        for(const pod of ingressPods) {
+          const container = pod.podDetails ? pod.podDetails.containers[0].name : "istio-proxy"
+          this.onStreamOutput && this.onStreamOutput([[">>Pod: " + pod.name]])
+          
+          let commandOutput = (await K8sFunctions.podExec("istio-system", pod.name, container, k8sClient, 
+                                              ["curl", "-s", "127.0.0.1:15000/certs"])).trim()
+          commandOutput = commandOutput.replace("}", "},")
+          const certsLoadedOnIngress = JSON.parse("[" + commandOutput + "]").map(cert => cert.cert_chain)
+          for(const path of certPaths) {
+            const result = (await K8sFunctions.podExec("istio-system", pod.name, container, k8sClient, ["ls", path])).trim()
+            const isPathFound = path === result
+            const certLoadedInfo = certsLoadedOnIngress.filter(info => info.includes(path))
+            const isPrivateKey = path.indexOf(".key") > 0
+            const certStatusOutput = {}
+            certStatusOutput[path] = []
+            certStatusOutput[path].push((isPathFound ? "Present " : "NOT present ") + "on the pod filesystem")
+            if(!isPrivateKey) {
+              certStatusOutput[path].push("Loaded on pod >> " + 
+                  (certLoadedInfo.length > 0 ? certLoadedInfo[0] : "NOT loaded on ingress gateway pod"))
+            }
+            this.onStreamOutput && this.onStreamOutput([[certStatusOutput]])
+          }
+
+        }
+      },
+
+      async outputServiceMtlsStatus(service: ServiceDetails, k8sClient: K8sClient) {
+        const status = await IstioFunctions.getServiceMtlsStatus(service.name, k8sClient)
+        this.onStreamOutput && this.onStreamOutput([[">Service MTLS Status"], [status]])
+      },
+
+      async outputPolicies(service: ServiceDetails, k8sClient: K8sClient) {
+        const policies = await IstioFunctions.getServicePolicies(service.name, k8sClient)
+        this.onStreamOutput && this.onStreamOutput([[">Policies relevant to this service"], 
+          [policies.length === 0 ? "No Policies" : policies]])
+      },
+
+      async outputDestinationRules(service: ServiceDetails, namespace: string, k8sClient: K8sClient) {
+        const destinationRules = await IstioFunctions.getServiceDestinationRules(service.name, namespace, k8sClient)
+        this.onStreamOutput && this.onStreamOutput([[">DestinationRules relevant to this service"], 
+          [destinationRules.length === 0 ? "No DestinationRules" : destinationRules]])
+      },
+
+    }
+  ]
+}
+
+export default plugin

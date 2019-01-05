@@ -2,6 +2,7 @@ import {ActionOutput} from '../actions/actionSpec'
 import { K8sClient } from '../k8s/k8sClient'
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioFunctions from '../k8s/istioFunctions'
+import JsonUtil from '../util/jsonUtil';
 
 export default class IstioPluginHelper {
 
@@ -27,7 +28,7 @@ export default class IstioPluginHelper {
     }})
   }
 
-  static async getIstioServicePods(labelSelector: string, k8sClient: K8sClient) {
+  static async getIstioServicePods(labelSelector: string, k8sClient: K8sClient, loadDetails: boolean = false) {
     const ingressPods = await K8sFunctions.getPodsByLabels("istio-system", labelSelector, k8sClient)
     return ingressPods.map(pod => {
       return {
@@ -36,20 +37,22 @@ export default class IstioPluginHelper {
         hostIP: pod.hostIP,
         startTime: pod.startTime,
         conditions: pod.conditions,
-    }})
+        podDetails: loadDetails ? pod : undefined
+      }
+    })
   }
 
   static extractGatewayDetails(gateways: any[]) {
     return gateways.map(gateway => {
-      const routes = gateway.servers.map(server => {
-        server.hosts = server.hosts.join(", ")
+      const servers = gateway.servers.map(server => {
+        server.hosts = server.hosts
         server.port = server.port.protocol + ":" + server.port.number
         return server
       })
       return {
         name: gateway.name,
         namespace: gateway.namespace,
-        routes
+        servers
     }})
   }
 
@@ -66,11 +69,16 @@ export default class IstioPluginHelper {
       return {
         name: virtualService.name,
         namespace: virtualService.namespace,
-        gateways: virtualService.gateways ? virtualService.gateways.join(", ") : "",
-        hosts: virtualService.hosts ? virtualService.hosts.join(", ") : "",
-        http: virtualService.http,
-        tls: virtualService.tls,
+        gateways: virtualService.gateways,
+        hosts: virtualService.hosts,
+        http: JsonUtil.flattenObject(virtualService.http),
+        tls: JsonUtil.flattenObject(virtualService.tls),
+        tcp: JsonUtil.flattenObject(virtualService.tcp),
       }})
+  }
+  
+  static async getAllVirtualServices(k8sClient: K8sClient) {
+    return IstioPluginHelper.extractVirtualServicesDetails(await IstioFunctions.listAllVirtualServices(k8sClient))
   }
   
   static async getIstioIngressVirtualServices(k8sClient: K8sClient) {

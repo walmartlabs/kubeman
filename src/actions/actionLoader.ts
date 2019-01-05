@@ -7,8 +7,8 @@ import ActionContext from './actionContext'
 
 export class ActionLoader {
   static onLoad: (ActionGroupSpecs) => void
-  static onOutput: ActionOutputCollector
-  static onStreamOutput: ActionOutputCollector
+  static onOutput: (action, output, style) => void
+  static onStreamOutput: (action, output) => void
   static onChoices: ActionChoiceMaker
   static context: Context
   static actionContext: ActionContext = new ActionContext
@@ -23,10 +23,12 @@ export class ActionLoader {
   }
 
   static setOnOutput(onOutput: ActionOutputCollector, onStreamOutput: ActionStreamOutputCollector) {
-    this.onOutput = onOutput
-    this.onStreamOutput = onStreamOutput
-    this.actionContext.onOutput = onOutput
-    this.actionContext.onStreamOutput = onStreamOutput
+    this.onOutput = (action, output, style) => {
+      if(!action || !action.stopped) onOutput(output, style)
+    }
+    this.onStreamOutput = (action, output) => {
+      if(!action || !action.stopped) onStreamOutput(output)
+    }
   }
 
   static setOnChoices(callback: ActionChoiceMaker) {
@@ -96,25 +98,33 @@ export class ActionLoader {
       if(!isActionSpec(action)) {
         console.log("Not ActionSpec: " + JSON.stringify(action))
       } else {
-        const act: BoundActionAct = action.act.bind(action, this.actionContext)
+        const originalAct = action.act
         action.act = () => {
+          action.stopped = false
           if(this.checkSelections({
             checkClusters: true,
             checkNamespaces: actionGroupSpec.context === ActionContextType.Namespace
                             || actionGroupSpec.context === ActionContextType.Pod,
             checkPods: actionGroupSpec.context === ActionContextType.Pod,
           })) {
+            action.onOutput = this.onOutput.bind(this, action)
+            action.onStreamOutput =this.onStreamOutput.bind(this, action)
+
             if(action.choose) {
-              this.actionContext.onChoices = this.onChoices.bind(this, act)
-              this.actionContext.onSkipChoices = act
+              this.actionContext.onChoices = this.onChoices.bind(this, originalAct.bind(action, this.actionContext))
+              this.actionContext.onSkipChoices = originalAct.bind(action, this.actionContext)
               action.choose(this.actionContext)
             } else {
-              act()
+              originalAct.call(action, this.actionContext)
             }
           }
         }
         action.react && (action.react = action.react.bind(action, this.actionContext))
-        action.stop && (action.stop = action.stop.bind(action, this.actionContext))
+        const stop = action.stop ? action.stop.bind(action, this.actionContext) : undefined
+        action.stop = () => {
+          action.stopped = true
+          stop && stop()
+        }
       }
     })
   }
@@ -124,13 +134,13 @@ export class ActionLoader {
     let result = true
     if(checkClusters && this.context.clusters.length === 0) {
       result = false
-      this.onOutput([["No clusters selected"]], ActionOutputStyle.Text)
+      this.onOutput && this.onOutput(undefined, [["No clusters selected"]], ActionOutputStyle.Text)
     } else if(checkNamespaces && this.context.namespaces.length === 0) {
       result = false
-      this.onOutput([["No namespaces selected"]], ActionOutputStyle.Text)
+      this.onOutput && this.onOutput(undefined, [["No namespaces selected"]], ActionOutputStyle.Text)
     } else if(checkPods && this.context.pods.length === 0) {
       result = false
-      this.onOutput([["No pods selected"]], ActionOutputStyle.Text)
+      this.onOutput && this.onOutput(undefined, [["No pods selected"]], ActionOutputStyle.Text)
     }
     return result
   }

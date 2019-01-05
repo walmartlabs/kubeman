@@ -34,7 +34,7 @@ const plugin : ActionGroupSpec = {
             }
           })
         }
-        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Table)
+        this.onOutput && this.onOutput(output, ActionOutputStyle.Table)
       },
     },
   ]

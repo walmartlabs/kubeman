@@ -17,36 +17,6 @@ function getUserKubeConfig() {
 export function getAllClusters() : Cluster[] {
   const kubeConfig = getUserKubeConfig()
   return jp.query(kubeConfig, '$.contexts[*].context.cluster').map(name => new Cluster(name))
-  /*
-  const kubeConfig = {
-    apiVersion: 'v1',
-    clusters: [{
-      "name": "vsh01.s05518.us/labs/cluster1",
-      "cluster": {
-        "certificate-authority": "/Users/vn0b25d/.sledge/vsh01.s05518.us/labs/cluster1/ca.pem",
-        "server": "https://lb-master.cluster1.cloud.s05518.us.wal-mart.com"
-      }
-    }],
-    contexts: [{
-      context: {
-        cluster: "vsh01.s05518.us/labs/cluster1",
-        user: "vsh01.s05518.us/labs/cluster1/admin"
-      },
-      name: "vsh01.s05518.us/labs/cluster1/admin"
-    }],
-    "current-context": "vsh01.s05518.us/labs/cluster1/admin",
-    kind: "Config",
-    users: [{
-      name: "vsh01.s05518.us/labs/cluster1/admin",
-      user: {
-        "client-certificate": "/Users/vn0b25d/.sledge/vsh01.s05518.us/labs/cluster1/admin.pem",
-        "client-key": "/Users/vn0b25d/.sledge/vsh01.s05518.us/labs/cluster1/admin-key.pem"
-      }
-    }]
-  }
-  const config = k8s.config.fromKubeconfig(kubeConfig)
-  const client = new k8s.Client1_10({config})
-  */
 }
 
 function getClientForCluster(cluster: Cluster) {

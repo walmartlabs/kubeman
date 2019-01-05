@@ -15,10 +15,10 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext, true, false)
         if(selections.length < 1) {
-          actionContext.onOutput && actionContext.onOutput([["No pod selected"]], ActionOutputStyle.Text)
+          this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
           return
         }
-        actionContext.onOutput && actionContext.onOutput([["Keys", "Data"]], ActionOutputStyle.Table)
+        this.onOutput && this.onOutput([["Keys", "Data"]], ActionOutputStyle.Table)
 
         selections.forEach(selection => {
           const pod = selection.pod
@@ -31,7 +31,7 @@ const plugin : ActionGroupSpec = {
           if(podDetails) {
             Object.keys(podDetails).forEach((key, index) => output.push([key, podDetails[key] ||'']))
           }
-          actionContext.onStreamOutput && actionContext.onStreamOutput(output)
+          this.onStreamOutput && this.onStreamOutput(output)
         })
       },
     }

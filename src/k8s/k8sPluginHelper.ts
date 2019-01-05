@@ -74,10 +74,10 @@ export default class K8sPluginHelper {
     actionContext.onChoices && actionContext.onChoices("Choose" + howMany + name, choices, min, max)
   }
 
-  static async generateComparisonOutput(actionContext, name, ...fields) {
+  static async generateComparisonOutput(actionContext, onOutput, name, ...fields) {
     let selections = K8sPluginHelper.getSelections(actionContext, fields)
     if(selections.length < 2) {
-      actionContext.onOutput(["No " + name + " selected"], 'Text')
+      onOutput(["No " + name + " selected"], 'Text')
       return
     }
     let output: ActionOutput = []
@@ -105,7 +105,7 @@ export default class K8sPluginHelper {
     })
     output.push(outputHeaders)
     output = output.concat(outputRows)
-    actionContext.onOutput(output, "Compare")
+    onOutput(output, "Compare")
   }
 
   static getSelections(actionContext: ActionContext, ...fields) : ItemSelection[] {

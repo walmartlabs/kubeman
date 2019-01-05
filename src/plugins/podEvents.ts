@@ -15,10 +15,10 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext, true, false)
         if(selections.length < 1) {
-          actionContext.onOutput && actionContext.onOutput([["No pod selected"]], ActionOutputStyle.Text)
+          this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
           return
         }
-        actionContext.onOutput && actionContext.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.Table)
+        this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.Table)
 
         for(const i in selections) {
           const selection = selections[i]
@@ -44,7 +44,7 @@ const plugin : ActionGroupSpec = {
               ])
             }
           })
-          actionContext.onStreamOutput && actionContext.onStreamOutput(output)
+          this.onStreamOutput && this.onStreamOutput(output)
         }
       }
     }

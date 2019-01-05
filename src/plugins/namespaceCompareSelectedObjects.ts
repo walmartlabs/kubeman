@@ -13,7 +13,7 @@ const plugin : ActionGroupSpec = {
       },
 
       async act(actionContext) {
-        K8sPluginHelper.generateComparisonOutput(actionContext, "Secrets", "name")
+        K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Secrets", "name")
       },
     },
     {
@@ -24,7 +24,7 @@ const plugin : ActionGroupSpec = {
       },
 
       async act(actionContext) {
-        K8sPluginHelper.generateComparisonOutput(actionContext, "Config Maps")
+        K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Config Maps")
       },
     },
     {
@@ -35,7 +35,7 @@ const plugin : ActionGroupSpec = {
       },
 
       async act(actionContext) {
-        K8sPluginHelper.generateComparisonOutput(actionContext, "Services")
+        K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Services")
       },
     },
     {
@@ -46,7 +46,7 @@ const plugin : ActionGroupSpec = {
       },
 
       async act(actionContext) {
-        K8sPluginHelper.generateComparisonOutput(actionContext, "Deployments")
+        K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Deployments")
       },
     }
   ]

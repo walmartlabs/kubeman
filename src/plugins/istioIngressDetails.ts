@@ -1,6 +1,5 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import K8sFunctions from '../k8s/k8sFunctions'
-import IstioFunctions from '../k8s/istioFunctions'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 
 const plugin : ActionGroupSpec = {
@@ -13,8 +12,8 @@ const plugin : ActionGroupSpec = {
       
       async act(actionContext) {
         const clusters = actionContext.getClusters()
-        actionContext.onOutput &&
-          actionContext.onOutput([["", "Istio IngressGateway Details"]], ActionOutputStyle.Table)
+        this.onOutput &&
+          this.onOutput([["", "Istio IngressGateway Details"]], ActionOutputStyle.Table)
 
         for(const i in clusters) {
           const cluster = clusters[i]
@@ -23,7 +22,7 @@ const plugin : ActionGroupSpec = {
           const ingressDeployment = await K8sFunctions.getDeploymentDetails(cluster.name, 
                                       "istio-system", "istio-ingressgateway", k8sClient)
           if(!ingressDeployment) {
-            actionContext.onStreamOutput && actionContext.onStreamOutput(["istio-ingressgateway not found", ""])
+            this.onStreamOutput && this.onStreamOutput(["istio-ingressgateway not found", ""])
             continue
           } 
           output.push([">" + ingressDeployment.name + ", Cluster: " + cluster.name, ""])
@@ -39,12 +38,13 @@ const plugin : ActionGroupSpec = {
 
             const volumesAndMounts: any[] = []
             podTemplate.volumes && podTemplate.volumes.forEach(volume => {
+              const mountPaths = istioProxyContainer.volumeMounts ? 
+                                istioProxyContainer.volumeMounts.filter(mount => mount.name === volume.name)
+                                .map(mount => mount.mountPath) : []
               volumesAndMounts.push({
                 volume: volume.name,
                 secret: volume.secret.secretName,
-                mountPath: istioProxyContainer.volumeMounts ? 
-                          istioProxyContainer.volumeMounts.filter(mount => mount.name === volume.name)
-                              .map(mount => mount.mountPath).join(" ") : ""
+                mountPath: mountPaths.length > 0 ? mountPaths[0] : ""
               })
             })
             output.push(["Volumes & Mounts", volumesAndMounts])
@@ -58,7 +58,7 @@ const plugin : ActionGroupSpec = {
           output.push(["Ingress Gateways", await IstioPluginHelper.getIstioIngressGateways(k8sClient)])
           output.push(["Ingress VirtualServices", await IstioPluginHelper.getIstioIngressVirtualServices(k8sClient)])
 
-          actionContext.onStreamOutput  && actionContext.onStreamOutput(output)
+          this.onStreamOutput  && this.onStreamOutput(output)
         }
       },
     }

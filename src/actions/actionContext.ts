@@ -6,8 +6,6 @@ import {ActionOutputCollector, ActionStreamOutputCollector, ActionOnChoice, Acti
 export default class ActionContext {
   context?: Context
   inputText?: string
-  onOutput?: ActionOutputCollector
-  onStreamOutput?: ActionStreamOutputCollector
   onChoices? : ActionOnChoice
   onSkipChoices? : BoundActionAct
 

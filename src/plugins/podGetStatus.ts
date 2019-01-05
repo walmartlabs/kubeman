@@ -18,7 +18,7 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext, true, false)
         if(selections.length < 1) {
-          actionContext.onOutput && actionContext.onOutput([["No pod selected"]], ActionOutputStyle.Text)
+          this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
           return
         }
         const podsMap : ClusterNamespacePodsMap = {}
@@ -54,7 +54,7 @@ const plugin : ActionGroupSpec = {
             }
           })
         })
-        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Table)
+        this.onOutput && this.onOutput(output, ActionOutputStyle.Table)
       }
     }
   ]

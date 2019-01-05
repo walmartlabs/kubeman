@@ -23,7 +23,7 @@ const plugin : ActionGroupSpec = {
           const namespaces = await k8sFunctions.getClusterNamespaces(cluster.name, cluster.k8sClient)
           namespaces.forEach(ns => output.push([ns.name, ns.creationTimestamp, ns.status]))
         }
-        actionContext.onOutput && actionContext.onOutput(output, ActionOutputStyle.Table)
+        this.onOutput && this.onOutput(output, ActionOutputStyle.Table)
       }
     },
   ]

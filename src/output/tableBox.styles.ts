@@ -7,7 +7,7 @@ const borderDark = '1px solid rgba(255, 255, 255, 0.12)'
 const columnSeparatorLight = '1px dotted #3141b4'
 const columnSeparatorDark = '1px dotted #4b6082'
 
-const styles = ({ palette, spacing, typography }: Theme) => createStyles({
+const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createStyles({
   root: {
     width: '100%',
     height: '100%',
@@ -73,7 +73,18 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   tableCell: {
     padding: '0px',
     color: 'inherit',
+    verticalAlign: 'top',
     borderBottom: palette.type ==='dark' ? borderDark : borderLight,
+    minWidth: 120,
+    [breakpoints.up('sm')]: {
+      maxWidth: '200px'
+    },
+    [breakpoints.up('md')]: {
+      maxWidth: '250px'
+    },
+    [breakpoints.up('lg')]: {
+      maxWidth: '300px'
+    }
   },
   tableCellCompare: {
     borderRight: palette.type ==='dark' ? columnSeparatorDark : columnSeparatorLight,
@@ -84,37 +95,28 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     height: '15px',
   },
   tableKeyCell: {
-    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#bcccdc',
+    backgroundColor: palette.type ==='dark' ? palette.background.default : '#bcccdc',
+    borderBottom: borderDark,
     width: '22%',
     minWidth: 120,
   },
   tableKeyCellHighlight: {
-    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#bcccdc',
-    width: '22%',
-    minWidth: 120,
     '&:after': {
       content: "'*'",
       color: 'red'
     },
   },
   tableCellHighlight: {
-    padding: '0px',
-    borderBottom: palette.type ==='dark' ? borderDark : borderLight,
     borderLeft: '1px solid red',
-    minWidth: 120,
     //backgroundColor: palette.type ==='dark' ? "#6c6313" : "#FFFDE7",
   },
   tableCellHealthGood: {
-    padding: '0px',
     backgroundColor: palette.type ==='dark' ? '#2E7D32' : '#DCEDC8',
     borderBottom: palette.type ==='dark' ? borderDark : borderLight,
-    minWidth: 120,
   },
   tableCellHealthBad: {
-    padding: '0px',
     backgroundColor: palette.type ==='dark' ? '#805500' : '#ff8000',
     borderBottom: palette.type ==='dark' ? borderDark : borderLight,
-    minWidth: 120,
   },
   tableCellHidden: {
     padding: 0, 

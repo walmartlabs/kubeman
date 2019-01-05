@@ -16,10 +16,10 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
         if(selections.length < 1) {
-          actionContext.onOutput && actionContext.onOutput([["No service selected"]], ActionOutputStyle.Text)
+          this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
         }
-        actionContext.onOutput && actionContext.onOutput([["Keys", "Data"]], ActionOutputStyle.Table)
+        this.onOutput && this.onOutput([["Keys", "Data"]], ActionOutputStyle.Table)
 
         selections.forEach(selection => {
           const output: ActionOutput = []
@@ -29,7 +29,7 @@ const plugin : ActionGroupSpec = {
           if(item) {
             Object.keys(item).forEach((key, index) => output.push([key, item[key] ||'']))
           }
-          actionContext.onStreamOutput && actionContext.onStreamOutput(output)
+          this.onStreamOutput && this.onStreamOutput(output)
         })
       },
     }
