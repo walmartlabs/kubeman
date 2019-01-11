@@ -10,20 +10,19 @@ const plugin : ActionGroupSpec = {
       order: 3,
       name: "List Namespaces",
       async act(actionContext: ActionContext) {
+        this.onOutput && this.onOutput([["Namespace", "Created", "Status"]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
+
         const clusters = actionContext.getClusters()
-        const output : ActionOutput  = []
-        output.push([
-          "Namespace", 
-          "Created",
-          "Status"
-        ])
         for(const i in clusters) {
+          const output : ActionOutput  = []
           const cluster = clusters[i]
           output.push([">Cluster: " + cluster.name, "", ""])
           const namespaces = await k8sFunctions.getClusterNamespaces(cluster.name, cluster.k8sClient)
           namespaces.forEach(ns => output.push([ns.name, ns.creationTimestamp, ns.status]))
+          this.onStreamOutput && this.onStreamOutput(output)
         }
-        this.onOutput && this.onOutput(output, ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(false)
       }
     },
   ]

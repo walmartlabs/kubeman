@@ -11,6 +11,7 @@ const plugin : ActionGroupSpec = {
   logStream: undefined,
 
   async getPodLogs(actionContext: ActionContext, action: ActionSpec, tail: boolean) {
+    action.setScrollMode && action.setScrollMode(true)
     const selections = await K8sPluginHelper.getPodSelections(actionContext)
     if(selections.length < 1) {
       action.onOutput && action.onOutput([["No pod selected"]], ActionOutputStyle.Text)
@@ -18,6 +19,7 @@ const plugin : ActionGroupSpec = {
     }
     const selection = selections[0]
     action.onOutput && action.onOutput([["Logs for " + selection.title]], ActionOutputStyle.Log)
+    action.showOutputLoading && action.showOutputLoading(true)
   
     const logStream = await k8sFunctions.getPodLog(selection.namespace, selection.pod, 
                               selection.container, selection.k8sClient, tail)
@@ -34,6 +36,7 @@ const plugin : ActionGroupSpec = {
         logStream.stop()
       }, 10000)
     }
+    action.showOutputLoading && action.showOutputLoading(false)
   },
 
   actions: [

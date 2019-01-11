@@ -40,7 +40,6 @@ async function createWindow() {
   if (isDevelopment) {
     //await installExtensions();
     mainWindow.webContents.openDevTools()
-    console.log(process.env.ELECTRON_WEBPACK_WDS_PORT)
     mainWindow.loadURL(`http://localhost:${process.env.ELECTRON_WEBPACK_WDS_PORT}`)
   } else {
     mainWindow.loadURL(formatUrl({

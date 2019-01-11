@@ -6,7 +6,6 @@ import IstioPluginHelper from '../k8s/istioPluginHelper'
 import K8sPluginHelper, {ItemSelection} from '../k8s/k8sPluginHelper'
 import { ContainerInfo, PodDetails, ServiceDetails } from '../k8s/k8sObjectTypes';
 import { K8sClient } from '../k8s/k8sClient';
-import ActionContext from '../actions/actionContext';
 import JsonUtil from '../util/jsonUtil';
 
 const plugin : ActionGroupSpec = {
@@ -15,7 +14,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Analyze Service",
-      order: 15,
+      order: 20,
       
       async choose(actionContext) {
         if(actionContext.getNamespaces().length === 0) {
@@ -38,19 +37,24 @@ const plugin : ActionGroupSpec = {
         this.onOutput && this.onOutput([["Service: " + service.name 
                               + ", Namespace: " + namespace + ", Cluster: " + cluster.name]], ActionOutputStyle.Table)
         this.onStreamOutput && this.onStreamOutput([[">Service Details"], [service]])
+        this.showOutputLoading && this.showOutputLoading(true)
 
 
         const podsAndContainers = await this.outputPodsAndContainers(service, namespace, cluster.k8sClient)
         const vsGateways = await this.outputVirtualServicesAndGateways(service, namespace, cluster.k8sClient)
-        this.outputRoutingAnalysis(service, podsAndContainers, vsGateways)
+        const ingressPods = await IstioPluginHelper.getIstioServicePods("istio=ingressgateway", cluster.k8sClient, true)
+
+        await this.outputRoutingAnalysis(service, podsAndContainers, vsGateways, ingressPods, cluster.k8sClient)
 
         if(vsGateways.ingressCerts.length > 0) {
-          await this.outputCertsStatus(vsGateways.ingressCerts, cluster.k8sClient)
+          await this.outputCertsStatus(vsGateways.ingressCerts, ingressPods, cluster.k8sClient)
         }
 
         await this.outputServiceMtlsStatus(service, cluster.k8sClient)
         await this.outputPolicies(service, cluster.k8sClient)
         await this.outputDestinationRules(service, namespace, cluster.k8sClient)
+
+        this.showOutputLoading && this.showOutputLoading(false)
       },
 
       async outputPodsAndContainers(service: ServiceDetails, namespace: string, k8sClient: K8sClient) {
@@ -84,13 +88,13 @@ const plugin : ActionGroupSpec = {
         virtualServices.forEach(vs => {
           const vsGateways = gateways.map(g => {
             const matchingServers = g.servers
-            .filter(server => server.port && server.port.protocol === vs.http ? 'HTTP' : vs.tls ? 'HTPS' : 'TCP')
+            .filter(server => server.port && server.port.protocol === (vs.http ? 'HTTP' : vs.tls ? 'HTTPS' : 'TCP'))
             .filter(server => server.hosts && 
               server.hosts.filter(host => host.includes('*') || vs.hosts.includes(host)).length > 0)
             if(matchingServers.length > 0) {
               if(g.selector && g.selector.istio && g.selector.istio === 'ingressgateway') {
-                matchingServers.filter(s => s.tls)
-                  .forEach(server => ingressCerts[server.tls.privateKey]=server.tls.serverCertificate)
+                matchingServers.filter(s => s.tls && s.tls.serverCertificate && s.tls.privateKey)
+                  .forEach(s => ingressCerts[s.tls.privateKey]=s.tls.serverCertificate)
               }
               return {
                 name: g.name,
@@ -115,7 +119,7 @@ const plugin : ActionGroupSpec = {
         }
       },
 
-      outputRoutingAnalysis(service: ServiceDetails, podsAndContainers: any, vsGateways: any) {
+      async outputRoutingAnalysis(service: ServiceDetails, podsAndContainers: any, vsGateways: any, ingressPods: any[], k8sClient: K8sClient) {
         this.onStreamOutput && this.onStreamOutput([[">Routing Analysis"]]) 
         const containerPorts = _.flatten((podsAndContainers.containers as ContainerInfo[])
                                   .map(c => c.ports ? c.ports.map(p => p.containerPort) : []))
@@ -144,12 +148,30 @@ const plugin : ActionGroupSpec = {
             "Found VirtualService destination ports that are mismatched and don't exist as service ports: " + invalidVSDestPorts.join(", ")
             : "VirtualService destination ports correctly match service ports."
         ]])
+
+        if(ingressPods.length > 0 && podsAndContainers.pods.length > 0) {
+          try {
+            const ingressProxyContainer = ingressPods[0].podDetails ? ingressPods[0].podDetails.containers[0].name : "istio-proxy"
+            const servicePods = podsAndContainers.pods as PodDetails[]
+            for(const pod of servicePods) {
+              if(pod.podIP) {
+                const result = await K8sFunctions.podExec("istio-system", ingressPods[0].name, 
+                                    ingressProxyContainer, k8sClient, ["ping", "-c 2", pod.podIP])
+                const pingSuccess = result.includes("2 received")
+                this.onStreamOutput && this.onStreamOutput([[
+                  "Pod " + pod.name + (pingSuccess ? " is Reachable" : ": is Unreachable") + " from ingress gateway"
+                ]])
+              }
+            }
+          } catch(error) {
+            console.log(error)
+          }
+        }
       },
 
-      async outputCertsStatus(ingressCerts: [[string,  string]], k8sClient: K8sClient) {
+      async outputCertsStatus(ingressCerts: [[string,  string]], ingressPods: any[], k8sClient: K8sClient) {
         this.onStreamOutput && this.onStreamOutput([[">Service Ingress Certs"], [JsonUtil.convertObjectToArray(ingressCerts)]])
 
-        const ingressPods = await IstioPluginHelper.getIstioServicePods("istio=ingressgateway", k8sClient, true)
         this.onStreamOutput && this.onStreamOutput([[">Service Ingress Certs Deployment Status"]])
         const certPaths: string[] = []
         ingressCerts.forEach(pair => {
@@ -159,26 +181,28 @@ const plugin : ActionGroupSpec = {
         for(const pod of ingressPods) {
           const container = pod.podDetails ? pod.podDetails.containers[0].name : "istio-proxy"
           this.onStreamOutput && this.onStreamOutput([[">>Pod: " + pod.name]])
-          
-          let commandOutput = (await K8sFunctions.podExec("istio-system", pod.name, container, k8sClient, 
-                                              ["curl", "-s", "127.0.0.1:15000/certs"])).trim()
-          commandOutput = commandOutput.replace("}", "},")
-          const certsLoadedOnIngress = JSON.parse("[" + commandOutput + "]").map(cert => cert.cert_chain)
-          for(const path of certPaths) {
-            const result = (await K8sFunctions.podExec("istio-system", pod.name, container, k8sClient, ["ls", path])).trim()
-            const isPathFound = path === result
-            const certLoadedInfo = certsLoadedOnIngress.filter(info => info.includes(path))
-            const isPrivateKey = path.indexOf(".key") > 0
-            const certStatusOutput = {}
-            certStatusOutput[path] = []
-            certStatusOutput[path].push((isPathFound ? "Present " : "NOT present ") + "on the pod filesystem")
-            if(!isPrivateKey) {
-              certStatusOutput[path].push("Loaded on pod >> " + 
-                  (certLoadedInfo.length > 0 ? certLoadedInfo[0] : "NOT loaded on ingress gateway pod"))
+          try {
+            let commandOutput = (await K8sFunctions.podExec("istio-system", pod.name, container, k8sClient, 
+                                                ["curl", "-s", "127.0.0.1:15000/certs"])).trim()
+            commandOutput = commandOutput.replace("}", "},")
+            const certsLoadedOnIngress = JSON.parse("[" + commandOutput + "]").map(cert => cert.cert_chain)
+            for(const path of certPaths) {
+              const result = (await K8sFunctions.podExec("istio-system", pod.name, container, k8sClient, ["ls", path])).trim()
+              const isPathFound = path === result
+              const certLoadedInfo = certsLoadedOnIngress.filter(info => info.includes(path))
+              const isPrivateKey = path.indexOf(".key") > 0
+              const certStatusOutput = {}
+              certStatusOutput[path] = []
+              certStatusOutput[path].push((isPathFound ? "Present " : "NOT present ") + "on the pod filesystem")
+              if(!isPrivateKey) {
+                certStatusOutput[path].push("Loaded on pod >> " + 
+                    (certLoadedInfo.length > 0 ? certLoadedInfo[0] : "NOT loaded on ingress gateway pod"))
+              }
+              this.onStreamOutput && this.onStreamOutput([[certStatusOutput]])
             }
-            this.onStreamOutput && this.onStreamOutput([[certStatusOutput]])
+          } catch(error) {
+            this.onStreamOutput && this.onStreamOutput([["Failed to check cert status due to error: " + error.message]])
           }
-
         }
       },
 

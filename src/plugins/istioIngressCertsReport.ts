@@ -1,9 +1,7 @@
 import _ from 'lodash'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import K8sFunctions from '../k8s/k8sFunctions'
-import IstioFunctions from '../k8s/istioFunctions'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
-import JsonUtil from '../util/jsonUtil';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
@@ -11,14 +9,15 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Ingress Certs Report",
-      order: 13,
+      order: 15,
       
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         this.onOutput &&
           this.onOutput([["Ingress Cert Secret", "Usage"]], ActionOutputStyle.Table)
 
-        for(const i in clusters) {
+          this.showOutputLoading && this.showOutputLoading(true)
+          for(const i in clusters) {
           const cluster = clusters[i]
           const output: ActionOutput = []
           const k8sClient = cluster.k8sClient
@@ -67,16 +66,25 @@ const plugin : ActionGroupSpec = {
                 vs.gateways.filter(vsg => vsg.includes(g.name)).length > 0
                 && vs.hosts.filter(vsh => g.hosts.filter(gh => gh.includes(vsh)).length > 0).length > 0
               ).length > 0)
-            
-            output.push([volume.secret.secretName, {
-              mountPath: mountPaths.length > 0 ? mountPaths[0] : "", 
-              gateways: certGateways,
-              virtualServices: certVirtualServices
-            }])
+            const isAnyVSUsingCert = certVirtualServices.filter(vs => vs.tls).length > 0
+
+            output.push([
+              volume.secret.secretName +
+                (isAnyVSUsingCert ? "" 
+                : certVirtualServices.length === 0 ? " <span style='color:red'>(not used by any VirtualService)</span>"
+                : " <span style='color:red'>(not in use by any of the "+certVirtualServices.length+" VirtualServices)</span>"
+                ),
+              {
+                mountPath: mountPaths.length > 0 ? mountPaths[0] : "", 
+                gateways: certGateways,
+                virtualServices: certVirtualServices
+              }
+            ])
           })
 
           this.onStreamOutput  && this.onStreamOutput(output)
         }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     }
   ]

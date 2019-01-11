@@ -26,6 +26,7 @@ const plugin : ActionGroupSpec = {
         this.onOutput &&
           this.onOutput([headers], ActionOutputStyle.Compare)
 
+        this.showOutputLoading && this.showOutputLoading(true)
         await this.compareDeployment(actionContext)
         await this.compareIngressComponents(actionContext)
 
@@ -37,6 +38,7 @@ const plugin : ActionGroupSpec = {
           rows.push(row)
         })
         this.onStreamOutput && this.onStreamOutput(rows)
+        this.showOutputLoading && this.showOutputLoading(false)
       },
 
 
@@ -87,15 +89,25 @@ const plugin : ActionGroupSpec = {
       async compareIngressComponents(actionContext: ActionContext) {
         const clusters = actionContext.getClusters()
       
-        this.comparisonMap["Ingress Service"] = []
+        this.comparisonMap["Ingress Service Type"] = []
+        this.comparisonMap["Ingress Service IPs"] = []
+        this.comparisonMap["Ingress Service Ports"] = []
         this.comparisonMap["Ingress Pods"] = []
         this.comparisonMap["Ingress Gateways"] = []
         this.comparisonMap["Ingress VirtualServices"] = []
         for(const i in clusters) {
           const cluster = clusters[i]
           const k8sClient = cluster.k8sClient
-          this.comparisonMap["Ingress Service"].push(await IstioPluginHelper.getIstioServiceDetails("istio=ingressgateway", k8sClient))
-          this.comparisonMap["Ingress Pods"].push(await IstioPluginHelper.getIstioServicePods("istio=ingressgateway", k8sClient))
+          const ingressService = (await IstioPluginHelper.getIstioServiceDetails("istio=ingressgateway", k8sClient))[0]
+          this.comparisonMap["Ingress Service Type"].push(ingressService.type)
+          this.comparisonMap["Ingress Service IPs"].push({
+            clusterIP: ingressService.clusterIP, 
+            externalIPs: ingressService.externalIPs,
+            loadBalancerIP: ingressService.loadBalancerIP,
+            loadBalancerSourceRanges: ingressService.loadBalancerSourceRanges,
+          })
+          this.comparisonMap["Ingress Service Ports"].push(ingressService.ports)
+            this.comparisonMap["Ingress Pods"].push(await IstioPluginHelper.getIstioServicePods("istio=ingressgateway", k8sClient))
           this.comparisonMap["Ingress Gateways"].push(await IstioPluginHelper.getIstioIngressGateways(k8sClient))
           this.comparisonMap["Ingress VirtualServices"].push(await IstioPluginHelper.getIstioIngressVirtualServices(k8sClient))
         }

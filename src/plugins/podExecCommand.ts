@@ -18,6 +18,7 @@ const plugin : ActionGroupSpec = {
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 1, true, false),
       
       async act(actionContext) {
+        this.setScrollMode && this.setScrollMode(true)
         const selections = await K8sPluginHelper.getPodSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
@@ -32,6 +33,7 @@ const plugin : ActionGroupSpec = {
       },
       
       async react(actionContext) {
+        this.showOutputLoading && this.showOutputLoading(true)
         const command = actionContext.inputText ? actionContext.inputText.split(" ") : []
         try {
           const result = await k8sFunctions.podExec(this.namespace, this.pod, this.container, this.k8sClient, command)
@@ -43,6 +45,7 @@ const plugin : ActionGroupSpec = {
             "Error for pod " + this.pod + ": " + error.message
           ]])
         }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     }
   ]

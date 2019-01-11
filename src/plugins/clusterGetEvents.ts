@@ -10,12 +10,10 @@ const plugin : ActionGroupSpec = {
       order: 1,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
-        const output: ActionOutput = []
-        output.push([
-          ["Event", "LastTimestamp", "(Count)"],
-          "Details",
-        ])
+        this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
         for(const i in clusters) {
+          const output: ActionOutput = []
           const cluster = clusters[i]
           output.push([">Cluster: " + cluster.name, "", ""])
           const events = await k8sFunctions.getClusterEvents(cluster.name, cluster.k8sClient)
@@ -33,8 +31,9 @@ const plugin : ActionGroupSpec = {
               ])
             }
           })
+          this.onStreamOutput && this.onStreamOutput(output)
         }
-        this.onOutput && this.onOutput(output, ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     },
   ]

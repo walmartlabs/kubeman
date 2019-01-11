@@ -52,7 +52,7 @@ export default class K8sFunctions {
             containerRuntimeVersion: status.nodeInfo.containerRuntimeVersion,
             kubeletVersion: status.nodeInfo.kubeletVersion,
             kubeProxyVersion: status.nodeInfo.kubeProxyVersion,
-            capacity: JSON.stringify(status.capacity)
+            capacity: status.capacity
           }
         }
         status.addresses.forEach(a => node.network[a.type] = a.address)

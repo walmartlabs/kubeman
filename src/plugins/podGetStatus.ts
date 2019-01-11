@@ -23,6 +23,7 @@ const plugin : ActionGroupSpec = {
         }
         const podsMap : ClusterNamespacePodsMap = {}
 
+        this.showOutputLoading && this.showOutputLoading(true)
         for(const i in selections) {
           const selection = selections[i]
           const pod = selection.pod
@@ -55,6 +56,7 @@ const plugin : ActionGroupSpec = {
           })
         })
         this.onOutput && this.onOutput(output, ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(false)
       }
     }
   ]

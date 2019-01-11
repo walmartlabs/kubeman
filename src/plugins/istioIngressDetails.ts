@@ -14,6 +14,7 @@ const plugin : ActionGroupSpec = {
         const clusters = actionContext.getClusters()
         this.onOutput &&
           this.onOutput([["", "Istio IngressGateway Details"]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
 
         for(const i in clusters) {
           const cluster = clusters[i]
@@ -57,9 +58,9 @@ const plugin : ActionGroupSpec = {
           output.push(["Ingress Pods", await IstioPluginHelper.getIstioServicePods("istio=ingressgateway", k8sClient)])
           output.push(["Ingress Gateways", await IstioPluginHelper.getIstioIngressGateways(k8sClient)])
           output.push(["Ingress VirtualServices", await IstioPluginHelper.getIstioIngressVirtualServices(k8sClient)])
-
           this.onStreamOutput  && this.onStreamOutput(output)
         }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     }
   ]

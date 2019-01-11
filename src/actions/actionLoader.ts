@@ -10,6 +10,8 @@ export class ActionLoader {
   static onOutput: (action, output, style) => void
   static onStreamOutput: (action, output) => void
   static onChoices: ActionChoiceMaker
+  static onSetScrollMode: (boolean) => void
+  static onOutputLoading: (boolean) => void
   static context: Context
   static actionContext: ActionContext = new ActionContext
 
@@ -33,6 +35,14 @@ export class ActionLoader {
 
   static setOnChoices(callback: ActionChoiceMaker) {
     this.onChoices = callback
+  }
+
+  static setOnSetScrollMode(callback: (boolean) => void) {
+    this.onSetScrollMode = callback
+  }
+
+  static setOnOutputLoading(callback: (boolean) => void) {
+    this.onOutputLoading = callback
   }
  
   static loadActionPlugins() {
@@ -108,7 +118,9 @@ export class ActionLoader {
             checkPods: actionGroupSpec.context === ActionContextType.Pod,
           })) {
             action.onOutput = this.onOutput.bind(this, action)
-            action.onStreamOutput =this.onStreamOutput.bind(this, action)
+            action.onStreamOutput = this.onStreamOutput.bind(this, action)
+            action.setScrollMode = this.onSetScrollMode
+            action.showOutputLoading = this.onOutputLoading
 
             if(action.choose) {
               this.actionContext.onChoices = this.onChoices.bind(this, originalAct.bind(action, this.actionContext))

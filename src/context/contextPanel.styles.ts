@@ -38,10 +38,11 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     backgroundColor: palette.type === 'dark' ? palette.background.paper : '#daddf1',
   },
   grid: {
-    height: 230,
+    height: 200,
   },
   gridItem: {
     minWidth: 250,
+    maxHeight: 200,
   },
   tabsRoot: {
     borderBottom: '1px solid #e8e8e8',

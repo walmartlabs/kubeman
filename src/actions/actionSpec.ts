@@ -48,6 +48,8 @@ export interface ActionSpec {
   stop?: ActionAct
   onOutput?: ActionOutputCollector
   onStreamOutput?: ActionStreamOutputCollector
+  setScrollMode?: (boolean) => void
+  showOutputLoading?: (boolean) => void
   [x: string]: any
 }
 

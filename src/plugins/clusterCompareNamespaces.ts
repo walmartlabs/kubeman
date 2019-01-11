@@ -34,7 +34,7 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["Not enough clusters to compare"]], ActionOutputStyle.Text)
           return
         }
-
+        this.showOutputLoading && this.showOutputLoading(true)
         const output: ActionOutput = []
         const cluster1 = clusters[0].name
         const cluster2 = clusters[1].name
@@ -42,6 +42,7 @@ const plugin : ActionGroupSpec = {
         await compareClusterNamespaces(cluster1, clusters[0].k8sClient, 
                                         cluster2, clusters[1].k8sClient, output)
         this.onOutput && this.onOutput(output, ActionOutputStyle.Compare)
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     },
   ]

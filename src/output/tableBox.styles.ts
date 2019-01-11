@@ -70,12 +70,16 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     height: 24,
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#dee6ed',
   },
+  tableAppendedRow: {
+    backgroundColor: palette.type ==='dark' ? '#806f00' : '#ffdd00',
+  },
   tableCell: {
     padding: '0px',
     color: 'inherit',
     verticalAlign: 'top',
     borderBottom: palette.type ==='dark' ? borderDark : borderLight,
     minWidth: 120,
+    fontSize: palette.type ==='dark' ? '0.9rem' : '0.87rem',
     [breakpoints.up('sm')]: {
       maxWidth: '200px'
     },

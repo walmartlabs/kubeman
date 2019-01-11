@@ -108,6 +108,7 @@ export type KubeComponentArray = Array<KubeComponent>
 
 export interface Metadata {
   name: string
+  namespace: string
   creationTimestamp: string
   labels: string[]
 }

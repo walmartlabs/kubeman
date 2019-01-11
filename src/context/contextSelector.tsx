@@ -107,9 +107,6 @@ export default class ContextSelector extends React.Component<IProps, IState> {
   }
 
   onKeyPress(event: KeyboardEvent) {
-    console.log("event.charCode = " + event.charCode)
-    console.log("event.key = " + event.key)
-    console.log("event.which = " + event.which)
     switch(event.which) {
       case 99:
         this.selectClusters()

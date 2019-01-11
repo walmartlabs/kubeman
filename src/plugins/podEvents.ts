@@ -19,6 +19,7 @@ const plugin : ActionGroupSpec = {
           return
         }
         this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
 
         for(const i in selections) {
           const selection = selections[i]
@@ -46,6 +47,7 @@ const plugin : ActionGroupSpec = {
           })
           this.onStreamOutput && this.onStreamOutput(output)
         }
+        this.showOutputLoading && this.showOutputLoading(false)
       }
     }
   ]

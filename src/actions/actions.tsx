@@ -1,6 +1,3 @@
-import fs from 'fs'
-import path from 'path'
-
 import React from "react";
 import { withStyles, WithStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
 import ExpansionPanel from '@material-ui/core/ExpansionPanel';
@@ -10,7 +7,6 @@ import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import Typography from '@material-ui/core/Typography';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
-import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
 
 import Context from "../context/contextStore";
@@ -22,7 +18,6 @@ import {ActionGroupSpecs, ActionSpec, BoundAction, ActionGroupSpec, ActionContex
 import styles from './actions.styles'
 import {actionsTheme} from '../theme/theme'
 
-const actionPluginFolder = "plugins"
 
 interface IState {
   actionGroupSpecs: ActionGroupSpecs,
@@ -36,6 +31,9 @@ interface IProps extends WithStyles<typeof styles> {
   onOutput: ActionOutputCollector
   onStreamOutput: ActionStreamOutputCollector
   onChoices: ActionChoiceMaker
+  onSetScrollMode: (boolean) => void
+  onAction: (BoundAction) => void
+  onOutputLoading: (boolean) => void
 }
 
 export class Actions extends React.Component<IProps, IState> {
@@ -54,6 +52,8 @@ export class Actions extends React.Component<IProps, IState> {
     ActionLoader.setOnOutput(props.onOutput, props.onStreamOutput)
     ActionLoader.setOnChoices(props.onChoices)
     ActionLoader.setContext(context)
+    ActionLoader.setOnSetScrollMode(props.onSetScrollMode)
+    ActionLoader.setOnOutputLoading(props.onOutputLoading)
   }
 
   loadActionPlugins() {
@@ -66,6 +66,7 @@ export class Actions extends React.Component<IProps, IState> {
   }
 
   onAction = (action: BoundAction) => {
+    this.props.onAction(action)
     const {selectedAction: prevAction} = this.state
     prevAction && prevAction.stop && prevAction.stop()
     ActionLoader.actionContext.inputText = undefined

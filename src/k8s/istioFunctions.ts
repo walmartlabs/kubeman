@@ -1,4 +1,3 @@
-import jsonUtil from '../util/jsonUtil'
 import {K8sClient} from './k8sClient'
 import K8sFunctions from '../k8s/k8sFunctions';
 
@@ -185,11 +184,12 @@ export default class IstioFunctions {
                       policy.peers && policy.peers.filter(peer => peer.mtls).length > 0
                       && policy.targets) : []
     const pilotPods = await K8sFunctions.getPodsByLabels("istio-system", "istio=pilot", k8sClient)
-    let serviceMtlsStatuses: any = await K8sFunctions.podExec("istio-system", pilotPods[0].name, "discovery", k8sClient, 
+    let serviceMtlsStatuses: any
+    try {
+      serviceMtlsStatuses = await K8sFunctions.podExec("istio-system", pilotPods[0].name, "discovery", k8sClient, 
                          ["/usr/local/bin/pilot-discovery", "request", "GET", "/debug/authenticationz"])
-    serviceMtlsStatuses = serviceMtlsStatuses.slice(serviceMtlsStatuses.indexOf("["), serviceMtlsStatuses.indexOf("]")+1)
-    if(serviceMtlsStatuses && serviceMtlsStatuses.length > 0) {
-      try {
+      serviceMtlsStatuses = serviceMtlsStatuses.slice(serviceMtlsStatuses.indexOf("["), serviceMtlsStatuses.indexOf("]")+1)
+      if(serviceMtlsStatuses && serviceMtlsStatuses.length > 0) {
         serviceMtlsStatuses = JSON.parse(serviceMtlsStatuses)
         serviceMtlsStatuses = serviceMtlsStatuses
         .filter(status => status.host)
@@ -222,12 +222,11 @@ export default class IstioFunctions {
             status: status.TLS_conflict_status,
           }
         })
-      } 
-      catch(err){
-        console.log(err)
+      } else {
         serviceMtlsStatuses = []
       }
-    } else {
+    } 
+    catch(err){
       serviceMtlsStatuses = []
     }
     return serviceMtlsStatuses
@@ -236,7 +235,7 @@ export default class IstioFunctions {
   static getServiceMtlsStatus = async (service: string, k8sClient: K8sClient) => {
     const serviceMtlsStatuses = await IstioFunctions.getServiceMtlsStatuses(k8sClient)
     const serviceMtlsStatus = serviceMtlsStatuses.filter(status => service.includes(status.serviceName))
-    return serviceMtlsStatus.length > 0 ? serviceMtlsStatus[0] : {}
+    return serviceMtlsStatus.length > 0 ? serviceMtlsStatus[0] : "No Status"
   }
 
 }

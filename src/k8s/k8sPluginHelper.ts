@@ -2,7 +2,7 @@ import _ from 'lodash'
 import {DataObject, StringStringArrayMap, GetItemsFunction} from './k8sFunctions'
 import ActionContext from '../actions/actionContext'
 import {ActionOutput} from '../actions/actionSpec'
-import {Cluster, Namespace, Pod, PodTemplate, PodDetails, PodContainerDetails, KubeComponent} from "./k8sObjectTypes"
+import {Cluster, Namespace, Pod, PodTemplate, PodDetails, PodContainerDetails} from "./k8sObjectTypes"
 import k8sFunctions from './k8sFunctions'
 import { K8sClient } from './k8sClient'
 

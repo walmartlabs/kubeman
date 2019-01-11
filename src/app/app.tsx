@@ -1,17 +1,13 @@
-import {remote, ipcRenderer as ipc} from 'electron'
+import {ipcRenderer as ipc} from 'electron'
 import React, { Component } from 'react'
 import ReactDOM from 'react-dom'
 
-import { withStyles, createStyles, Theme, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
-import primaryColor from '@material-ui/core/colors/indigo';
+import { withStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
 
 import Typography from '@material-ui/core/Typography';
-import Switch from '@material-ui/core/Switch';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
 
 import '../logger/client'
 import StyledWorkspace, {Workspace} from '../workspace/workspace'
-import log from '../logger/client';
 import {appTheme} from '../theme/theme'
 
 import 'roboto-fontface/css/roboto/roboto-fontface.css'
@@ -33,11 +29,6 @@ const TabContainer = (props) =>
       {props.children}
     </Typography>
 
-
-
-ipc.on('asynchronous-reply', (event: Electron.Event, arg: any) => {
-  console.log(arg)
-})
 
 interface IState {
   useDarkTheme: boolean,
@@ -64,7 +55,6 @@ class extends Component<IProps, IState> {
   }
 
   onKeyPress = (event: KeyboardEvent) => {
-    console.log(event)
     this.workspace && this.workspace.onKeyPress(event)
   }
 

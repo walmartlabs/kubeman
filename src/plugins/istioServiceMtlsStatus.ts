@@ -1,5 +1,5 @@
 import _ from 'lodash'
-import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
+import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput} from '../actions/actionSpec'
 import IstioFunctions from '../k8s/istioFunctions'
 
 const plugin : ActionGroupSpec = {
@@ -8,7 +8,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Services MTLS Report",
-      order: 14,
+      order: 17,
       
       async act(actionContext) {
         const clusters = actionContext.getClusters()
@@ -16,6 +16,7 @@ const plugin : ActionGroupSpec = {
           this.onOutput([["Service", "Policy/Dest Rule", 
                     "Client/Server Protocol", "Status"]], ActionOutputStyle.Table)
 
+        this.showOutputLoading && this.showOutputLoading(true)
         for(const i in clusters) {
           const cluster = clusters[i]
           const output: ActionOutput = []
@@ -37,10 +38,11 @@ const plugin : ActionGroupSpec = {
               })
             })
           } else {
-            output.push([">>No Services", ""])
+            output.push([">>Couldn't load mtls status or No services", ""])
           }
           this.onStreamOutput  && this.onStreamOutput(output)
         }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     }
   ]

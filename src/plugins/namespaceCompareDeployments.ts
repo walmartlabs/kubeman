@@ -60,6 +60,7 @@ const plugin : ActionGroupSpec = {
       name: "List/Compare Deployments",
       order: 11,
       async act(actionContext: ActionContext) {
+        this.showOutputLoading && this.showOutputLoading(true)
         const clusters = actionContext.getClusters()
         const namespaces = actionContext.getNamespaces()
 
@@ -67,6 +68,7 @@ const plugin : ActionGroupSpec = {
 
         const output = generateDeploymentComparisonOutput(clusters, namespaces, deployments)
         this.onOutput && this.onOutput(output, ActionOutputStyle.Compare)
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     }
   ]

@@ -12,7 +12,7 @@ import Context from "../context/contextStore";
 import BlackBox from '../output/blackbox'
 import TableOutput, {TableBox} from '../output/tableBox'
 import {ActionOutput, ActionOutputStyle, ActionOutputCollector, ActionStreamOutputCollector,
-        ActionChoiceMaker, ActionChoices, BoundActionAct} from '../actions/actionSpec'
+        ActionChoiceMaker, ActionChoices, BoundActionAct, BoundAction} from '../actions/actionSpec'
 
 import styles from './workspace.styles'
 
@@ -26,6 +26,7 @@ interface IState {
   maxChoices: number
   choiceTitle: string
   choices: any[]
+  scrollMode: boolean
   deferredAction?: BoundActionAct
 }
 
@@ -52,6 +53,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     maxChoices: 0,
     choiceTitle: '',
     choices: [],
+    scrollMode: false,
   }
   commandHandler?: ((string) => void) = undefined
   tableBox?: TableBox
@@ -72,6 +74,14 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     this.commandHandler && this.commandHandler(command)
   }
 
+  onAction = (action: BoundAction) => {
+    this.setState({scrollMode: false})
+  }
+
+  showOutputLoading = (loading: boolean) => {
+    this.tableBox && this.tableBox.showLoading(loading)
+  }
+
   showOutput : ActionOutputCollector = (output, outputStyle) => {
     this.setState({
       output, 
@@ -82,6 +92,10 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   showStreamOutput : ActionStreamOutputCollector = (output) => {
     this.tableBox && this.tableBox.appendOutput(output as ActionOutput)
+  }
+
+  setScrollMode = (scrollMode: boolean) => {
+    this.setState({scrollMode})
   }
 
   showChoices : ActionChoiceMaker = (act, title, choices, minChoices, maxChoices) => {
@@ -131,7 +145,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   render() {
     const { classes } = this.props;
-    const { context, output, outputStyle, loading, 
+    const { context, output, outputStyle, loading, scrollMode,
       showChoices, minChoices, maxChoices, choiceTitle, choices } = this.state;
 
     const showBlackBox = outputStyle === ActionOutputStyle.Text
@@ -163,6 +177,9 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                         onOutput={this.showOutput}
                         onStreamOutput={this.showStreamOutput}
                         onChoices={this.showChoices}
+                        onSetScrollMode={this.setScrollMode}
+                        onAction={this.onAction}
+                        onOutputLoading={this.showOutputLoading}
                         />
               </TableCell>
               <TableCell className={classes.outputCell}>
@@ -174,6 +191,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                                   compare={compare} 
                                   log={log}
                                   acceptInput={acceptInput}
+                                  scrollMode={scrollMode}
                                   onActionTextInput={this.onActionTextInput}
                     />
                 }

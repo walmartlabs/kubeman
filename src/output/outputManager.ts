@@ -203,9 +203,9 @@ export class Cell {
 
   get groupText() {
     let groupTitle = this.isText ? this.formattedContent as string : ""
-    if(this.isGroup) {
+    if(this.isGroup && groupTitle.charAt(0) === '>') {
       groupTitle = groupTitle.slice(1)
-    } else if(this.isSubGroup) {
+    } else if(this.isSubGroup && groupTitle.substring(0,2) === '>>') {
       groupTitle = groupTitle.slice(2)
     }
     return groupTitle
@@ -228,6 +228,10 @@ export class Cell {
 
   get isFirstColumn() {
     return this.index === 0 && !this.isGroup
+  }
+
+  get hasContent() {
+    return this.content && this.content.toString().length > 0
   }
 
   toString() {

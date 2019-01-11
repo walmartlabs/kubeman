@@ -80,6 +80,7 @@ interface IProps extends WithStyles<typeof styles> {
   compare?: boolean
   log: boolean
   acceptInput: boolean
+  scrollMode: boolean
   onActionTextInput: (text: string) => void
 }
 
@@ -98,6 +99,7 @@ export class TableBox extends React.Component<IProps, IState> {
   filterTimer: any = undefined
   isScrolled: boolean = false
   scrollToRef: any
+  bottomRef: any
   filterText: string = ''
 
   componentDidMount() {
@@ -115,8 +117,12 @@ export class TableBox extends React.Component<IProps, IState> {
 
   appendOutput(output: ActionOutput) {
     this.outputManager.appendRows(output)
-    this.setState({loading: false})
-    this.scrollToBottom()
+    this.props.scrollMode && this.scrollToBottom()
+    this.forceUpdate()
+  }
+
+  showLoading(loading: boolean) {
+    this.setState({loading})
   }
 
   clearFilter() {
@@ -126,7 +132,7 @@ export class TableBox extends React.Component<IProps, IState> {
   }
 
   isFilterInput(text: string) : boolean {
-    return !text.startsWith("/")
+    return !this.props.acceptInput || !text.startsWith("/")
   }
 
   filter = () => {
@@ -159,13 +165,14 @@ export class TableBox extends React.Component<IProps, IState> {
   onKeyPress = (event: KeyboardEvent<HTMLInputElement>) => {
     if(event.which === 13 /*Enter*/) {
       const {filterInput} = this.state
-      this.setState({loading: true})
       this.props.onActionTextInput(filterInput.slice(1))
     }
   }
 
   scrollToBottom() {
-    this.scrollToRef && this.scrollToRef.scrollIntoView({ behavior: "smooth" })
+    if(this.scrollToRef) {
+      setTimeout(() => this.scrollToRef.scrollIntoView({behavior: 'smooth', block: 'center'}), 300)
+    }
   }
 
 
@@ -183,6 +190,11 @@ export class TableBox extends React.Component<IProps, IState> {
   renderGroupRow(row: Row, rowIndex: number) {
     const {classes} = this.props
     const components : any[] = []
+    const colspans: number[] = []
+    row.cells.forEach(cell => {
+      cell.hasContent ? colspans.push(1) : colspans[colspans.length-1]++
+    })
+
     rowIndex > 0 && components.push(
       <TableRow key={rowIndex+".pre"} className={classes.tableGroupRow}>
       </TableRow>
@@ -192,24 +204,30 @@ export class TableBox extends React.Component<IProps, IState> {
                 className={row.isGroup ? classes.tableGroupRow : classes.tableSubgroupRow}
                 onClick={this.onGroupClick.bind(this, row.isGroup ? row.groupIndex : undefined)}
       >
-        <TextCell index={0} 
-                  cell={row.cells[0]}
-                  isKeyColumn={false}
-                  highlight={false}
-                  compare={false}
-                  colSpan={row.columnCount}
-        />
+        {row.cells.filter(cell => cell.hasContent)
+          .map((cell,i) => 
+            <TextCell key={"GroupCell"+i}
+              index={i}
+              cell={cell}
+              isKeyColumn={false}
+              highlight={false}
+              compare={false}
+              colSpan={colspans[i]}
+            />
+          )
+        }
       </TableRow>
     )
     return components
   }
 
-  renderRow(row: Row, rowIndex: number) {
+  renderRow(row: Row, rowIndex: number, isAppendedRow: boolean) {
     const {classes, compare, log} = this.props
     let highlight = compare ? row.lastTwoColumnsDiffer : false
     return (
       <TableRow key={rowIndex} 
-                className={classes.tableRow} >
+                className={classes.tableRow + " " + 
+                (isAppendedRow && this.props.scrollMode ? classes.tableAppendedRow : "")} >
       {row.cells.map((cell, ci) => {
         if(cell.isArray) {
           return (
@@ -291,6 +309,7 @@ export class TableBox extends React.Component<IProps, IState> {
                         (acceptInput ? ", or /<command> to send a command" : "")
     let hiddenIndicatorShown = false
     let parentIsGroup = false
+    let isAppendedRow = false
 
     return (
       <div className={classes.root}>
@@ -322,10 +341,11 @@ export class TableBox extends React.Component<IProps, IState> {
                         } else {
                           const tableRows : any[] = []
                           if(row.isFirstAppendedRow) {
+                            isAppendedRow = true
                             tableRows.push(
                               <TableRow key={index+"scroll"} style={{height: 0}}>
                                 <TableCell style={{height: 0, padding: 0}}>
-                                  <div ref={ref => this.scrollToRef = ref}/>
+                                  <div className="scrollDiv" ref={ref => this.scrollToRef = ref}/>
                                 </TableCell>
                               </TableRow>
                             )
@@ -346,11 +366,16 @@ export class TableBox extends React.Component<IProps, IState> {
                               )
                             }
                           } else {
-                            tableRows.push(this.renderRow(row, index))
+                            tableRows.push(this.renderRow(row, index, isAppendedRow))
                           }
                           return tableRows
                         }
                       })}
+                      <TableRow style={{height: 0}}>
+                        <TableCell style={{height: 0, padding: 0}}>
+                          <div className="bottomDiv" ref={ref => this.bottomRef = ref}/>
+                        </TableCell>
+                      </TableRow>
                     </TableBody>
                   </Table>
                 </div>

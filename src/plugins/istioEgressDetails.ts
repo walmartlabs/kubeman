@@ -14,6 +14,7 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         this.onOutput && this.onOutput([["", "Istio EgressGateway Details"]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
 
         for(const i in clusters) {
           const cluster = clusters[i]
@@ -43,6 +44,7 @@ const plugin : ActionGroupSpec = {
 
           this.onStreamOutput && this.onStreamOutput(output)
         }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     }
   ]

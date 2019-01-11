@@ -9,6 +9,7 @@ const plugin : ActionGroupSpec = {
       name: "List/Compare Secrets",
       order: 12,
       async act(actionContext) {
+        this.showOutputLoading && this.showOutputLoading(true)
         const clusters = actionContext.getClusters()
         const namespaces = actionContext.getNamespaces()
 
@@ -61,6 +62,7 @@ const plugin : ActionGroupSpec = {
           }
         })
         this.onOutput && this.onOutput(output, ActionOutputStyle.Compare)
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     }
   ]

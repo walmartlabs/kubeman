@@ -10,13 +10,14 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "MTLS Enablement Report",
-      order: 14,
+      order: 16,
       
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         this.onOutput &&
           this.onOutput([["", "Istio MTLS Enabled Status"]], ActionOutputStyle.Table)
 
+        this.showOutputLoading && this.showOutputLoading(true)
         for(const i in clusters) {
           const cluster = clusters[i]
           const output: ActionOutput = []
@@ -37,6 +38,7 @@ const plugin : ActionGroupSpec = {
           }
           this.onStreamOutput  && this.onStreamOutput(output)
         }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     }
   ]

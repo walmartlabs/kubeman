@@ -22,6 +22,8 @@ const plugin : ActionGroupSpec = {
           return
         }
         this.onOutput && this.onOutput([["Pod Reachability Test", "", ""]], ActionOutputStyle.Log)
+        this.setScrollMode && this.setScrollMode(true)
+        this.showOutputLoading && this.showOutputLoading(true)
 
         for(const i in selections) {
           const sourceIndex = parseInt(i)
@@ -62,6 +64,7 @@ const plugin : ActionGroupSpec = {
             ]])
           }
         }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
       stop(actionContext) {
       }
