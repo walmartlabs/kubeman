@@ -43,9 +43,9 @@ const plugin : ActionGroupSpec = {
     action.onOutput && action.onOutput([["Pod", "Logs [Container: " + this.selectedContainer 
             + ", Service: " + this.selectedService.name + "]"]], ActionOutputStyle.Log)
     
-    action.showOutputLoading && action.showOutputLoading(true)
     const pods = this.podsAndContainers.pods
     for(const i in pods) {
+      action.showOutputLoading && action.showOutputLoading(true)
       const pod = pods[i]
       const logStream = await k8sFunctions.getPodLog(this.selectedNamespace, pod, 
                             this.selectedContainer, this.k8sClient, tail)
@@ -57,13 +57,14 @@ const plugin : ActionGroupSpec = {
       })
       if(tail) {
         this.logStreams.push(logStream)
+        action.showOutputLoading && action.showOutputLoading(false)
       } else {
         setTimeout(() => {
+          action.showOutputLoading && action.showOutputLoading(false)
           logStream.stop()
         }, 10000)
       }
     }
-    action.showOutputLoading && action.showOutputLoading(false)
   },
   async performAction(actionContext: ActionContext, action: ActionSpec, tail: boolean) {
     action.setScrollMode && action.setScrollMode(true)

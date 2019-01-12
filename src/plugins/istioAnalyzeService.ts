@@ -39,39 +39,46 @@ const plugin : ActionGroupSpec = {
         this.onStreamOutput && this.onStreamOutput([[">Service Details"], [service]])
         this.showOutputLoading && this.showOutputLoading(true)
 
-
         const podsAndContainers = await this.outputPodsAndContainers(service, namespace, cluster.k8sClient)
-        const vsGateways = await this.outputVirtualServicesAndGateways(service, namespace, cluster.k8sClient)
-        const ingressPods = await IstioPluginHelper.getIstioServicePods("istio=ingressgateway", cluster.k8sClient, true)
+        if(cluster.hasIstio) {
+          const vsGateways = await this.outputVirtualServicesAndGateways(service, namespace, cluster.k8sClient)
+          const ingressPods = await IstioPluginHelper.getIstioServicePods("istio=ingressgateway", cluster.k8sClient, true)
 
-        await this.outputRoutingAnalysis(service, podsAndContainers, vsGateways, ingressPods, cluster.k8sClient)
+          await this.outputRoutingAnalysis(service, podsAndContainers, vsGateways, ingressPods, cluster.k8sClient)
 
-        if(vsGateways.ingressCerts.length > 0) {
-          await this.outputCertsStatus(vsGateways.ingressCerts, ingressPods, cluster.k8sClient)
+          if(vsGateways.ingressCerts.length > 0) {
+            await this.outputCertsStatus(vsGateways.ingressCerts, ingressPods, cluster.k8sClient)
+          }
+
+          await this.outputServiceMtlsStatus(service, cluster.k8sClient)
+          await this.outputPolicies(service, cluster.k8sClient)
+          await this.outputDestinationRules(service, namespace, cluster.k8sClient)
+        } else {
+          this.onStreamOutput && this.onStreamOutput([[">>Istio not installed"]])
         }
-
-        await this.outputServiceMtlsStatus(service, cluster.k8sClient)
-        await this.outputPolicies(service, cluster.k8sClient)
-        await this.outputDestinationRules(service, namespace, cluster.k8sClient)
-
         this.showOutputLoading && this.showOutputLoading(false)
       },
 
       async outputPodsAndContainers(service: ServiceDetails, namespace: string, k8sClient: K8sClient) {
         const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(
                                         namespace, service, k8sClient, true)
-        const containers = podsAndContainers.containers as ContainerInfo[]
-        if(containers) {
-          const isSidecarPresent = containers.filter(c => c.name === "istio-proxy").length === 1
-          this.onStreamOutput && this.onStreamOutput([[">Envoy Sidecar Status"],
-          [isSidecarPresent ? "Sidecar Proxy Present" : "Sidecar Proxy Not Deployed"]]) 
-          this.onStreamOutput && this.onStreamOutput([[">Service Containers"]]) 
+        const containers = (podsAndContainers.containers as ContainerInfo[]) || []
+        const isSidecarPresent = containers.filter(c => c.name === "istio-proxy").length === 1
+        this.onStreamOutput && this.onStreamOutput([[">Envoy Sidecar Status"],
+                                [isSidecarPresent ? "Sidecar Proxy Present" : "Sidecar Proxy Not Deployed"]]) 
+        this.onStreamOutput && this.onStreamOutput([[">Service Containers"]])
+        if(containers.length > 0) {
           containers.map(c => this.onStreamOutput && this.onStreamOutput([[">>"+c.name],[c]]))
+        } else {
+          this.onStreamOutput && this.onStreamOutput([["No containers"]])
         }
+
         const pods = podsAndContainers.pods as PodDetails[]
-        if(pods) {
-          this.onStreamOutput && this.onStreamOutput([[">Service Pods"]]) 
+        this.onStreamOutput && this.onStreamOutput([[">Service Pods"]]) 
+        if(pods && pods.length > 0) {
           pods.map(pod => this.onStreamOutput && this.onStreamOutput([[">>"+pod.name],[pod]]))
+        } else {
+          this.onStreamOutput && this.onStreamOutput([["No pods"]])
         }
         return podsAndContainers
       },
@@ -120,9 +127,11 @@ const plugin : ActionGroupSpec = {
       },
 
       async outputRoutingAnalysis(service: ServiceDetails, podsAndContainers: any, vsGateways: any, ingressPods: any[], k8sClient: K8sClient) {
-        this.onStreamOutput && this.onStreamOutput([[">Routing Analysis"]]) 
-        const containerPorts = _.flatten((podsAndContainers.containers as ContainerInfo[])
-                                  .map(c => c.ports ? c.ports.map(p => p.containerPort) : []))
+        this.onStreamOutput && this.onStreamOutput([[">Routing Analysis"]])
+
+        const containerPorts = podsAndContainers.containers ? 
+                _.flatten((podsAndContainers.containers as ContainerInfo[])
+                    .map(c => c.ports ? c.ports.map(p => p.containerPort) : [])) : []
         const serviceTargetPorts = service.ports.map(p => p.targetPort)
         const invalidServiceTargetPorts = serviceTargetPorts.filter(p => !containerPorts.includes(p))
         this.onStreamOutput && this.onStreamOutput([[
@@ -149,7 +158,7 @@ const plugin : ActionGroupSpec = {
             : "VirtualService destination ports correctly match service ports."
         ]])
 
-        if(ingressPods.length > 0 && podsAndContainers.pods.length > 0) {
+        if(ingressPods && ingressPods.length > 0 && podsAndContainers.pods && podsAndContainers.pods.length > 0) {
           try {
             const ingressProxyContainer = ingressPods[0].podDetails ? ingressPods[0].podDetails.containers[0].name : "istio-proxy"
             const servicePods = podsAndContainers.pods as PodDetails[]

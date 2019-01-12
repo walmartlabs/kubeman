@@ -18,12 +18,16 @@ const plugin : ActionGroupSpec = {
           this.onOutput([["", "Istio MTLS Enabled Status"]], ActionOutputStyle.Table)
 
         this.showOutputLoading && this.showOutputLoading(true)
-        for(const i in clusters) {
-          const cluster = clusters[i]
+
+        for(const cluster of clusters) {
+          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name, ""]])
+          if(!cluster.hasIstio) {
+            this.onStreamOutput  && this.onStreamOutput([["", "Istio not installed"]])
+            continue
+          }
           const output: ActionOutput = []
           const k8sClient = cluster.k8sClient
 
-          output.push([">Cluster: " + cluster.name, ""])
           const mtlsStatus = await IstioFunctions.getMtlsStatus(k8sClient)
           output.push(["Global MTLS Enabled", mtlsStatus.isGlobalMtlsEnabled.toString()])
           mtlsStatus.namespacesWithDefaultMtls.length > 0 &&

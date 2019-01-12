@@ -19,6 +19,8 @@ export class Cluster implements KubeComponent {
   type: KubeComponentType = KubeComponentType.Cluster
   namespaces: Namespace[] = []
   k8sClient: k8s.K8sClient
+  hasIstio: boolean = false
+
   constructor(name: string) {
     this.name = name
     this.k8sClient = {} as k8s.K8sClient

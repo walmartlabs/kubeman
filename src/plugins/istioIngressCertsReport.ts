@@ -16,9 +16,13 @@ const plugin : ActionGroupSpec = {
         this.onOutput &&
           this.onOutput([["Ingress Cert Secret", "Usage"]], ActionOutputStyle.Table)
 
-          this.showOutputLoading && this.showOutputLoading(true)
-          for(const i in clusters) {
-          const cluster = clusters[i]
+        this.showOutputLoading && this.showOutputLoading(true)
+        for(const cluster of clusters) {
+          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name, ""]])
+          if(!cluster.hasIstio) {
+            this.onStreamOutput  && this.onStreamOutput([["", "Istio not installed"]])
+            continue
+          }
           const output: ActionOutput = []
           const k8sClient = cluster.k8sClient
           const ingressDeployment = await K8sFunctions.getDeploymentDetails(cluster.name, 
@@ -35,7 +39,6 @@ const plugin : ActionGroupSpec = {
             this.onStreamOutput && this.onStreamOutput(["proxy container not found in ingressgateway", ""])
             continue
           }
-          output.push([">Cluster: " + cluster.name, "", ""])
 
           const gateways = await IstioPluginHelper.getIstioIngressGateways(k8sClient)
           const virtualServices = await IstioPluginHelper.getIstioIngressVirtualServices(k8sClient)

@@ -67,7 +67,7 @@ export default class K8sPluginHelper {
     if(min === max && max > 0) {
       howMany = " " + max + " "
     } else {
-      howMany = min > 0 ? " at least " + min + " " : ""
+      howMany = min > 0 ? " at least " + min : ""
       howMany += max > 0 && min > 0 ? ", and " : ""
       howMany += max > 0 ?  " up to " + max + " " : ""
     }

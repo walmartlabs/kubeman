@@ -59,7 +59,12 @@ export async function getClientForCluster(cluster: Cluster) {
     k8sClient.istio.meshpolicies = authAPI.meshpolicies
     const configAPI = client.apis["config.istio.io"].v1alpha2
     k8sClient.istio.rules = configAPI.rules
+    cluster.hasIstio = true
   })
+  .catch(error => {
+    cluster.hasIstio = false
+    console.log("Failed to load Istio CRDs for cluster " + cluster.name)
+})
 
   return k8sClient
 }

@@ -406,6 +406,14 @@ export default class OutputManager {
     })
   }
 
+  clearContent() {
+    this.appliedFilters = this.headers = this.rows = this.filteredRows = []
+    this.healthColumnIndex = -1
+    this.matchedColumns = new Set
+    this.isLog = false
+    this.groupCount = 0
+  }
+
   private identifyHealthColumn() {
     if(this.headers.length > 0) {
       this.headers.map(header => 

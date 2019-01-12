@@ -16,8 +16,12 @@ const plugin : ActionGroupSpec = {
         this.onOutput && this.onOutput([["", "Istio EgressGateway Details"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
 
-        for(const i in clusters) {
-          const cluster = clusters[i]
+        for(const cluster of clusters) {
+          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name, ""]])
+          if(!cluster.hasIstio) {
+            this.onStreamOutput  && this.onStreamOutput([["", "Istio not installed"]])
+            continue
+          }
           const output: ActionOutput = []
           const k8sClient = cluster.k8sClient
           const egressDeployment = await K8sFunctions.getDeploymentDetails(cluster.name, 
@@ -26,7 +30,6 @@ const plugin : ActionGroupSpec = {
             this.onStreamOutput && this.onStreamOutput(["istio-egressgateway not found", ""])
             continue
           } 
-          output.push([">" + egressDeployment.name + ", Cluster: " + cluster.name, ""])
           output.push(["Replicas", egressDeployment.replicas])
           const podTemplate = egressDeployment.template
           const istioProxyContainer = podTemplate.containers.filter(c => c.name === "istio-proxy")[0]

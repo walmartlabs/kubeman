@@ -21,6 +21,11 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["Not enough clusters to compare"]], ActionOutputStyle.Text)
           return
         }
+        if(clusters.filter(c => !c.hasIstio).length > 0) {
+          this.onOutput && this.onOutput([["Istio not installed on one or more clusters "]], ActionOutputStyle.Text)
+          return
+        }
+      
         const headers = ["Istio IngressGateway Details"]
         clusters.forEach(cluster => headers.push(cluster.name))
         this.onOutput &&
@@ -50,13 +55,12 @@ const plugin : ActionGroupSpec = {
       async compareDeployment(actionContext: ActionContext) {
         const clusters = actionContext.getClusters()
         const ingressDeployments: any[] = []
-        for(const i in clusters) {
-          const cluster = clusters[i]
+        for(const cluster of clusters) {
           const k8sClient = cluster.k8sClient
           const ingressDeployment = await K8sFunctions.getDeploymentDetails(cluster.name, 
                                       "istio-system", "istio-ingressgateway", k8sClient)
           if(!ingressDeployment) {
-            this.onStreamOutput && this.onStreamOutput(["istio-ingressgateway not found", ""])
+            this.onStreamOutput && this.onStreamOutput([["istio-ingressgateway not found", ""]])
           } else {
             ingressDeployments.push(ingressDeployment)
           }
@@ -95,8 +99,7 @@ const plugin : ActionGroupSpec = {
         this.comparisonMap["Ingress Pods"] = []
         this.comparisonMap["Ingress Gateways"] = []
         this.comparisonMap["Ingress VirtualServices"] = []
-        for(const i in clusters) {
-          const cluster = clusters[i]
+        for(const cluster of clusters) {
           const k8sClient = cluster.k8sClient
           const ingressService = (await IstioPluginHelper.getIstioServiceDetails("istio=ingressgateway", k8sClient))[0]
           this.comparisonMap["Ingress Service Type"].push(ingressService.type)

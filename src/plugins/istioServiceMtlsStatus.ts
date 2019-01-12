@@ -17,12 +17,16 @@ const plugin : ActionGroupSpec = {
                     "Client/Server Protocol", "Status"]], ActionOutputStyle.Table)
 
         this.showOutputLoading && this.showOutputLoading(true)
-        for(const i in clusters) {
-          const cluster = clusters[i]
+
+        for(const cluster of clusters) {
+          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name, "", "", ""]])
+          if(!cluster.hasIstio) {
+            this.onStreamOutput  && this.onStreamOutput([["", "Istio not installed", "", ""]])
+            continue
+          }
           const output: ActionOutput = []
           const k8sClient = cluster.k8sClient
 
-          output.push([">Cluster: " + cluster.name, "", "", ""])
           const serviceMtlsStatus = await IstioFunctions.getServiceMtlsStatuses(k8sClient)
 
           if(serviceMtlsStatus.length > 0) {
@@ -30,15 +34,20 @@ const plugin : ActionGroupSpec = {
             Object.keys(statusByNamespace).forEach(namespace => {
               output.push([">>"+namespace, "", "", ""])
               statusByNamespace[namespace].forEach(status => {
+                status.policy = status.policy === "-" ? "" : status.policy
+                status.destinationRule = status.destinationRule === "-" ? "" : status.destinationRule
+                const policyRuleOutput: string[] = []
+                status.policy.length > 0 && policyRuleOutput.push("Policy: " + status.policy)
+                status.destinationRule.length > 0 && policyRuleOutput.push("DestRule: " + status.destinationRule)
                 output.push([status.serviceName+":"+status.port, 
-                            ["Policy: " + status.policy, "Rule: " + status.destinationRule],
+                            policyRuleOutput,
                             status.clientProtocol+"/"+status.serverProtocol
                               +(status.serviceMtlsMode ? "("+status.serviceMtlsMode+")" : ""), 
                               status.status])
               })
             })
           } else {
-            output.push([">>Couldn't load mtls status or No services", ""])
+            output.push([">>Couldn't load mtls status or No services", "", "", ""])
           }
           this.onStreamOutput  && this.onStreamOutput(output)
         }

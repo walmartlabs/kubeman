@@ -7,17 +7,21 @@ async function listResources(title: string, getResources: (k8sClient) => Promise
                             onOutput, onStreamOutput, actionContext: ActionContext) {
   const clusters = actionContext.getClusters()
   onOutput([["", title]], ActionOutputStyle.Table)
-  for(const i in clusters) {
-    const cluster = clusters[i]
+
+  for(const cluster of clusters) {
     const output: ActionOutput = []
     output.push([">Cluster: " + cluster.name, ""])
 
-    const resources = await getResources(cluster.k8sClient)
-    resources.length === 0 && output.push(["", "No resource found"])
-    resources.forEach(resource => {
-      output.push([">>" + (resource.name || ""), ""])
-      Object.keys(resource).forEach(key => resource[key] && output.push([key, resource[key]]))
-    })
+    if(cluster.hasIstio) {
+      const resources = await getResources(cluster.k8sClient)
+      resources.length === 0 && output.push(["", "No resource found"])
+      resources.forEach(resource => {
+        output.push([">>" + (resource.name || ""), ""])
+        Object.keys(resource).forEach(key => resource[key] && output.push([key, resource[key]]))
+      })
+    } else {
+      output.push(["", "Istio not installed"])
+    }
     onStreamOutput(output)
   }
 }

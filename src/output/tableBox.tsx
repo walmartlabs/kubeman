@@ -171,7 +171,7 @@ export class TableBox extends React.Component<IProps, IState> {
 
   scrollToBottom() {
     if(this.scrollToRef) {
-      setTimeout(() => this.scrollToRef.scrollIntoView({behavior: 'smooth', block: 'center'}), 300)
+      setTimeout(() => this.scrollToRef && this.scrollToRef.scrollIntoView({behavior: 'smooth', block: 'center'}), 300)
     }
   }
 

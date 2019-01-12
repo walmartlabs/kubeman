@@ -58,6 +58,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   commandHandler?: ((string) => void) = undefined
   tableBox?: TableBox
   actions?: Actions
+  streamOutput: ActionOutput = []
 
   componentDidMount() {
     this.componentWillReceiveProps(this.props)
@@ -83,14 +84,16 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
 
   showOutput : ActionOutputCollector = (output, outputStyle) => {
+    this.streamOutput = []
     this.setState({
-      output, 
+      output,
       outputStyle: outputStyle || ActionOutputStyle.Text, 
       loading: false,
     })
   }
 
   showStreamOutput : ActionStreamOutputCollector = (output) => {
+    this.streamOutput = this.streamOutput.concat(output)
     this.tableBox && this.tableBox.appendOutput(output as ActionOutput)
   }
 
@@ -153,6 +156,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     const showTable = outputStyle === ActionOutputStyle.Table || log
     const compare = outputStyle === ActionOutputStyle.Compare
     const acceptInput = this.actions && this.actions.acceptInput() ? true : false
+    const accumulatedOutput = (output as any[]).concat(this.streamOutput)
 
     return (
       <div className={classes.root} 
@@ -187,7 +191,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                 {showBlackBox && <BlackBox output={output} />}
                 {(showTable || compare) && 
                     <TableOutput  innerRef={ref => this.tableBox=ref}
-                                  output={output as any[]}
+                                  output={accumulatedOutput}
                                   compare={compare} 
                                   log={log}
                                   acceptInput={acceptInput}
