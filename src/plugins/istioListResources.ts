@@ -28,7 +28,8 @@ async function listResources(title: string, getResources: (k8sClient) => Promise
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Recipes",
+  title: "Istio Resource Recipes",
+  order: ActionContextOrder[ActionContextType.Istio],
   actions: [
     {
       name: "List Gateways",

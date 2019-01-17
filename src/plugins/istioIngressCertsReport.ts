@@ -5,7 +5,7 @@ import IstioPluginHelper from '../k8s/istioPluginHelper'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Recipes",
+  title: "Istio Ingress Recipes",
   actions: [
     {
       name: "Ingress Certs Report",

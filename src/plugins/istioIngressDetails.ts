@@ -1,10 +1,12 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
+import IstioFunctions from '../k8s/istioFunctions';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Recipes",
+  title: "Istio Ingress Recipes",
+  order: ActionContextOrder[ActionContextType.Istio]+1,
   actions: [
     {
       name: "View Ingress Details",
@@ -57,8 +59,8 @@ const plugin : ActionGroupSpec = {
           } else {
             output.push(["Istio Proxy Container Not Found", ""])
           }
-          output.push(["Ingress Service", await IstioPluginHelper.getIstioServiceDetails("istio=ingressgateway", k8sClient)])
-          output.push(["Ingress Pods", await IstioPluginHelper.getIstioServicePods("istio=ingressgateway", k8sClient)])
+          output.push(["Ingress Service", await IstioFunctions.getIstioServiceDetails("istio=ingressgateway", k8sClient)])
+          output.push(["Ingress Pods", await IstioFunctions.getIngressGatewayPods(k8sClient)])
           output.push(["Ingress Gateways", await IstioPluginHelper.getIstioIngressGateways(k8sClient)])
           output.push(["Ingress VirtualServices", await IstioPluginHelper.getIstioIngressVirtualServices(k8sClient)])
           this.onStreamOutput  && this.onStreamOutput(output)

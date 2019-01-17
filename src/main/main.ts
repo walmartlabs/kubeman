@@ -11,6 +11,7 @@ import appMenu from './menu'
 import './main.ipc'
 import '../logger/server'
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED="0"
 
 const installExtensions = async () => {
   return Promise.all(

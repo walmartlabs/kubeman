@@ -34,6 +34,12 @@ const plugin : ActionGroupSpec = {
       
       async react(actionContext) {
         this.showOutputLoading && this.showOutputLoading(true)
+        if(actionContext.inputText && actionContext.inputText.includes("ping")
+          && !actionContext.inputText.includes("-c")) {
+            this.onStreamOutput && this.onStreamOutput([["Can't execute ping command without -c option since this will run indefinitely."]])
+            this.showOutputLoading && this.showOutputLoading(false)
+            return
+        }
         const command = actionContext.inputText ? actionContext.inputText.split(" ") : []
         try {
           const result = await k8sFunctions.podExec(this.namespace, this.pod, this.container, this.k8sClient, command)

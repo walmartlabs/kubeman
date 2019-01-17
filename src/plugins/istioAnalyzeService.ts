@@ -10,11 +10,11 @@ import JsonUtil from '../util/jsonUtil';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Recipes",
+  title: "More Istio Recipes",
   actions: [
     {
       name: "Analyze Service",
-      order: 20,
+      order: 22,
       
       async choose(actionContext) {
         if(actionContext.getNamespaces().length === 0) {
@@ -42,7 +42,7 @@ const plugin : ActionGroupSpec = {
         const podsAndContainers = await this.outputPodsAndContainers(service, namespace, cluster.k8sClient)
         if(cluster.hasIstio) {
           const vsGateways = await this.outputVirtualServicesAndGateways(service, namespace, cluster.k8sClient)
-          const ingressPods = await IstioPluginHelper.getIstioServicePods("istio=ingressgateway", cluster.k8sClient, true)
+          const ingressPods = await IstioFunctions.getIngressGatewayPods(cluster.k8sClient, true)
 
           await this.outputRoutingAnalysis(service, podsAndContainers, vsGateways, ingressPods, cluster.k8sClient)
 
@@ -50,9 +50,9 @@ const plugin : ActionGroupSpec = {
             await this.outputCertsStatus(vsGateways.ingressCerts, ingressPods, cluster.k8sClient)
           }
 
-          await this.outputServiceMtlsStatus(service, cluster.k8sClient)
           await this.outputPolicies(service, cluster.k8sClient)
           await this.outputDestinationRules(service, namespace, cluster.k8sClient)
+          await this.outputServiceMtlsStatus(service, namespace, cluster.k8sClient)
         } else {
           this.onStreamOutput && this.onStreamOutput([[">>Istio not installed"]])
         }
@@ -191,10 +191,7 @@ const plugin : ActionGroupSpec = {
           const container = pod.podDetails ? pod.podDetails.containers[0].name : "istio-proxy"
           this.onStreamOutput && this.onStreamOutput([[">>Pod: " + pod.name]])
           try {
-            let commandOutput = (await K8sFunctions.podExec("istio-system", pod.name, container, k8sClient, 
-                                                ["curl", "-s", "127.0.0.1:15000/certs"])).trim()
-            commandOutput = commandOutput.replace("}", "},")
-            const certsLoadedOnIngress = JSON.parse("[" + commandOutput + "]").map(cert => cert.cert_chain)
+            const certsLoadedOnIngress = await IstioFunctions.getIngressCertsFromPod(pod.name, k8sClient)
             for(const path of certPaths) {
               const result = (await K8sFunctions.podExec("istio-system", pod.name, container, k8sClient, ["ls", path])).trim()
               const isPathFound = path === result
@@ -215,9 +212,13 @@ const plugin : ActionGroupSpec = {
         }
       },
 
-      async outputServiceMtlsStatus(service: ServiceDetails, k8sClient: K8sClient) {
-        const status = await IstioFunctions.getServiceMtlsStatus(service.name, k8sClient)
-        this.onStreamOutput && this.onStreamOutput([[">Service MTLS Status"], [status]])
+      async outputServiceMtlsStatus(service: ServiceDetails, namespace: string, k8sClient: K8sClient) {
+        const mtlsStatuses = await IstioFunctions.getServiceMtlsStatuses(k8sClient, service.name, namespace)
+        for(const mtlsStatus of mtlsStatuses) {
+          const mtlsAccessStatus = await IstioPluginHelper.getServiceMtlsAccessStatus(namespace, service, mtlsStatus, k8sClient)
+          mtlsStatus.access = mtlsAccessStatus.access
+        }
+        this.onStreamOutput && this.onStreamOutput([[">Service MTLS Status"], [mtlsStatuses]])
       },
 
       async outputPolicies(service: ServiceDetails, k8sClient: K8sClient) {

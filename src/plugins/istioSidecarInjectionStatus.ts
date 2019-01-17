@@ -3,7 +3,7 @@ import K8sFunctions from '../k8s/k8sFunctions';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Recipes",
+  title: "More Istio Recipes",
   actions: [
     {
       name: "Sidecar Injection Report",

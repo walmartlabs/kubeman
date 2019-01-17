@@ -16,7 +16,9 @@ function getUserKubeConfig() {
 
 export function getAllClusters() : Cluster[] {
   const kubeConfig = getUserKubeConfig()
-  return jp.query(kubeConfig, '$.contexts[*].context.cluster').map(name => new Cluster(name))
+  return jp.query(kubeConfig, '$.contexts[*].context.cluster')
+                    .filter((item, index, arr) => arr.indexOf(item) === index)
+                    .map(name => new Cluster(name))
 }
 
 function getClientForCluster(cluster: Cluster) {

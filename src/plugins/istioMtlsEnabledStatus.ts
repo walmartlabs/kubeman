@@ -6,10 +6,10 @@ import IstioPluginHelper from '../k8s/istioPluginHelper'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Recipes",
+  title: "More Istio Recipes",
   actions: [
     {
-      name: "MTLS Enablement Report",
+      name: "MTLS Enabled Status ",
       order: 16,
       
       async act(actionContext) {
@@ -31,7 +31,7 @@ const plugin : ActionGroupSpec = {
           const mtlsStatus = await IstioFunctions.getMtlsStatus(k8sClient)
           output.push(["Global MTLS Enabled", mtlsStatus.isGlobalMtlsEnabled.toString()])
           mtlsStatus.namespacesWithDefaultMtls.length > 0 &&
-              output.push(["Namespaces With Default MTLS", mtlsStatus.namespacesWithDefaultMtls])
+              output.push(["Namespaces With MTLS Policies", mtlsStatus.namespacesWithDefaultMtls])
 
           if(mtlsStatus.servicesWithMtlsPolicies.length > 0) {
             output.push([">>Services With MTLS Policies", ""])

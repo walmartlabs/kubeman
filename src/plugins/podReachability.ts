@@ -32,7 +32,7 @@ const plugin : ActionGroupSpec = {
             ">From: " + selection.title + ", Cluster: " + selection.cluster, "",""]])
           try {
             const result = await k8sFunctions.podExec(selection.namespace, selection.pod, selection.container, 
-                                selection.k8sClient, ["ping", "-c 1", "127.0.0.1"])
+                                selection.k8sClient, ["ping", "-c", "1", "127.0.0.1"])
             const pingExists = result.includes("transmitted")
             if(!pingExists) {
               this.onStreamOutput && this.onStreamOutput([
@@ -55,8 +55,8 @@ const plugin : ActionGroupSpec = {
             }
             const ip = podContainerDetails.podStatus.podIP
             const result = await k8sFunctions.podExec(selection.namespace, selection.pod, selection.container, 
-              selection.k8sClient, ["ping", "-c 2", ip])
-            const pingSuccess = result.includes("2 received")
+              selection.k8sClient, ["ping", "-c", "2", ip])
+            const pingSuccess = result.includes("0% packet loss")
             this.onStreamOutput && this.onStreamOutput([[
               [target.pod, "IP: "+ip, "Cluster: " + target.cluster],
               result,

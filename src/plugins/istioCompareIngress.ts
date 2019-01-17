@@ -3,10 +3,11 @@ import ActionContext from '../actions/actionContext'
 import K8sFunctions from '../k8s/k8sFunctions'
 import K8sPluginHelper from '../k8s/k8sPluginHelper'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
+import IstioFunctions from '../k8s/istioFunctions';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Recipes",
+  title: "Istio Ingress Recipes",
   actions: [
     {
       name: "Compare Ingress",
@@ -101,7 +102,7 @@ const plugin : ActionGroupSpec = {
         this.comparisonMap["Ingress VirtualServices"] = []
         for(const cluster of clusters) {
           const k8sClient = cluster.k8sClient
-          const ingressService = (await IstioPluginHelper.getIstioServiceDetails("istio=ingressgateway", k8sClient))[0]
+          const ingressService = (await IstioFunctions.getIstioServiceDetails("istio=ingressgateway", k8sClient))[0]
           this.comparisonMap["Ingress Service Type"].push(ingressService.type)
           this.comparisonMap["Ingress Service IPs"].push({
             clusterIP: ingressService.clusterIP, 
@@ -110,7 +111,7 @@ const plugin : ActionGroupSpec = {
             loadBalancerSourceRanges: ingressService.loadBalancerSourceRanges,
           })
           this.comparisonMap["Ingress Service Ports"].push(ingressService.ports)
-            this.comparisonMap["Ingress Pods"].push(await IstioPluginHelper.getIstioServicePods("istio=ingressgateway", k8sClient))
+            this.comparisonMap["Ingress Pods"].push(await IstioFunctions.getIngressGatewayPods(k8sClient))
           this.comparisonMap["Ingress Gateways"].push(await IstioPluginHelper.getIstioIngressGateways(k8sClient))
           this.comparisonMap["Ingress VirtualServices"].push(await IstioPluginHelper.getIstioIngressVirtualServices(k8sClient))
         }

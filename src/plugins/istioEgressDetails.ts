@@ -5,7 +5,8 @@ import IstioPluginHelper from '../k8s/istioPluginHelper'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Recipes",
+  title: "More Istio Recipes",
+  order: ActionContextOrder[ActionContextType.Istio]+2,
   actions: [
     {
       name: "View Egress Details",
@@ -40,8 +41,8 @@ const plugin : ActionGroupSpec = {
           output.push(["Replicas Available/Ready", egressDeployment.status.availableReplicas
                                                     + "/" + egressDeployment.status.readyReplicas])
 
-          output.push(["Egress Service", await IstioPluginHelper.getIstioServiceDetails("istio=egressgateway", k8sClient)])
-          output.push(["Egress Pods", await IstioPluginHelper.getIstioServicePods("istio=egressgateway", k8sClient)])
+          output.push(["Egress Service", await IstioFunctions.getIstioServiceDetails("istio=egressgateway", k8sClient)])
+          output.push(["Egress Pods", await IstioFunctions.getIngressGatewayPods(k8sClient)])
           output.push(["Egress Gateways", await IstioPluginHelper.getIstioEgressGateways(k8sClient)])
           output.push(["Egress VirtualServices", await IstioPluginHelper.getIstioEgressVirtualServices(k8sClient)])
 

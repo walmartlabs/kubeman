@@ -128,6 +128,12 @@ export default class K8sFunctions {
     return services
   }
 
+  static getServiceDetails = async (namespace: string, service: string, k8sClient: K8sClient) => {
+    let services = await K8sFunctions.getNamespaceServices("", namespace, k8sClient)
+    services = services.filter(s => s.name.includes(service) || service.includes(s.name))
+    return services.length > 0 ? services[0] : undefined
+  }
+
   static getClusterServices = async (cluster: string, k8sClient: K8sClient) => {
     const namespaces = await K8sFunctions.getClusterNamespaces(cluster, k8sClient)
     const services : {[name: string] : string[]} = {}
@@ -356,7 +362,7 @@ export default class K8sFunctions {
 
   static async getPodsAndContainersForService(namespace: string, service: ServiceDetails, 
                                             k8sClient: K8sClient, loadDetails: boolean = false) {
-    if(!service.selector || service.selector.length === 0) {
+    if(!service || !service.selector || service.selector.length === 0) {
       return {}
     }
     const servicePods = await K8sFunctions.getPodsByLabels(namespace, 

@@ -55,8 +55,21 @@ export class ActionLoader {
         if(actionGroupSpec.title) {
           const existingSpec = actionGroupsMap.get(actionGroupSpec.title)
           if(existingSpec) {
+            if(actionGroupSpec.order) {
+              existingSpec.order = actionGroupSpec.order
+            }
             existingSpec.actions = existingSpec.actions.concat(actionGroupSpec.actions)
-          } else {actionGroupSpec
+          } else {
+            if(!actionGroupSpec.order) {
+              actionGroupSpec.order = ActionContextOrder[actionGroupSpec.context || ActionContextType.Other]
+              const existingGroupOrders = Array.from(actionGroupsMap.values())
+                                            .filter(group => group.context === actionGroupSpec.context)
+                                            .map(group => group.order)
+                                            .sort((o1,o2) => (o2||100)-(o1||100))
+              if(actionGroupSpec.title && existingGroupOrders.length > 0) {
+                actionGroupSpec.order = (existingGroupOrders[0]||actionGroupSpec.order||0)+1 
+              }
+            }
             actionGroupsMap.set(actionGroupSpec.title, actionGroupSpec)
           }
         } else {
@@ -68,19 +81,14 @@ export class ActionLoader {
     })
     if(this.onLoad) {
       const actionGroups : ActionGroupSpecs = Array.from(actionGroupsMap.values())
-      actionGroups.sort((i1,i2) => (i1.order || 100) - (i2.order || 100))
+      actionGroups.sort((i1,i2) => (i1.order !== i2.order) ? (i1.order || 100) - (i2.order || 100)
+                                      : (i1.title||"").localeCompare(i2.title||"") )
       actionGroups.forEach(group => group.actions.sort((i1,i2) => (i1.order || 100) - (i2.order || 100)))
       this.onLoad(actionGroups)
     }
   }
 
   static configureActions(actionGroupSpec: ActionGroupSpec) {
-    if(!actionGroupSpec.order) {
-      actionGroupSpec.order = ActionContextOrder[actionGroupSpec.context || ActionContextType.Other]
-    }
-    if(actionGroupSpec.title) {
-      actionGroupSpec.order && actionGroupSpec.order++
-    }
     actionGroupSpec.title = actionGroupSpec.title || (actionGroupSpec.context + " Recipes")
 
     switch(actionGroupSpec.context) {
