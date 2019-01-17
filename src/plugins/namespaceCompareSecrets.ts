@@ -25,7 +25,6 @@ const plugin : ActionGroupSpec = {
                                       .map(cluster => cluster.k8sClient)[0]
           const secrets = await k8sFunctions.getNamespaceSecrets(namespace.cluster.name, namespace.name, k8sClient)
           secrets.forEach(secret => {
-            secret.name = secret.name.slice(0, secret.name.lastIndexOf('-'))
             if(!secretsMap[namespace.name][secret.name]) {
               secretsMap[namespace.name][secret.name] = {}
             }

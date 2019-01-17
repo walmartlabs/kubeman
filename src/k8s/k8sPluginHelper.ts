@@ -75,7 +75,7 @@ export default class K8sPluginHelper {
   }
 
   static async generateComparisonOutput(actionContext, onOutput, name, ...fields) {
-    let selections = K8sPluginHelper.getSelections(actionContext, fields)
+    let selections = K8sPluginHelper.getSelections(actionContext, ...fields)
     if(selections.length < 2) {
       onOutput(["No " + name + " selected"], 'Text')
       return
@@ -84,9 +84,8 @@ export default class K8sPluginHelper {
     const outputHeaders = ["Keys"]
     const outputRows: ActionOutput = []
     outputRows.push(["cluster"])
-
     const firstItem = selections[0].item
-    const outputKeys = typeof firstItem !== 'string' ? Object.keys(firstItem) : []
+    const outputKeys = firstItem && typeof firstItem !== 'string' ? Object.keys(firstItem) : []
     outputKeys.forEach(key => outputRows.push([key]))
 
     selections.forEach(selection => {
@@ -113,7 +112,9 @@ export default class K8sPluginHelper {
     selections = selections.map(selection => {
       const data: DataObject = {}
       let lastIndex = 0
+      let keyField = 'name'
       if(fields.length > 0) {
+        keyField = fields[0]
         fields.forEach((field, index) => {
           data[field] = selection[index]
           lastIndex++
@@ -126,7 +127,7 @@ export default class K8sPluginHelper {
       data.namespace = selection[lastIndex].replace("Namespace: ", "")
       data.cluster = selection[lastIndex+1].replace("Cluster: ", "")
       const items = K8sPluginHelper.items[data.cluster][data.namespace]
-                  .filter(item => (item.name || item) === data.title)
+                  .filter(item => (item[keyField] || item) === data.title)
       items.length > 0 && (data.item = items[0])
       return data
     })

@@ -29,7 +29,8 @@ const plugin : ActionGroupSpec = {
           output.push([">" + pod +", Cluster: " + cluster, ""])
           output.push(["cluster", cluster])
           if(podDetails) {
-            Object.keys(podDetails).forEach((key, index) => output.push([key, podDetails[key] ||'']))
+            Object.keys(podDetails).forEach((key, index) => 
+                          podDetails[key] && output.push([key, podDetails[key]]))
           }
           this.onStreamOutput && this.onStreamOutput(output)
         })
