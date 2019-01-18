@@ -1,5 +1,7 @@
 # kubeman
 ## To build and run the app
+PreRequisite: Node.js and npm
+
 1. Clone repo
 2. 'npm install' - to install dependencies
 3. 'npm run dev' - to run app in dev mode
