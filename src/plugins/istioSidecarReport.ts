@@ -33,7 +33,7 @@ const plugin : ActionGroupSpec = {
           let output: ActionOutput = []
           output.push([">>Namespace", "Sidecar Injection Status"])
       
-          const namespaces = await K8sFunctions.getClusterNamespaces(cluster.name, cluster.k8sClient)
+          const namespaces = await K8sFunctions.getClusterNamespaces(cluster.k8sClient)
           namespaces.length === 0 && output.push(["", "No namespaces found"])
           namespaces.forEach(namespace => {
             const isSidecarInjectionEnabled = namespace.labels && 

@@ -10,7 +10,7 @@ const plugin : ActionGroupSpec = {
       order: 1,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
-        this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.Table)
+        this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.TableWithHealth)
         this.showOutputLoading && this.showOutputLoading(true)
         for(const i in clusters) {
           const output: ActionOutput = []

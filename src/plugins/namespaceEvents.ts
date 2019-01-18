@@ -12,7 +12,7 @@ const plugin : ActionGroupSpec = {
         this.onOutput && this.onOutput([[
           ["Event", "LastTimestamp", "(Count)"],
           "Details",
-        ]], ActionOutputStyle.Table)
+        ]], ActionOutputStyle.TableWithHealth)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const clusters = actionContext.getClusters()

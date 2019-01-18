@@ -42,15 +42,14 @@ export async function getClientForCluster(cluster: Cluster) {
   }
   try {
     const result = await extensions.customresourcedefinitions.get()
-    const crds = result.body.items ? result.body.items.filter(item => item.spec.group.includes("istio.io")) : []
-    const crdNames: string[] = []
+    const crds = result.body.items ? result.body.items : []
+    const istioCRDS = crds.filter(item => item.spec.group.includes("istio.io")).map(crd => crd.metadata.name)
     crds.forEach(crd => {
       client.addCustomResourceDefinition(crd)
-      crdNames.push(crd.metadata.name)
     })
     if(client.apis["config.istio.io"]) {
       k8sClient.istio = client.apis["config.istio.io"].v1alpha2
-      k8sClient.istio.crds = crdNames
+      k8sClient.istio.crds = istioCRDS
     }
     if(client.apis["networking.istio.io"]) {
       const networkingAPI = client.apis["networking.istio.io"].v1alpha3

@@ -21,6 +21,7 @@ export enum ActionOutputStyle {
   None = "None",
   Text = "Text",
   Table = "Table",
+  TableWithHealth = "TableWithHealth",
   Compare = "Compare",
   Log = "Log"
 }

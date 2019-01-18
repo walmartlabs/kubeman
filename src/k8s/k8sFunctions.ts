@@ -63,7 +63,24 @@ export default class K8sFunctions {
     return nodes
   }
   
-  static getClusterNamespaces = async (cluster: string, k8sClient: K8sClient) => {
+  static getClusterCRDs = async (k8sClient: K8sClient) => {
+    const crds : any[] = []
+    const result = await k8sClient.extensions.customresourcedefinitions.get()
+    if(result && result.body) {
+      const items = result.body.items
+      items.forEach(item => {
+        crds.push({
+          ...K8sFunctions.extractMetadata(item),
+          spec: item.spec,
+          conditions: item.status.conditions,
+          storedVersions: item.status.storedVersions
+        })
+      })
+    }
+    return crds
+  }
+  
+  static getClusterNamespaces = async (k8sClient: K8sClient) => {
     const namespaceList : any[] = []
     const result = await k8sClient.namespaces.get()
     if(result && result.body) {
@@ -135,7 +152,7 @@ export default class K8sFunctions {
   }
 
   static getClusterServices = async (cluster: string, k8sClient: K8sClient) => {
-    const namespaces = await K8sFunctions.getClusterNamespaces(cluster, k8sClient)
+    const namespaces = await K8sFunctions.getClusterNamespaces(k8sClient)
     const services : {[name: string] : string[]} = {}
     for(const i in namespaces) {
       services[namespaces[i].name] = await K8sFunctions.getNamespaceServiceNames(namespaces[i].name, k8sClient)
@@ -186,7 +203,7 @@ export default class K8sFunctions {
   }
 
   static getDeploymentListForCluster = async (cluster: string, k8sClient: K8sClient) => {
-    const namespaces = await K8sFunctions.getClusterNamespaces(cluster, k8sClient)
+    const namespaces = await K8sFunctions.getClusterNamespaces(k8sClient)
     const deployments = {}
     for(const i in namespaces) {
       deployments[namespaces[i].name] = await K8sFunctions.getDeploymentListForNamespace(namespaces[i].name, k8sClient)

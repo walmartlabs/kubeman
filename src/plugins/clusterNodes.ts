@@ -15,7 +15,7 @@ const plugin : ActionGroupSpec = {
           ["Node", "(CreationTime)"],
           "Info",
           "Conditions",
-        ]], ActionOutputStyle.Table)
+        ]], ActionOutputStyle.TableWithHealth)
         this.showOutputLoading && this.showOutputLoading(true)
 
         for(const i in clusters) {

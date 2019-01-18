@@ -153,8 +153,9 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
     const showBlackBox = outputStyle === ActionOutputStyle.Text
     const log = outputStyle === ActionOutputStyle.Log
-    const showTable = outputStyle === ActionOutputStyle.Table || log
+    const health = outputStyle === ActionOutputStyle.TableWithHealth
     const compare = outputStyle === ActionOutputStyle.Compare
+    const showTable = outputStyle === ActionOutputStyle.Table || log || health || compare
     const acceptInput = this.actions && this.actions.acceptInput() ? true : false
     const accumulatedOutput = (output as any[]).concat(this.streamOutput)
 
@@ -189,11 +190,12 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
               <TableCell className={classes.outputCell}>
                 {loading && <CircularProgress className={classes.loading} />}
                 {showBlackBox && <BlackBox output={output} />}
-                {(showTable || compare) && 
+                {showTable && 
                     <TableOutput  innerRef={ref => this.tableBox=ref}
                                   output={accumulatedOutput}
                                   compare={compare} 
                                   log={log}
+                                  health={health}
                                   acceptInput={acceptInput}
                                   scrollMode={scrollMode}
                                   onActionTextInput={this.onActionTextInput}

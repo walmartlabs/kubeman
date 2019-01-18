@@ -69,6 +69,15 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     padding: 0,
     height: 24,
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#dee6ed',
+    borderBottom: 0,
+  },
+  tableCellInnerRow: {
+    padding: 0,
+    height: 24,
+    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#dee6ed',
+  },
+  tableRowSpacer: {
+    height: 3,
   },
   tableAppendedRow: {
     backgroundColor: palette.type ==='dark' ? '#806f00' : '#ffdd00',
@@ -77,7 +86,6 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     padding: '0px',
     color: 'inherit',
     verticalAlign: 'top',
-    borderBottom: palette.type ==='dark' ? borderDark : borderLight,
     minWidth: 120,
     fontSize: palette.type ==='dark' ? '0.9rem' : '0.87rem',
     [breakpoints.up('sm')]: {
@@ -100,7 +108,6 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   },
   tableKeyCell: {
     backgroundColor: palette.type ==='dark' ? palette.background.default : '#bcccdc',
-    borderBottom: borderDark,
     width: '22%',
     minWidth: 120,
   },
@@ -116,16 +123,19 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   },
   tableCellHealthGood: {
     backgroundColor: palette.type ==='dark' ? '#2E7D32' : '#DCEDC8',
-    borderBottom: palette.type ==='dark' ? borderDark : borderLight,
   },
   tableCellHealthBad: {
     backgroundColor: palette.type ==='dark' ? '#805500' : '#ff8000',
-    borderBottom: palette.type ==='dark' ? borderDark : borderLight,
   },
   tableCellHidden: {
     padding: 0, 
     textAlign: 'center',
     backgroundColor: palette.type ==='dark' ? palette.background.default : '#bcccdc',
+  },
+  tableGridCell: {
+    '&:not(:last-child)': {
+      borderBottom: '1px dashed #808080'
+    }
   },
   searchHighlight: {
     backgroundColor: palette.type ==='dark' ? '#804d00' : '#FFCC80',

@@ -7,8 +7,8 @@ import {ActionGroupSpec, ActionContextType,
 async function compareClusterNamespaces(cluster1: string, k8sClient1: K8sClient, 
                                         cluster2: string, k8sClient2: K8sClient, 
                                         output: ActionOutput) {
-  const namespaces1 = await k8sFunctions.getClusterNamespaces(cluster1, k8sClient1)
-  const namespaces2 = await k8sFunctions.getClusterNamespaces(cluster2, k8sClient2)
+  const namespaces1 = await k8sFunctions.getClusterNamespaces(k8sClient1)
+  const namespaces2 = await k8sFunctions.getClusterNamespaces(k8sClient2)
   const allNamespaces = {}
 
   namespaces1.forEach(ns => allNamespaces[ns.name]=["Yes", "No"])

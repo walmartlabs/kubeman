@@ -19,12 +19,12 @@ function compareConfigs(onStreamOutput, pilotConfigs: any[], sidecarConfigs: any
 
   Object.keys(sidecarConfig).forEach(key => {
     if(key.includes("dynamic")) {
-      sidecarConfig[key].forEach((c,i) => {
+      sidecarConfig[key].forEach(c => {
         if(items[c[sidecarItemKey].name]) {
           const pilotItem = JsonUtil.transformObject(items[c[sidecarItemKey].name][0])
           const sidecarItem = JsonUtil.transformObject(c[sidecarItemKey])
           const matches = JsonUtil.compareObjects(pilotItem, sidecarItem)
-          if(matches && i > 0) {
+          if(matches) {
             matchingRecords.push(c[sidecarItemKey].name)
             delete items[c[sidecarItemKey].name]
           } else {

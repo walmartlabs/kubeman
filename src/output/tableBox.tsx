@@ -13,14 +13,12 @@ import './tableBox.css'
 interface ITableCellProps extends WithStyles<typeof styles> {
   index: number
   cell: Cell
-  isKeyColumn: boolean
-  highlight: boolean
-  compare: boolean
-  log: boolean
   colSpan?: number
+  className: string
 }
 
-function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, compare: boolean, log: boolean, classes: any) : string {
+function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, compare: boolean, 
+                          health: boolean, log: boolean, classes: any) : string {
   let className = classes.tableCell
   if(!cell.isGroup && !cell.isSubGroup ) {
     if(isKeyColumn) {
@@ -32,7 +30,7 @@ function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, 
     if(!isKeyColumn && compare) {
       className = className + " " + classes.tableCellCompare
     }
-    if(!isKeyColumn && !compare && !log && cell.isHealthStatusField) {
+    if(health && !isKeyColumn && !compare && !log && cell.isHealthStatusField) {
       className = className + " " + (cell.isHealthy ? classes.tableCellHealthGood : 
                       cell.isUnhealthy ? classes.tableCellHealthBad : classes.tableCell)
     } 
@@ -40,8 +38,7 @@ function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, 
   return className
 }
 
-const TextCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlight, compare, log, classes}: ITableCellProps) => {
-  const className = computeCellClass(cell, isKeyColumn, highlight, compare, log, classes)
+const TextCell = withStyles(styles)(({index, cell, colSpan, className, classes}: ITableCellProps) => {
   return cell.render((formattedText) => {
     return (
       <TableCell key={"textcell"+index} component="th" scope="row" colSpan={colSpan}
@@ -51,8 +48,7 @@ const TextCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlig
     )})
 })
 
-const GridCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlight, compare, log, classes}: ITableCellProps) => {
-  let className = computeCellClass(cell, isKeyColumn, highlight, compare, log, classes)
+const GridCell = withStyles(styles)(({index, cell, colSpan, className, classes}: ITableCellProps) => {
   return (
     <TableCell key={"gridcell"+index} component="th" scope="row" colSpan={colSpan}
               className={className}
@@ -61,7 +57,7 @@ const GridCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlig
         <TableBody>
           {cell.render((formattedText, gridIndex) => {
             return (
-              <TableRow key={gridIndex} className={classes.tableRow + " gridRow"}>
+              <TableRow key={gridIndex} className={classes.tableCellInnerRow + " gridRow"}>
                 <TableCell component="th" scope="row" colSpan={colSpan}
                 className={className}
                 style={{paddingLeft: cell.isGroup ? '2px' : '10px', border: 0}}
@@ -78,8 +74,9 @@ const GridCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlig
 
 interface IProps extends WithStyles<typeof styles> {
   output: ActionOutput
-  compare?: boolean
+  compare: boolean
   log: boolean
+  health: boolean
   acceptInput: boolean
   scrollMode: boolean
   onActionTextInput: (text: string) => void
@@ -206,17 +203,17 @@ export class TableBox extends React.Component<IProps, IState> {
                 onClick={this.onGroupClick.bind(this, row.isGroup ? row.groupIndex : undefined)}
       >
         {row.cells.filter(cell => cell.hasContent)
-          .map((cell,i) => 
-            <TextCell key={"GroupCell"+i}
-              index={i}
-              cell={cell}
-              isKeyColumn={false}
-              highlight={false}
-              compare={false}
-              log={false}
-              colSpan={colspans[i]}
-            />
-          )
+          .map((cell,i) => {
+            const cellClass = computeCellClass(cell, false, false, false, false, false, classes)
+            return (
+              <TextCell key={"GroupCell"+i}
+                index={i}
+                cell={cell}
+                className={cellClass}
+                colSpan={colspans[i]}
+              />
+            )
+          })
         }
       </TableRow>
     )
@@ -224,40 +221,43 @@ export class TableBox extends React.Component<IProps, IState> {
   }
 
   renderRow(row: Row, rowIndex: number, isAppendedRow: boolean) {
-    const {classes, compare, log} = this.props
+    const {classes, compare, health, log} = this.props
+    console.log(health)
     let highlight = compare ? row.lastTwoColumnsDiffer : false
-    return (
+    const components : any[] = []
+    components.push(
       <TableRow key={rowIndex} 
                 className={classes.tableRow + " " + 
                 (isAppendedRow && this.props.scrollMode ? classes.tableAppendedRow : "")} >
       {row.cells.map((cell, ci) => {
+        const isKeyColumn = cell.isFirstColumn && row.columnCount > 1
+        const cellClass = computeCellClass(cell, isKeyColumn, highlight, compare, health, log, classes)
         if(cell.isArray) {
           return (
             <GridCell key={"GridCell"+ci} 
                       index={ci} 
                       cell={cell}
-                      isKeyColumn={cell.isFirstColumn && row.columnCount > 1}
-                      highlight={highlight}
-                      log={log}
-                      compare={ci !== 0 && compare || false}
-                      />
+                      className={cellClass}
+            />
           )
         } else {
           return (
             <TextCell key={"TextCell"+ci} 
                       index={ci} 
                       cell={cell}
-                      isKeyColumn={cell.isFirstColumn && row.columnCount > 1}
-                      highlight={highlight} 
-                      compare={compare || false}
-                      log={log}
+                      className={cellClass}
                       colSpan={1}
-                      />
+            />
           )
         }
       })}
       </TableRow>
     )
+    components.push(
+      <TableRow key={rowIndex+".space"} className={classes.tableRowSpacer}>
+      </TableRow>
+    )
+    return components
   }
 
   renderHeaderRow() {

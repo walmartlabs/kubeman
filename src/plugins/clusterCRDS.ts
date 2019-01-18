@@ -8,18 +8,19 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       order: 3,
-      name: "List Namespaces",
+      name: "List CRDs",
       async act(actionContext: ActionContext) {
-        this.onOutput && this.onOutput([["Namespace", "Labels", "Created", "Status"]], ActionOutputStyle.TableWithHealth)
+        this.onOutput && this.onOutput([["Name", "Labels", "StoredVersions", "Created At", "Status"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const clusters = actionContext.getClusters()
         for(const i in clusters) {
           const output : ActionOutput  = []
           const cluster = clusters[i]
-          output.push([">Cluster: " + cluster.name, "", "", ""])
-          const namespaces = await k8sFunctions.getClusterNamespaces(cluster.k8sClient)
-          namespaces.forEach(ns => output.push([ns.name, ns.labels, ns.creationTimestamp, ns.status]))
+          output.push([">Cluster: " + cluster.name, "", "", "", ""])
+          const crds = await k8sFunctions.getClusterCRDs(cluster.k8sClient)
+          crds.forEach(crd => output.push([crd.name, crd.labels, crd.storedVersions, 
+                                            crd.creationTimestamp, crd.conditions]))
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
