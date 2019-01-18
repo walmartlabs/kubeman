@@ -16,10 +16,11 @@ interface ITableCellProps extends WithStyles<typeof styles> {
   isKeyColumn: boolean
   highlight: boolean
   compare: boolean
+  log: boolean
   colSpan?: number
 }
 
-function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, compare: boolean, classes: any) : string {
+function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, compare: boolean, log: boolean, classes: any) : string {
   let className = classes.tableCell
   if(!cell.isGroup && !cell.isSubGroup ) {
     if(isKeyColumn) {
@@ -31,7 +32,7 @@ function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, 
     if(!isKeyColumn && compare) {
       className = className + " " + classes.tableCellCompare
     }
-    if(!isKeyColumn && !compare && cell.isHealthStatusField) {
+    if(!isKeyColumn && !compare && !log && cell.isHealthStatusField) {
       className = className + " " + (cell.isHealthy ? classes.tableCellHealthGood : 
                       cell.isUnhealthy ? classes.tableCellHealthBad : classes.tableCell)
     } 
@@ -39,8 +40,8 @@ function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, 
   return className
 }
 
-const TextCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlight, compare, classes}: ITableCellProps) => {
-  const className = computeCellClass(cell, isKeyColumn, highlight, compare, classes)
+const TextCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlight, compare, log, classes}: ITableCellProps) => {
+  const className = computeCellClass(cell, isKeyColumn, highlight, compare, log, classes)
   return cell.render((formattedText) => {
     return (
       <TableCell key={"textcell"+index} component="th" scope="row" colSpan={colSpan}
@@ -50,8 +51,8 @@ const TextCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlig
     )})
 })
 
-const GridCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlight, compare, classes}: ITableCellProps) => {
-  let className = computeCellClass(cell, isKeyColumn, highlight, compare, classes)
+const GridCell = withStyles(styles)(({index, cell, colSpan, isKeyColumn, highlight, compare, log, classes}: ITableCellProps) => {
+  let className = computeCellClass(cell, isKeyColumn, highlight, compare, log, classes)
   return (
     <TableCell key={"gridcell"+index} component="th" scope="row" colSpan={colSpan}
               className={className}
@@ -212,6 +213,7 @@ export class TableBox extends React.Component<IProps, IState> {
               isKeyColumn={false}
               highlight={false}
               compare={false}
+              log={false}
               colSpan={colspans[i]}
             />
           )
@@ -235,7 +237,8 @@ export class TableBox extends React.Component<IProps, IState> {
                       index={ci} 
                       cell={cell}
                       isKeyColumn={cell.isFirstColumn && row.columnCount > 1}
-                      highlight={highlight || false}
+                      highlight={highlight}
+                      log={log}
                       compare={ci !== 0 && compare || false}
                       />
           )
@@ -245,8 +248,9 @@ export class TableBox extends React.Component<IProps, IState> {
                       index={ci} 
                       cell={cell}
                       isKeyColumn={cell.isFirstColumn && row.columnCount > 1}
-                      highlight={highlight || false} 
+                      highlight={highlight} 
                       compare={compare || false}
+                      log={log}
                       colSpan={1}
                       />
           )

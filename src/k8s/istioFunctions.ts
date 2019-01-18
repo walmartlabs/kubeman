@@ -1,5 +1,5 @@
 import {K8sClient} from './k8sClient'
-import K8sFunctions from '../k8s/k8sFunctions';
+import K8sFunctions, { GetItemsFunction } from '../k8s/k8sFunctions';
 
 export default class IstioFunctions {
 
@@ -163,6 +163,13 @@ export default class IstioFunctions {
                                 "match", "actions", "yaml") as any[]
   }
 
+  static listAnyResource = async (resource: string, k8sClient: K8sClient) => {
+    if(k8sClient.istio[resource]) {
+      return IstioFunctions.extractResource(await k8sClient.istio[resource].get(), "yaml") as any[]
+    }
+    return []
+  }
+
   static getMtlsStatus = async (k8sClient: K8sClient) => {
     let isGlobalMtlsEnabled: boolean = false
     const namespacesWithDefaultMtls: string[] = []
@@ -304,7 +311,11 @@ export default class IstioFunctions {
   }
 
   static async getIngressGatewayPods(k8sClient: K8sClient, loadDetails: boolean = false) {
-    return IstioFunctions.getIstioServicePods("istio=ingressgateway", k8sClient, true)
+    return IstioFunctions.getIstioServicePods("istio=ingressgateway", k8sClient, loadDetails)
+  }
+
+  static async getPilotPods(k8sClient: K8sClient, loadDetails: boolean = false) {
+    return IstioFunctions.getIstioServicePods("istio=pilot", k8sClient, loadDetails)
   }
 
   static getIngressCertsFromPod = async (pod: string, k8sClient: K8sClient) => {
@@ -323,4 +334,129 @@ export default class IstioFunctions {
     return IstioFunctions.getIngressCertsFromPod(ingressPods[0].name, k8sClient)
   }
 
+  static async getIstioProxyConfigDump(k8sClient: K8sClient, namespace: string, pod: string, configType?: string) {
+    try {
+      const result = JSON.parse(await K8sFunctions.podExec(namespace, pod, "istio-proxy", k8sClient, 
+                                  ["curl", "-s", "http://127.0.0.1:15000/config_dump"]))
+      if(result.configs.clusters) {
+        result.configs = Object.values(result.configs)
+      }
+      let configs = result.configs
+      if(configType) {
+        configs = configs.filter(c => c["@type"].includes(configType))
+      }
+      configs = configs.map(config => {
+        if(configType) {
+          return config[Object.keys(config).filter(key => key.includes("dynamic"))[0]]
+        } else {
+          return config
+        }
+      })
+      return configType ? configs[0] : configs
+    } catch(error) {
+      console.log(error)
+    }
+    return []
+  }
+
+  static async getIngressConfigDump(k8sClient: K8sClient, configType?: string) {
+    const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
+    if(!ingressPods || ingressPods.length === 0) {
+      console.log("IngressGateway not found")
+      return []
+    }
+
+    const ingressPod = ingressPods[0]
+    return IstioFunctions.getIstioProxyConfigDump(k8sClient, "istio-system", ingressPod.name, configType)
+  }
+  static async executeOnAnyPilotPod(k8sClient: K8sClient, command: string[]) {
+    const pilotPods = await IstioFunctions.getPilotPods(k8sClient)
+    return K8sFunctions.podExec("istio-system", pilotPods[0].name, "discovery", k8sClient, command)
+  }
+
+  static async getPilotEndpoints(k8sClient: K8sClient, service?: string, namespace?: string) {
+    if(!k8sClient.istio) {
+      return []
+    }
+    const result = await IstioFunctions.executeOnAnyPilotPod(k8sClient,
+                                  ["curl", "-s", "localhost:8080/debug/edsz"])
+    if(result) {
+      let pilotEndpoints = JSON.parse(result) as any[]
+      if(service && namespace) {
+        const text = service + "." + namespace
+        pilotEndpoints = pilotEndpoints.filter(e => e.clusterName.includes(text))
+      }
+      return pilotEndpoints
+    }
+    return []
+
+  }
+
+  static async getPilotMetrics(k8sClient: K8sClient) {
+    if(!k8sClient.istio) {
+      return undefined
+    }
+    return IstioFunctions.executeOnAnyPilotPod(k8sClient,
+                                  ["curl", "-s", "localhost:8080/metrics"])
+  }
+
+  static async getPilotSidecarSyncStatus(k8sClient: K8sClient) {
+    if(!k8sClient.istio) {
+      return []
+    }
+    const result = await IstioFunctions.executeOnAnyPilotPod(k8sClient,
+                                  ["curl", "-s", "localhost:8080/debug/syncz"])
+    return result ? JSON.parse(result) as any[] : []
+  }
+
+  static async getPilotConfigDump(k8sClient: K8sClient, proxyID: string, configType?: string) {
+    try {
+
+      const result = JSON.parse(await IstioFunctions.executeOnAnyPilotPod(k8sClient,
+                                    ["curl", "-s", "localhost:8080/debug/config_dump?proxyID="+proxyID]))
+      let configs = result.configs
+      if(configType) {
+        configs = configs.filter(c => c["@type"].includes(configType))
+      }
+      configs = configs.map(config => {
+        if(configType) {
+          return config[Object.keys(config).filter(key => key.includes("dynamic"))[0]]
+        } else {
+          return config
+        }
+      })
+      return configType ? configs[0] : configs
+    } catch(error) {
+      console.log(error)
+    }
+    return []
+  }
+
+  static getAllSidecars = async (k8sClient: K8sClient) => {
+    if(!k8sClient.istio) {
+      return []
+    }
+    const result = await IstioFunctions.executeOnAnyPilotPod(k8sClient,
+                                  ["curl", "-s", "localhost:8080/debug/adsz"])
+    if(result) {
+      const pilotCDSData = JSON.parse(result) as any[]
+      const sidecars = pilotCDSData.filter(cds => cds.node.startsWith("sidecar~"))
+                          .map(cds => cds.node.split("~"))
+                          .map(pieces => {
+                            const podAndNamespace = pieces[2].split(".")
+                            return {
+                              ip: pieces[1],
+                              pod: podAndNamespace[0],
+                              namespace: podAndNamespace[1]
+                            }
+                          })
+      return sidecars
+    }
+    return []
+  }
+
+  static getNamespaceSidecars = async (namespace: string, k8sClient: K8sClient) => {
+    const sidecars = await IstioFunctions.getAllSidecars(k8sClient)
+    return sidecars.filter(s => s.namespace === namespace)
+  }
 }

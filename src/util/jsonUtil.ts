@@ -1,6 +1,6 @@
-const globalRequire = global['require']
-const jp = globalRequire('jsonpath')
-const _ = globalRequire('lodash')
+import jp from 'jsonpath'
+import _ from 'lodash'
+import { isNullOrUndefined } from 'util'
 
 export default class JsonUtil {
   static isText(content) : content is string {
@@ -91,5 +91,96 @@ export default class JsonUtil {
       }
     }
     return object
+  }
+
+  static toObjectValuesArray(object) {
+    if(object instanceof Array) {
+      return _.flatten(object.map(value => this.toObjectValuesArray(value)))
+    } else if(typeof object === 'object') {
+      return _.flatten(Object.keys(object).map(key => this.toObjectValuesArray(object[key])))
+    } else {
+      return object
+    }
+  }
+
+  static compareFlatArrays(arr1: any[], arr2: any[], inOrder: boolean = false) {
+    if(isNullOrUndefined(arr1) !== isNullOrUndefined(arr2))
+      return false
+    
+    if(!(arr1 instanceof Array) || !(arr2 instanceof Array))
+      return false
+    
+    if(arr1.length !== arr2.length)
+      return false
+
+    if(inOrder) {
+      if(arr1.filter((item,index) => arr2[index] === item).length < arr1.length)
+        return false
+    } else {
+      if(arr1.filter(item => arr2.includes(item)).length < arr1.length)
+        return false
+    }
+    
+    return true
+  }
+
+  static compareObjects(obj1, obj2) {
+    const keys1 = Object.keys(obj1)
+    const keys2 = Object.keys(obj2)
+    
+    if(!this.compareFlatArrays(keys1, keys2)) {
+      return false
+    }
+    const allKeys = keys1
+    keys2.forEach(k => !allKeys.includes(k) && allKeys.push(k))
+
+    return allKeys.filter(k => {
+      const value1 = obj1[k]
+      const value2 = obj2[k]
+      if(isNullOrUndefined(value1) !== isNullOrUndefined(value2)) {
+        return false
+      }
+      if(typeof value1 !== typeof value2) {
+        return false
+      }
+      if(typeof value1 === 'object') {
+        return this.compareObjects(value1, value2)
+      }
+      return value1 === value2
+    }).length === allKeys.length
+  }
+
+  static underScoreToCamelCaseTransformer(key: string) {
+    let pieces = key.split("_")
+    pieces = pieces.map((piece, index) => {
+      if(index > 0) {
+        piece = piece.charAt(0).toUpperCase() + piece.slice(1)
+      }
+      return piece
+    })
+    return pieces.join("")
+  }
+
+  static transformObject(obj, keyTransformer?: (string) => string) {
+    if(!keyTransformer) {
+      keyTransformer = this.underScoreToCamelCaseTransformer
+    }
+
+    if(typeof obj !== 'object')
+      return obj
+
+    if(obj instanceof Array)
+      return obj.map(item => this.transformObject(item, keyTransformer))
+
+    const result = {}
+    Object.keys(obj).forEach(k => {
+      const key = keyTransformer ? keyTransformer(k) : k
+      let value = obj[k]
+      if(typeof value === 'object') {
+        value = this.transformObject(value, keyTransformer)
+      }
+      result[key] = value
+    })
+    return result
   }
 }

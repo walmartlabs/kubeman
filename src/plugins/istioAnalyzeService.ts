@@ -14,7 +14,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Analyze Service",
-      order: 22,
+      order: 60,
       
       async choose(actionContext) {
         if(actionContext.getNamespaces().length === 0) {

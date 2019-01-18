@@ -2,6 +2,8 @@ import { K8sClient } from '../k8s/k8sClient'
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioFunctions from '../k8s/istioFunctions'
 import { ServiceDetails, PodDetails } from './k8sObjectTypes';
+import ActionContext from '../actions/actionContext';
+import K8sPluginHelper from './k8sPluginHelper';
 
 export default class IstioPluginHelper {
 
@@ -87,7 +89,7 @@ export default class IstioPluginHelper {
                             || ingressMtlsStatus.serverProtocol.toLowerCase().includes("mtls")
       })
       ingressUsingMtls && onStreamOutput([["IngressGateway Uses mTLS"]])
-      
+
       serviceMtlsStatuses.forEach(serviceMtlsStatus => {
         onStreamOutput([[[
           "Service Port " + serviceMtlsStatus.port,
@@ -147,5 +149,24 @@ export default class IstioPluginHelper {
       hasSidecar,
       access
     }
+  }
+
+  static async chooseSidecar(min: number = 1, max: number = 1, actionContext: ActionContext) {
+    K8sPluginHelper.prepareChoices(actionContext, 
+      async (cluster, namespace, k8sClient) => {
+        return (await IstioFunctions.getNamespaceSidecars(namespace, k8sClient))
+                .map(s => {
+                  s['title'] = s.pod+"."+s.namespace
+                  return s
+                })
+      }, "Sidecars", min, max, "title")
+  }
+
+  static getSelectedSidecars(actionContext: ActionContext) {
+    const selections = K8sPluginHelper.getSelections(actionContext, "title")
+    return selections.map(s => {
+      s.item.cluster = s.cluster
+      return s.item
+    })
   }
 }

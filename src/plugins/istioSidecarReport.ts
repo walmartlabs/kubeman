@@ -1,13 +1,23 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import K8sFunctions from '../k8s/k8sFunctions';
+import IstioFunctions from '../k8s/istioFunctions';
+import {listResources} from './istioListResources'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "More Istio Recipes",
+  title: "Istio Sidecars Recipes",
   actions: [
     {
+      name: "List Sidecars",
+      order: 45,
+      act(actionContext) {
+        this.onOutput && this.onOutput([["", "Sidecars List"]], ActionOutputStyle.Table)
+        listResources("Sidecars", IstioFunctions.getAllSidecars, this.onStreamOutput, actionContext)
+      }
+    },
+    {
       name: "Sidecar Injection Report",
-      order: 14,
+      order: 46,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         this.onOutput && this.onOutput([["", "Sidecar Injection Report"]], ActionOutputStyle.Table)

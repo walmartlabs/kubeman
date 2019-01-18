@@ -8,7 +8,6 @@ import {Card, CardContent, CardActions, Typography} from '@material-ui/core';
 
 import {Cluster, Namespace, Pod, Item} from "../k8s/k8sObjectTypes";
 import Context from "./contextStore";
-import * as scratch from '../scratch'
 
 import styles from './contextPanel.styles'
 

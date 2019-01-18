@@ -40,31 +40,43 @@ export async function getClientForCluster(cluster: Cluster) {
     apps: k8sAppsClient,
     extensions,
   }
-
-  await Promise.all([
-    extensions.crd("gateways.networking.istio.io").get(),
-    extensions.crd("virtualservices.networking.istio.io").get(),
-    extensions.crd("destinationrules.networking.istio.io").get(),
-    extensions.crd("serviceentries.networking.istio.io").get(),
-    extensions.crd("envoyfilters.networking.istio.io").get(),
-    extensions.crd("policies.authentication.istio.io").get(),
-    extensions.crd("meshpolicies.authentication.istio.io").get(),
-    extensions.crd("rules.config.istio.io").get(),
-  ])
-  .then((results: any[]) => {
-    results.map(result => result.body).forEach(crd => client.addCustomResourceDefinition(crd))
-    k8sClient.istio = client.apis["networking.istio.io"].v1alpha3
-    const authAPI = client.apis["authentication.istio.io"].v1alpha1
-    k8sClient.istio.policies = authAPI.policies
-    k8sClient.istio.meshpolicies = authAPI.meshpolicies
-    const configAPI = client.apis["config.istio.io"].v1alpha2
-    k8sClient.istio.rules = configAPI.rules
-    cluster.hasIstio = true
-  })
-  .catch(error => {
+  try {
+    const result = await extensions.customresourcedefinitions.get()
+    const crds = result.body.items ? result.body.items.filter(item => item.spec.group.includes("istio.io")) : []
+    const crdNames: string[] = []
+    crds.forEach(crd => {
+      client.addCustomResourceDefinition(crd)
+      crdNames.push(crd.metadata.name)
+    })
+    if(client.apis["config.istio.io"]) {
+      k8sClient.istio = client.apis["config.istio.io"].v1alpha2
+      k8sClient.istio.crds = crdNames
+    }
+    if(client.apis["networking.istio.io"]) {
+      const networkingAPI = client.apis["networking.istio.io"].v1alpha3
+      k8sClient.istio.destinationrules = networkingAPI.destinationrules
+      k8sClient.istio.envoyfilters = networkingAPI.envoyfilters
+      k8sClient.istio.gateways = networkingAPI.gateways
+      k8sClient.istio.serviceentries = networkingAPI.serviceentries
+      k8sClient.istio.virtualservices = networkingAPI.virtualservices
+    }
+    if(client.apis["authentication.istio.io"]) {
+      const authAPI = client.apis["authentication.istio.io"].v1alpha1
+      k8sClient.istio.policies = authAPI.policies
+      k8sClient.istio.meshpolicies = authAPI.meshpolicies
+    }
+    if(client.apis["rbac.istio.io"]) {
+      const rbacAPI = client.apis["rbac.istio.io"].v1alpha1
+      k8sClient.istio.clusterrbacconfigs = rbacAPI.clusterrbacconfigs
+      k8sClient.istio.rbacconfigs = rbacAPI.rbacconfigs
+      k8sClient.istio.servicerolebindings = rbacAPI.servicerolebindings
+      k8sClient.istio.serviceroles = rbacAPI.serviceroles
+    }
+    cluster.hasIstio = crds.length > 0
+  } catch(error) {
     cluster.hasIstio = false
     console.log("Failed to load Istio CRDs for cluster " + cluster.name)
-})
-
+    console.log(error)
+  }
   return k8sClient
 }
