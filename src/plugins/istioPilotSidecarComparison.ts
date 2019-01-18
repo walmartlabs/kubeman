@@ -64,6 +64,7 @@ const plugin : ActionGroupSpec = {
 
       async act(actionContext) {
 
+        this.showOutputLoading && this.showOutputLoading(true)
         const sidecar = IstioPluginHelper.getSelectedSidecars(actionContext)[0]
         const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
 
@@ -79,6 +80,8 @@ const plugin : ActionGroupSpec = {
         compareConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, "ListenersConfigDump", "listener")
 
         compareConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, "RoutesConfigDump", "routeConfig", "route_config")
+
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     }
   ]

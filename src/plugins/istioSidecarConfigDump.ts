@@ -7,7 +7,7 @@ import IstioFunctions from '../k8s/istioFunctions';
 async function outputConfig(action: ActionSpec, actionContext: ActionContext, 
                               sidecars: any[], type: string, titleField: string, dataField?: string) {
   action.onOutput &&
-    action.onOutput([["", "Istio IngressGateway " + type]], ActionOutputStyle.Table)
+    action.onOutput([["", "Sidecar " + type]], ActionOutputStyle.Table)
   action.showOutputLoading && action.showOutputLoading(true)
 
   for(const sidecar of sidecars) {
@@ -65,6 +65,26 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
         await outputConfig(this, actionContext, sidecars, "RoutesConfigDump", "route_config.name", "route_config.virtual_hosts")
+      },
+    },
+    {
+      name: "Sidecar Stats",
+      order: 50,
+      
+      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
+      
+      async act(actionContext) {
+        const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
+        this.onOutput && this.onOutput([["", "Sidecar Stats"]], ActionOutputStyle.Log)
+        this.showOutputLoading && this.showOutputLoading(true)
+    
+        for(const sidecar of sidecars) {
+          this.onStreamOutput  && this.onStreamOutput([[">Sidecar: " + sidecar.title, ""]])
+          const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
+          const stats = await IstioFunctions.getIstioProxyStats(cluster.k8sClient, sidecar.namespace, sidecar.pod)
+          this.onStreamOutput && this.onStreamOutput(stats.split("\n").map(line => [line]))
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     }
   ]

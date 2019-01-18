@@ -505,10 +505,11 @@ export default class K8sFunctions {
     }))
   }
 
-  static getPodLog = async (namespace: string, pod: string, container: string, k8sClient: K8sClient, tail: boolean) => {
+  static getPodLog = async (namespace: string, pod: string, container: string, 
+                          k8sClient: K8sClient, tail: boolean, lines: number = 50) => {
     const stream = await k8sClient.namespaces(namespace).pods(pod).log.getStream({
       qs: {
-        tailLines: 200,
+        tailLines: lines,
         follow: tail,
         container,
       }

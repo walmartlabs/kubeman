@@ -54,6 +54,7 @@ export async function getClientForCluster(cluster: Cluster) {
     }
     if(client.apis["networking.istio.io"]) {
       const networkingAPI = client.apis["networking.istio.io"].v1alpha3
+      k8sClient.istio.namespaces = networkingAPI.namespaces
       k8sClient.istio.destinationrules = networkingAPI.destinationrules
       k8sClient.istio.envoyfilters = networkingAPI.envoyfilters
       k8sClient.istio.gateways = networkingAPI.gateways

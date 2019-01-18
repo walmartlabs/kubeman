@@ -39,7 +39,7 @@ const plugin : ActionGroupSpec = {
   title: "Istio Ingress Recipes",
   actions: [
     {
-      name: "View Ingress Clusters Config",
+      name: "IngressGateway Clusters Config",
       order: 25,
       
       async act(actionContext) {
@@ -47,7 +47,7 @@ const plugin : ActionGroupSpec = {
       },
     },
     {
-      name: "View Ingress Listeners",
+      name: "IngressGateway Listeners Config",
       order: 26,
       
       async act(actionContext) {
@@ -55,11 +55,32 @@ const plugin : ActionGroupSpec = {
       },
     },
     {
-      name: "View Ingress Routes Config",
+      name: "IngressGateway Routes Config",
       order: 27,
       
       async act(actionContext) {
         await outputConfig(this, actionContext, "RoutesConfigDump", "route_config.name", "route_config.virtual_hosts")
+      },
+    },
+    {
+      name: "IngressGateway Stats",
+      order: 28,
+      
+      async act(actionContext) {
+        this.onOutput && this.onOutput([["", "IngressGateway Stats"]], ActionOutputStyle.Log)
+        this.showOutputLoading && this.showOutputLoading(true)
+
+        const clusters = actionContext.getClusters()
+        for(const cluster of clusters) {
+          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name, ""]])
+          if(!cluster.hasIstio) {
+            this.onStreamOutput  && this.onStreamOutput([["", "Istio not installed"]])
+            continue
+          }
+          const stats = await IstioFunctions.getIngressGatwayStats(cluster.k8sClient)
+          this.onStreamOutput && this.onStreamOutput(stats.split("\n").map(line => [line]))
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     }
   ]

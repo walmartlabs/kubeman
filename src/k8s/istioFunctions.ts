@@ -359,16 +359,29 @@ export default class IstioFunctions {
     return []
   }
 
+  static async getIstioProxyStats(k8sClient: K8sClient, namespace: string, pod: string) {
+      return K8sFunctions.podExec(namespace, pod, "istio-proxy", k8sClient, 
+                                  ["curl", "-s", "http://127.0.0.1:15000/stats"])
+  }
+
   static async getIngressConfigDump(k8sClient: K8sClient, configType?: string) {
     const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
     if(!ingressPods || ingressPods.length === 0) {
       console.log("IngressGateway not found")
       return []
     }
-
-    const ingressPod = ingressPods[0]
-    return IstioFunctions.getIstioProxyConfigDump(k8sClient, "istio-system", ingressPod.name, configType)
+    return IstioFunctions.getIstioProxyConfigDump(k8sClient, "istio-system", ingressPods[0].name, configType)
   }
+
+  static async getIngressGatwayStats(k8sClient: K8sClient) {
+    const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
+    if(!ingressPods || ingressPods.length === 0) {
+      console.log("IngressGateway not found")
+      return ""
+    }
+    return IstioFunctions.getIstioProxyStats(k8sClient, "istio-system", ingressPods[0].name)
+  }
+
   static async executeOnAnyPilotPod(k8sClient: K8sClient, command: string[]) {
     const pilotPods = await IstioFunctions.getPilotPods(k8sClient)
     return K8sFunctions.podExec("istio-system", pilotPods[0].name, "discovery", k8sClient, command)

@@ -10,7 +10,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "View Egress Details",
-      order: 12,
+      order: 101,
       
       async act(actionContext) {
         const clusters = actionContext.getClusters()
