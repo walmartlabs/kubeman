@@ -169,4 +169,17 @@ export default class IstioPluginHelper {
       return s.item
     })
   }
+
+  static async chooseIstioCRDs(min: number = 1, max: number = 10, actionContext: ActionContext) {
+    const clustersReported: string[] = []
+    await K8sPluginHelper.prepareChoices(actionContext, 
+      async (cluster, namespace,k8sClient) => {
+        if(!clustersReported.includes(cluster)) {
+          clustersReported.push(cluster)
+          return k8sClient.istio ? k8sClient.istio.crds : []
+        } else {
+          return []
+        }
+      }, "Istio CRDs", 1, 10)
+  }
 }

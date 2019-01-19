@@ -90,18 +90,9 @@ const plugin : ActionGroupSpec = {
     {
       name: "List Any CRD",
       order: 9,
-      async choose(actionContext) {
-        const clustersReported: string[] = []
-        await K8sPluginHelper.prepareChoices(actionContext, 
-          async (cluster, namespace,k8sClient) => {
-            if(!clustersReported.includes(cluster)) {
-              clustersReported.push(cluster)
-              return k8sClient.istio ? k8sClient.istio.crds : []
-            } else {
-              return []
-            }
-          }, "Istio Custom Resources", 1, 10)
-      },
+
+      choose: IstioPluginHelper.chooseIstioCRDs.bind(IstioPluginHelper, 1, 10),
+
       async act(actionContext) {
         const selections = await K8sPluginHelper.getSelections(actionContext)
         const resources = selections.map(s =>  s.name.split(".")[0])

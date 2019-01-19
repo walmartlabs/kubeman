@@ -9,7 +9,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Compare Services",
-      order: 5,
+      order: 12,
       
       choose: K8sPluginHelper.chooseClusters,
 

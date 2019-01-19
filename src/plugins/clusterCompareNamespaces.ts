@@ -24,7 +24,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Compare Namespaces",
-      order: 4,
+      order: 10,
       
       choose: K8sPluginHelper.chooseClusters,
 

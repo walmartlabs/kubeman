@@ -244,4 +244,18 @@ export default class K8sPluginHelper {
     }
     return pods
   }
+
+  static async chooseCRDs(min: number = 1, max: number = 10, actionContext: ActionContext) {
+    const clustersReported: string[] = []
+    await K8sPluginHelper.prepareChoices(actionContext, 
+      async (cluster, namespace,k8sClient) => {
+        if(!clustersReported.includes(cluster)) {
+          clustersReported.push(cluster)
+          return await k8sFunctions.getClusterCRDs(k8sClient)
+        } else {
+          return []
+        }
+      }, "CRDs", 1, 10, "name")
+
+  }
 }

@@ -222,7 +222,6 @@ export class TableBox extends React.Component<IProps, IState> {
 
   renderRow(row: Row, rowIndex: number, isAppendedRow: boolean) {
     const {classes, compare, health, log} = this.props
-    console.log(health)
     let highlight = compare ? row.lastTwoColumnsDiffer : false
     const components : any[] = []
     components.push(

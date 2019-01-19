@@ -7,7 +7,7 @@ const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,
   actions: [
     {
-      order: 3,
+      order: 5,
       name: "List Namespaces",
       async act(actionContext: ActionContext) {
         this.onOutput && this.onOutput([["Namespace", "Labels", "Created", "Status"]], ActionOutputStyle.TableWithHealth)
