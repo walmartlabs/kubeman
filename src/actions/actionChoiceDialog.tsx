@@ -132,6 +132,13 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
                 </TableRow>
               )
             })}
+            {filteredChoices.length === 0 &&
+              <TableRow>
+                <TableCell className={classes.tableCell}>
+                  No choice available (no namespace selected?)
+                </TableCell>
+              </TableRow>
+            }
             </TableBody>
           </Table>
         </DialogContent>

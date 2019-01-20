@@ -28,18 +28,6 @@ export default class IstioPluginHelper {
   static async getIstioEgressGateways(k8sClient: K8sClient) {
     return IstioPluginHelper.extractGatewayDetails(await IstioFunctions.listAllEgressGateways(k8sClient))
   }
-  
-  static async getAllVirtualServices(k8sClient: K8sClient) {
-    return await IstioFunctions.listAllVirtualServices(k8sClient)
-  }
-  
-  static async getIstioIngressVirtualServices(k8sClient: K8sClient) {
-    return await IstioFunctions.listAllIngressVirtualServices(k8sClient)
-  }
-  
-  static async getIstioEgressVirtualServices(k8sClient: K8sClient) {
-    return await IstioFunctions.listAllEgressVirtualServices(k8sClient)
-  }
 
   static async checkServiceReachabilityFromIngress(service: ServiceDetails,
                   namespace: string, k8sClient: K8sClient, onStreamOutput) {
@@ -154,6 +142,9 @@ export default class IstioPluginHelper {
   static async chooseSidecar(min: number = 1, max: number = 1, actionContext: ActionContext) {
     K8sPluginHelper.prepareChoices(actionContext, 
       async (cluster, namespace, k8sClient) => {
+        if(!namespace || namespace.length === 0) {
+          return []
+        }
         return (await IstioFunctions.getNamespaceSidecars(namespace, k8sClient))
                 .map(s => {
                   s['title'] = s.pod+"."+s.namespace

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { RefObject } from 'react';
 import _ from 'lodash'
 
 import { withStyles, WithStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
@@ -11,7 +11,7 @@ import {Cluster, Namespace, Pod, Item, KubeComponent} from "../k8s/k8sObjectType
 import * as k8s from '../k8s/k8sContextClient'
 import SelectionTable from './selectionTable'
 import {selectionDialogTheme} from '../theme/theme'
-import PodFilter from './podFilter'
+import StyledSelectionFilter, {SelectionFilter} from './selectionFilter'
 import SelectionManager, 
       {ClusterNamespaces, NamespacePods,
       SelectedClusters, SelectedNamespaces, SelectedPods} from './selectionManager'
@@ -57,12 +57,6 @@ interface SelectionDialogState {
   filter: string,
   initialLoading: boolean
 }
-interface SelectionDialogRefs {
-  [k: string]: any
-  clusterSelector: any
-  namespaceSelector: any
-  podSelector: any
-}
 
 class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDialogState> {
   static defaultProps = {
@@ -80,11 +74,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     filter: '',
     initialLoading: false,
   }
-  refs: SelectionDialogRefs = {
-    clusterSelector: undefined,
-    namespaceSelector: undefined,
-    podSelector: undefined,
-  }
+  selectionFilter?: SelectionFilter
   closed: boolean = false
   activeTabIndex: number = 0
 
@@ -236,7 +226,12 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
   }
 
   onOk = () => {
-    const {filter} = this.state
+    let {filter} = this.state
+    if(this.selectionFilter) {
+      const {pods, namespaces, filterText} = this.selectionFilter.getSelections()
+      SelectionManager.setFilteredSelections(namespaces, pods)
+      filter = filterText
+    }
     this.props.onSelection(
       SelectionManager.selectedClusters, 
       SelectionManager.selectedNamespaces, 
@@ -289,7 +284,6 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                 </FormHelperText>
                 }
                 <SelectionTable 
-                    innerRef={this.refs.clusterSelector}
                     title="Clusters" 
                     table={clusters}
                     selections={selectedClusters}
@@ -300,7 +294,10 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
               </div>}
             {loading && activeTab !== SelectionTabs.Clusters && <CircularProgress className={classes.loading} />}
             {!loading && activeTab === SelectionTabs.Pattern &&
-              <PodFilter filter={filter} onApplyFilter={this.onApplyFilter} />
+              <StyledSelectionFilter 
+                innerRef={ref => this.selectionFilter=ref}
+                filter={filter} 
+                onApplyFilter={this.onApplyFilter} />
             }
             {!loading && activeTab === SelectionTabs.Namespaces &&  
               <div>
@@ -311,7 +308,6 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                 }
                 {!reportClusterError && 
                 <SelectionTable 
-                    innerRef={this.refs.namespaceSelector}
                     title="Namespaces" 
                     table={namespaces}
                     selections={selectedNamespaces}
@@ -329,7 +325,6 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                 }
                 {!reportNamespaceError && 
                   <SelectionTable 
-                      innerRef={this.refs.podSelector}
                       title="Pods" 
                       table={pods}
                       selections={selectedPods}

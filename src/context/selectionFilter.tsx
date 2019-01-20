@@ -6,27 +6,30 @@ import parse from 'autosuggest-highlight/parse';
 import { withStyles, WithStyles } from '@material-ui/core/styles'
 import MenuItem from '@material-ui/core/MenuItem';
 import Paper from '@material-ui/core/Paper';
-import { Button, Input, InputAdornment, FormHelperText } from '@material-ui/core';
+import { Button, Input, InputAdornment, FormHelperText, FormGroup,
+      FormControlLabel, Checkbox } from '@material-ui/core';
 
 import {Pod, Namespace, KubeComponent} from "../k8s/k8sObjectTypes";
 import SelectionManager from './selectionManager'
 
-import styles from './podFilter.styles'
+import styles from './selectionFilter.styles'
 
 
-interface PodFilterProps extends WithStyles<typeof styles> {
+interface SelectionFilterProps extends WithStyles<typeof styles> {
   filter: string
   onApplyFilter: (string, []: Namespace[], []: Pod[]) => void
 }
 
-interface PodFilterState {
+interface SelectionFilterState {
+  includePods: boolean
   podSuggestions: Pod[]
   namespaceSuggestions: Namespace[]
   filterText: string
 }
 
-class PodFilter extends React.Component<PodFilterProps, PodFilterState> {
-  state: PodFilterState = {
+export class SelectionFilter extends React.Component<SelectionFilterProps, SelectionFilterState> {
+  state: SelectionFilterState = {
+    includePods: false,
     podSuggestions: [],
     namespaceSuggestions: [],
     filterText: '',
@@ -36,15 +39,21 @@ class PodFilter extends React.Component<PodFilterProps, PodFilterState> {
     this.componentWillReceiveProps(this.props)
   }
 
-  componentWillReceiveProps(props: PodFilterProps) {
+  componentWillReceiveProps(props: SelectionFilterProps) {
     const {filter} = props
+    const {includePods} = this.state
     let podSuggestions : Pod[] = []
     let namespaceSuggestions: Namespace[] = []
     if(filter && filter !== '') {
-      podSuggestions = SelectionManager.getMatchingPods(filter)
       namespaceSuggestions = SelectionManager.getMatchingNamespaces(filter)
+      includePods && (podSuggestions = SelectionManager.getMatchingPods(filter))
     }
     this.setState({filterText: filter, podSuggestions, namespaceSuggestions})
+  }
+
+  getSelections() {
+    const {filterText, podSuggestions, namespaceSuggestions} = this.state
+    return {pods: podSuggestions, namespaces: namespaceSuggestions, filterText}
   }
 
   getSuggestionValue = (item: KubeComponent) : string => {
@@ -52,16 +61,14 @@ class PodFilter extends React.Component<PodFilterProps, PodFilterState> {
   }
 
   onSuggestionsFetchRequested = ({value, reason}) => {
+    const {includePods} = this.state
     value = reason === 'suggestion-selected' ? this.state.filterText : value
-    const podSuggestions = SelectionManager.getMatchingPods(value)
+    const podSuggestions = includePods ? SelectionManager.getMatchingPods(value) : []
     const namespaceSuggestions = SelectionManager.getMatchingNamespaces(value)
     this.setState({
       podSuggestions,
       namespaceSuggestions
     })
-    if(value && value !== '') {
-      this.props.onApplyFilter(value, namespaceSuggestions, podSuggestions)
-    }
   }
 
   onInputChange = (event: SyntheticEvent, {newValue, method}) => {
@@ -69,6 +76,12 @@ class PodFilter extends React.Component<PodFilterProps, PodFilterState> {
       newValue = newValue || ''
       this.setState({filterText: newValue})
     }
+  }
+
+  onIncludePods = (event) => {
+    const includePods = event.target.checked
+    const podSuggestions = includePods ? SelectionManager.getMatchingPods(this.state.filterText) : []
+    this.setState({includePods, podSuggestions})
   }
 
   onApply = () => {
@@ -138,9 +151,14 @@ class PodFilter extends React.Component<PodFilterProps, PodFilterState> {
               </strong>
             )
           })}
+          {item instanceof Namespace && 
+            <span style={{ fontWeight: 300, float: 'right' }} className={classes.suggestionItem}>
+              {item.cluster.name}
+            </span>
+          }
           {item instanceof Pod && 
             <span style={{ fontWeight: 300, float: 'right' }} className={classes.suggestionItem}>
-              {item.namespace.name}
+              {item.namespace.name+"@"+item.namespace.cluster.name}
             </span>
           }
         </div>
@@ -150,7 +168,7 @@ class PodFilter extends React.Component<PodFilterProps, PodFilterState> {
 
   render() {
     const { classes } = this.props
-    const { filterText, podSuggestions, namespaceSuggestions } = this.state
+    const { filterText, podSuggestions, namespaceSuggestions, includePods } = this.state
 
     const inputProps = {
       placeholder: 'Search for namespaces and pods',
@@ -165,44 +183,60 @@ class PodFilter extends React.Component<PodFilterProps, PodFilterState> {
       suggestionsList: classes.suggestionsList,
       suggestion: classes.suggestion,
     }
-
-    let suggestions: any[] = [
-      {
+    let suggestions: any[] = []
+    if(namespaceSuggestions.length > 0) {
+      suggestions.push({
         title: "Namespaces",
         suggestions: namespaceSuggestions
-      },
-      {
+      })
+    }
+    if(includePods && podSuggestions.length > 0) {
+      suggestions.push({
         title: "Pods",
         suggestions: podSuggestions
-      }
-    ]
+      })
+    }
+    
     return (
-      <Autosuggest
-        suggestions={suggestions}
-        inputProps={inputProps}
-        theme={theme}
-        multiSection={true}
-        focusInputOnSuggestionClick={false}
-        alwaysRenderSuggestions={true}
-        onSuggestionsFetchRequested={this.onSuggestionsFetchRequested}
-        renderSectionTitle={this.renderSectionTitle}
-        getSectionSuggestions={this.getSectionSuggestions}
-        getSuggestionValue={this.getSuggestionValue}
-        renderSuggestion={this.renderSuggestion}
-        renderInputComponent={this.renderInputComponent}
-        renderSuggestionsContainer={options => (
-          <Paper {...options.containerProps} square>
-            {(podSuggestions.length > 0 || namespaceSuggestions.length > 0) &&
-              <FormHelperText>
-                The filter matches {namespaceSuggestions.length} Namespaces and {podSuggestions.length} Pod(s). 
-              </FormHelperText>
+      <div>
+        <FormGroup row>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={this.state.includePods}
+                onChange={this.onIncludePods}
+              />
             }
-            {options.children}
-          </Paper>
-        )}
-      />
+            label="Include Pods"
+          />
+        </FormGroup>
+        <Autosuggest
+          suggestions={suggestions}
+          inputProps={inputProps}
+          theme={theme}
+          multiSection={true}
+          focusInputOnSuggestionClick={false}
+          alwaysRenderSuggestions={true}
+          onSuggestionsFetchRequested={this.onSuggestionsFetchRequested}
+          renderSectionTitle={this.renderSectionTitle}
+          getSectionSuggestions={this.getSectionSuggestions}
+          getSuggestionValue={this.getSuggestionValue}
+          renderSuggestion={this.renderSuggestion}
+          renderInputComponent={this.renderInputComponent}
+          renderSuggestionsContainer={options => (
+            <Paper {...options.containerProps} square>
+              {(podSuggestions.length > 0 || namespaceSuggestions.length > 0) &&
+                <FormHelperText>
+                  The filter matches {namespaceSuggestions.length} Namespaces and {podSuggestions.length} Pod(s). 
+                </FormHelperText>
+              }
+              {options.children}
+            </Paper>
+          )}
+        />
+      </div>
     )
   }
 }
 
-export default withStyles(styles)(PodFilter)
+export default withStyles(styles)(SelectionFilter)

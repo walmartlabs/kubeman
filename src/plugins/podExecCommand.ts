@@ -10,12 +10,10 @@ const plugin : ActionGroupSpec = {
     {
       name: "Execute Pod Command",
       order: 10,
-      namespace: undefined,
-      pod: undefined,
-      container: undefined,
-      k8sClient: undefined,
+      autoRefreshDelay: 15,
+      selections: undefined,
       
-      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 1, true, false),
+      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 5, true, false),
       
       async act(actionContext) {
         this.setScrollMode && this.setScrollMode(true)
@@ -24,12 +22,10 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
           return
         }
-        const selection = selections[0]
-        this.container = selection.container
-        this.pod = selection.pod
-        this.namespace = selection.namespace
-        this.k8sClient = selection.k8sClient
-        this.onOutput && this.onOutput([["Container@Pod: "+selection.title]], ActionOutputStyle.Log)
+        this.selections = selections
+        this.onOutput && this.onOutput([[
+          "Send Command To: " + selections.map(s => s.title).join(", ")
+        ]], ActionOutputStyle.Log)
       },
       
       async react(actionContext) {
@@ -41,17 +37,23 @@ const plugin : ActionGroupSpec = {
             return
         }
         const command = actionContext.inputText ? actionContext.inputText.split(" ") : []
-        try {
-          const result = await k8sFunctions.podExec(this.namespace, this.pod, this.container, this.k8sClient, command)
-          this.onStreamOutput && this.onStreamOutput([[">"+ actionContext.inputText]])
-          const output = result.length > 0 ? [[result]] : [["No Results"]]
-          this.onStreamOutput && this.onStreamOutput(output)
-        } catch(error) {
-          this.onStreamOutput && this.onStreamOutput([[
-            "Error for pod " + this.pod + ": " + error.message
-          ]])
+        for(const selection of this.selections) {
+          try {
+            const result = await k8sFunctions.podExec(selection.namespace, selection.pod, 
+                                  selection.container, selection.k8sClient, command)
+            this.onStreamOutput && this.onStreamOutput([[">Pod: "+ selection.title + ", Command: " + actionContext.inputText]])
+            const output = result.length > 0 ? [[result]] : [["No Results"]]
+            this.onStreamOutput && this.onStreamOutput(output)
+          } catch(error) {
+            this.onStreamOutput && this.onStreamOutput([[
+              "Error for pod " + selection.title + ": " + error.message
+            ]])
+          }
         }
         this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.react && this.react(actionContext)
       },
     }
   ]

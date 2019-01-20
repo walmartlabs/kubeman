@@ -221,7 +221,14 @@ export default class SelectionManager {
   }
 
   static getMatchingNamespaces(filterText: string) : Namespace[] {
-    return this.filter(filterText, KubeComponentType.Namespace) as Namespace[]
+    const namespaces = this.filter(filterText, KubeComponentType.Namespace) as Namespace[]
+    const pods = this.getMatchingPods(filterText)
+    pods.forEach(pod => {
+      if(!namespaces.includes(pod.namespace)) {
+        namespaces.push(pod.namespace)
+      }
+    })
+    return namespaces
   }
 
   static getMatchingPods(filterText: string) : Pod[] {

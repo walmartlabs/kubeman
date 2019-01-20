@@ -1,8 +1,8 @@
 import React from "react";
 import { withStyles, WithStyles } from '@material-ui/core/styles'
-import { Table, TableBody, TableRow, TableCell, CircularProgress } from "@material-ui/core";
+import { Table, TableBody, TableRow, TableCell, CircularProgress,
+      FormGroup, FormControlLabel, Checkbox } from "@material-ui/core";
 import Switch from '@material-ui/core/Switch';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
 
 import StyledActions, {Actions} from '../actions/actions'
 import ActionChoiceDialog from '../actions/actionChoiceDialog'
@@ -46,7 +46,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   state: IState = {
     context: new Context,
     output: [],
-    outputStyle: ActionOutputStyle.Table,
+    outputStyle: ActionOutputStyle.None,
     loading: false,
     showChoices: false,
     minChoices: 0,
@@ -136,12 +136,12 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     this.setState({context: context})
   }
 
-  onKeyPress(event: KeyboardEvent) {
+  onKeyPress = (event: KeyboardEvent) => {
     const { contextSelector } = this.refs
     contextSelector && contextSelector.onKeyPress(event)
   }
 
-  onSelectCluster() {
+  onSelectCluster = () => {
     const { contextSelector } = this.refs
     contextSelector && contextSelector.selectClusters()
   }
@@ -158,7 +158,6 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     const showTable = outputStyle === ActionOutputStyle.Table || log || health || compare
     const acceptInput = this.actions && this.actions.acceptInput() ? true : false
     const accumulatedOutput = (output as any[]).concat(this.streamOutput)
-
     return (
       <div className={classes.root} 
             tabIndex={0}
@@ -170,7 +169,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
               <TableCell colSpan={2} className={classes.contextCell}>
                 <ContextPanel context={context} 
                     onUpdateContext={this.onUpdateContext}
-                    onSelectContext={this.onSelectCluster.bind(this)} />
+                    onSelectContext={this.onSelectCluster} />
               </TableCell>
             </TableRow>
             <TableRow className={classes.lowerRow}>

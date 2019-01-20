@@ -2,6 +2,7 @@ import _ from 'lodash'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
+import IstioFunctions from '../k8s/istioFunctions';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
@@ -41,7 +42,7 @@ const plugin : ActionGroupSpec = {
           }
 
           const gateways = await IstioPluginHelper.getIstioIngressGateways(k8sClient)
-          const virtualServices = await IstioPluginHelper.getIstioIngressVirtualServices(k8sClient)
+          const virtualServices = await IstioFunctions.listAllIngressVirtualServices(k8sClient)
           podTemplate.volumes && podTemplate.volumes.forEach(volume => {
             const mountPaths = istioProxyContainer.volumeMounts ? 
                                 istioProxyContainer.volumeMounts.filter(mount => mount.name === volume.name)

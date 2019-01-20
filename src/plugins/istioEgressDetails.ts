@@ -44,7 +44,7 @@ const plugin : ActionGroupSpec = {
           output.push(["Egress Service", await IstioFunctions.getIstioServiceDetails("istio=egressgateway", k8sClient)])
           output.push(["Egress Pods", await IstioFunctions.getIngressGatewayPods(k8sClient)])
           output.push(["Egress Gateways", await IstioPluginHelper.getIstioEgressGateways(k8sClient)])
-          output.push(["Egress VirtualServices", await IstioPluginHelper.getIstioEgressVirtualServices(k8sClient)])
+          output.push(["Egress VirtualServices", await IstioFunctions.listAllEgressVirtualServices(k8sClient)])
 
           this.onStreamOutput && this.onStreamOutput(output)
         }

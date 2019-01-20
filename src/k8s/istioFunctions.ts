@@ -11,7 +11,6 @@ export default class IstioFunctions {
       }
       specKeys.forEach(key => obj.spec[key] && (resource[key] = obj.spec[key]))
       if(yaml) {
-        delete obj.metadata["annotations"]
         delete obj.metadata["creationTimestamp"]
         delete obj.metadata["generation"]
         delete obj.metadata["resourceVersion"]
@@ -31,23 +30,24 @@ export default class IstioFunctions {
     return []
   }
 
-  static listAllGateways = async (k8sClient: K8sClient) => {
-    return IstioFunctions.extractResource(await k8sClient.istio.gateways.get(),
-                              "selector", "servers", "yaml") as any[]
+  static listAllGateways = async (k8sClient: K8sClient, yaml: boolean = true) => {
+    const keys = ["selector", "servers"]
+    yaml && keys.push("yaml")
+    return IstioFunctions.extractResource(await k8sClient.istio.gateways.get(), ...keys) as any[]
   }
 
-  static listAllIngressGateways = async (k8sClient: K8sClient) => {
-    return (await IstioFunctions.listAllGateways(k8sClient) as any[])
+  static listAllIngressGateways = async (k8sClient: K8sClient, yaml: boolean = true) => {
+    return (await IstioFunctions.listAllGateways(k8sClient, yaml) as any[])
             .filter(gateway => gateway.selector.istio === 'ingressgateway')
   }
 
-  static listAllEgressGateways = async (k8sClient: K8sClient) => {
-    return (await IstioFunctions.listAllGateways(k8sClient) as any[])
+  static listAllEgressGateways = async (k8sClient: K8sClient, yaml: boolean = true) => {
+    return (await IstioFunctions.listAllGateways(k8sClient, yaml) as any[])
             .filter(gateway => gateway.selector.istio === 'egressgateway')
   }
 
-  static getGatewaysForVirtualServices = async (virtualServices: any[], k8sClient: K8sClient) => {
-    const allGateways = await IstioFunctions.listAllGateways(k8sClient)
+  static getGatewaysForVirtualServices = async (virtualServices: any[], k8sClient: K8sClient, yaml: boolean = false) => {
+    const allGateways = await IstioFunctions.listAllGateways(k8sClient, yaml)
     return allGateways.filter(g => 
       virtualServices.filter(vs => vs.gateways)
       .filter(vs => 
@@ -56,24 +56,25 @@ export default class IstioFunctions {
     )
   }
 
-  static listAllVirtualServices = async (k8sClient: K8sClient) => {
-    return IstioFunctions.extractResource(await k8sClient.istio.virtualservices.get(),
-                            "gateways", "hosts", "http", "tls", "tcp", "yaml") as any[]
+  static listAllVirtualServices = async (k8sClient: K8sClient, yaml: boolean = true) => {
+    const keys = ["gateways", "hosts", "http", "tls", "tcp"]
+    yaml && keys.push("yaml")
+    return IstioFunctions.extractResource(await k8sClient.istio.virtualservices.get(), ...keys) as any[]
   }
 
-  static listAllIngressVirtualServices = async (k8sClient: K8sClient) => {
+  static listAllIngressVirtualServices = async (k8sClient: K8sClient, yaml: boolean = true) => {
     const ingressGateways = (await IstioFunctions.listAllIngressGateways(k8sClient))
                             .map(g => g.name)
-    return (await IstioFunctions.listAllVirtualServices(k8sClient))
+    return (await IstioFunctions.listAllVirtualServices(k8sClient, yaml))
             .filter(v => v.gateways && v.gateways.filter(g => 
               ingressGateways.filter(ig => g.includes(ig)).length > 0).length > 0)
   }
 
-  static listAllEgressVirtualServices = async (k8sClient: K8sClient) => {
-    const ingressGateways = (await IstioFunctions.listAllEgressGateways(k8sClient))
+  static listAllEgressVirtualServices = async (k8sClient: K8sClient, yaml: boolean = true) => {
+    const egressGateways = (await IstioFunctions.listAllEgressGateways(k8sClient))
                             .map(g => g.name)
-    return (await IstioFunctions.listAllVirtualServices(k8sClient))
-            .filter(v => v.gateways && v.gateways.filter(g => ingressGateways.includes(g)).length > 0)
+    return (await IstioFunctions.listAllVirtualServices(k8sClient, yaml))
+            .filter(v => v.gateways && v.gateways.filter(g => egressGateways.includes(g)).length > 0)
   }
 
   static getNamespaceVirtualServices = async (cluster: string, namespace: string, k8sClient: K8sClient) => {

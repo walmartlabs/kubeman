@@ -32,19 +32,8 @@ export default class K8sPluginHelper {
     const namespaces = actionContext.getNamespaces()
     this.items = {}
     const choices: any[] = []
-    for(const i in namespaces) {
-      const namespace = namespaces[i]
-      const nsCluster = namespace.cluster.name
-      if(!this.items[nsCluster]) {
-        this.items[nsCluster] = {}
-      }
-      if(!this.items[nsCluster][namespace.name]) {
-        this.items[nsCluster][namespace.name] = []
-      }
-      const k8sClient = clusters.filter(c => c.name === nsCluster)
-                                .map(c => c.k8sClient)[0]
-      
-      const items = this.items[nsCluster][namespace.name] = await getItems(nsCluster, namespace.name, k8sClient)
+
+    const createChoices = (items, namespace, cluster) => {
       items.forEach(item => {
         const choiceItem: any[] = []
         if(fields.length > 0) {
@@ -52,10 +41,33 @@ export default class K8sPluginHelper {
         } else {
           choiceItem.push(item.name || item)
         }
-        choiceItem.push("Namespace: " + namespace.name)
-        choiceItem.push("Cluster: " + nsCluster)
+        choiceItem.push("Namespace: " + namespace)
+        choiceItem.push("Cluster: " + cluster)
         choices.push(choiceItem)
       })
+    }
+
+    if(namespaces.length > 0) {
+      for(const namespace of namespaces) {
+        const nsCluster = namespace.cluster.name
+        if(!this.items[nsCluster]) {
+          this.items[nsCluster] = {}
+        }
+        if(!this.items[nsCluster][namespace.name]) {
+          this.items[nsCluster][namespace.name] = []
+        }
+        const k8sClient = clusters.filter(c => c.name === nsCluster)
+                                  .map(c => c.k8sClient)[0]
+        
+        const items = this.items[nsCluster][namespace.name] = await getItems(nsCluster, namespace.name, k8sClient)
+        createChoices(items, namespace.name, nsCluster)
+      }
+    } else {
+      for(const cluster of clusters) {
+        this.items[cluster.name]={}
+        const items = this.items[cluster.name][""] = await getItems(cluster.name, "", cluster.k8sClient)
+        createChoices(items, "", cluster.name)
+      }
     }
     return choices
   }

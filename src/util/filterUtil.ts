@@ -2,7 +2,7 @@ import deburr from 'lodash/deburr';
 
 export function filter(filterText: string, items: any[], field?: string) {
   filterText = filterText ? deburr(filterText.trim()).toLowerCase() : ''
-  const pieces = filterText.split("or")
+  const pieces = filterText.split("or").filter(piece => piece.length > 0)
 
   const filteredItems: Set<any> = new Set
   pieces.forEach(piece => {

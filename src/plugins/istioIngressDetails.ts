@@ -61,8 +61,8 @@ const plugin : ActionGroupSpec = {
           }
           output.push(["Ingress Service", await IstioFunctions.getIstioServiceDetails("istio=ingressgateway", k8sClient)])
           output.push(["Ingress Pods", await IstioFunctions.getIngressGatewayPods(k8sClient)])
-          output.push(["Ingress Gateways", await IstioPluginHelper.getIstioIngressGateways(k8sClient)])
-          output.push(["Ingress VirtualServices", await IstioPluginHelper.getIstioIngressVirtualServices(k8sClient)])
+          output.push(["Ingress Gateways", await IstioFunctions.listAllIngressGateways(k8sClient, false)])
+          output.push(["Ingress VirtualServices", await IstioFunctions.listAllIngressVirtualServices(k8sClient, false)])
           this.onStreamOutput  && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)

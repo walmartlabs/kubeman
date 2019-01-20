@@ -112,8 +112,8 @@ const plugin : ActionGroupSpec = {
           })
           this.comparisonMap["Ingress Service Ports"].push(ingressService.ports)
             this.comparisonMap["Ingress Pods"].push(await IstioFunctions.getIngressGatewayPods(k8sClient))
-          this.comparisonMap["Ingress Gateways"].push(await IstioPluginHelper.getIstioIngressGateways(k8sClient))
-          this.comparisonMap["Ingress VirtualServices"].push(await IstioPluginHelper.getIstioIngressVirtualServices(k8sClient))
+          this.comparisonMap["Ingress Gateways"].push(await IstioFunctions.listAllIngressGateways(k8sClient, false))
+          this.comparisonMap["Ingress VirtualServices"].push(await IstioFunctions.listAllIngressVirtualServices(k8sClient, false))
         }
       }
     }

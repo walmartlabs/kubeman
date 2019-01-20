@@ -77,7 +77,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#dee6ed',
   },
   tableRowSpacer: {
-    height: 3,
+    height: 4,
   },
   tableAppendedRow: {
     backgroundColor: palette.type ==='dark' ? '#806f00' : '#ffdd00',

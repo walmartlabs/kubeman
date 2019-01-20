@@ -283,7 +283,7 @@ export class TableBox extends React.Component<IProps, IState> {
             )
           } else {
             return(
-            <TableCell key={i} style={{width: i === 0 ? '25%' : 'auto'}}>
+            <TableCell key={i} style={{width: i === 0 ? '25%' : 'auto', textAlign: 'center'}}>
               <Typography className={classes.tableHeaderText}>
                 {header} 
                 {columnMatchedFilter && 

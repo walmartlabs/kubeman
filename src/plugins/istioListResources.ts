@@ -44,7 +44,7 @@ const plugin : ActionGroupSpec = {
       order: 2,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Istio VirtualServices List"]], ActionOutputStyle.Table)
-        listResources("VirtualServices", IstioPluginHelper.getAllVirtualServices, this.onStreamOutput, actionContext)
+        listResources("VirtualServices", IstioFunctions.listAllVirtualServices, this.onStreamOutput, actionContext)
       }
     },
     {

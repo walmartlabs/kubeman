@@ -14,7 +14,8 @@ const plugin : ActionGroupSpec = {
       
       async act(actionContext) {
         const clusters = actionContext.getClusters()
-        const selectedNamespaes = actionContext.getNamespaces().map(ns => ns.name)
+        const namespaces = actionContext.getNamespaces()
+
         this.onOutput &&
           this.onOutput([["Service", "Policy/Dest Rule", "Client mTLS Required?", 
                       "Server mTLS Enforced?", "Using Sidecar?", "Accessible"]], ActionOutputStyle.Table)
@@ -27,13 +28,19 @@ const plugin : ActionGroupSpec = {
             this.onStreamOutput  && this.onStreamOutput([["", "Istio not installed", "", "", "", ""]])
             continue
           }
+          const clusterNamespaces = namespaces.filter(ns => ns.cluster.name === cluster.name).map(ns => ns.name)
+          if(clusterNamespaces.length === 0) {
+            this.onStreamOutput  && this.onStreamOutput([["No Namespace Selected", "", "", "", ""]])
+            continue
+          }
+
           const k8sClient = cluster.k8sClient
 
           const serviceMtlsStatus = await IstioFunctions.getServiceMtlsStatuses(k8sClient)
           if(serviceMtlsStatus.length > 0) {
             const statusByNamespace = _.groupBy(serviceMtlsStatus, status => status.namespace)
             for(const namespace in statusByNamespace) {
-              if(!selectedNamespaes.includes(namespace)) {
+              if(!clusterNamespaces.includes(namespace)) {
                 continue
               }
               const output: ActionOutput = []
