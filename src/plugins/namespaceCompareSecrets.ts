@@ -14,7 +14,7 @@ const plugin : ActionGroupSpec = {
         const namespaces = actionContext.getNamespaces()
 
         const secretsMap = {}
-
+        const secretIndexToNameMap = {}
         for(const i in namespaces) {
           const namespace = namespaces[i]
           const nsCluster = namespace.cluster.name
@@ -25,10 +25,17 @@ const plugin : ActionGroupSpec = {
                                       .map(cluster => cluster.k8sClient)[0]
           const secrets = await k8sFunctions.getNamespaceSecrets(namespace.cluster.name, namespace.name, k8sClient)
           secrets.forEach(secret => {
-            if(!secretsMap[namespace.name][secret.name]) {
-              secretsMap[namespace.name][secret.name] = {}
+            let secretIndexName = secret.name
+            const firstDash = secret.name.indexOf('-') 
+            const lastDash = secret.name.lastIndexOf('-')
+            if(firstDash > 0 && lastDash > 0 && firstDash !== lastDash) {
+              secretIndexName = secret.name.slice(0, lastDash)
             }
-            secretsMap[namespace.name][secret.name][nsCluster] = true
+            if(!secretsMap[namespace.name][secretIndexName]) {
+              secretsMap[namespace.name][secretIndexName] = {}
+            }
+            secretsMap[namespace.name][secretIndexName][nsCluster] = true
+            secretIndexToNameMap[secretIndexName] = secret.name
           })
         }
 
@@ -50,9 +57,9 @@ const plugin : ActionGroupSpec = {
           if(secrets.length === 0) {
             output.push(["No Secrets", ...clusters.map(() => "")])
           } else {
-            secrets.forEach(secret => {
-              const clusterMap = secretToClusterMap[secret]
-              const row = [secret]
+            secrets.forEach(secretIndex => {
+              const clusterMap = secretToClusterMap[secretIndex]
+              const row = [secretIndexToNameMap[secretIndex]]
               clusters.forEach(cluster => {
                 row.push(clusterMap[cluster.name] ? "Yes" : "No")
               })

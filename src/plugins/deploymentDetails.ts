@@ -17,7 +17,7 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
         if(selections.length < 1) {
-          this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
+          this.onOutput && this.onOutput([["No deployment selected"]], ActionOutputStyle.Text)
           return
         }
         this.onOutput && this.onOutput([["Keys", "Data"]], ActionOutputStyle.Table)

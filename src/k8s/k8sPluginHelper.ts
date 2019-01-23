@@ -1,7 +1,7 @@
 import _ from 'lodash'
 import {DataObject, StringStringArrayMap, GetItemsFunction} from './k8sFunctions'
 import ActionContext from '../actions/actionContext'
-import {ActionOutput} from '../actions/actionSpec'
+import {ActionOutput, ActionOutputStyle} from '../actions/actionSpec'
 import {Cluster, Namespace, Pod, PodTemplate, PodDetails, PodContainerDetails} from "./k8sObjectTypes"
 import k8sFunctions from './k8sFunctions'
 import { K8sClient } from './k8sClient'
@@ -160,7 +160,11 @@ export default class K8sPluginHelper {
       K8sPluginHelper.prepareChoices(actionContext, 
         async (clusterName, namespace, k8sClient) => {
           if(namespaces.length < min) {
-            return k8sFunctions.getClusterNamespaces(k8sClient)
+            const namespaces = await k8sFunctions.getClusterNamespaces(k8sClient)
+            return namespaces.map(ns => {
+              ns.cluster = clusters.filter(c => c.name === clusterName)[0]
+              return ns
+            })
           } else {
             const cluster = actionContext.context ? actionContext.context.cluster(clusterName) : undefined
             return cluster ? cluster.namespaces : []
@@ -284,7 +288,7 @@ export default class K8sPluginHelper {
   static async generateComparisonOutput(actionContext, onOutput, name, ...fields) {
     let selections = K8sPluginHelper.getSelections(actionContext, ...fields)
     if(selections.length < 2) {
-      onOutput(["No " + name + " selected"], 'Text')
+      onOutput(["Not enough " + name + " selected"], ActionOutputStyle.Text)
       return
     }
     let output: ActionOutput = []

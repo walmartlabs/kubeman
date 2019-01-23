@@ -295,11 +295,6 @@ export default class K8sFunctions {
           kind: item.kind,
           stringData: item.stringData,
         }
-        const firstDash = secret.name.indexOf('-') 
-        const lastDash = secret.name.lastIndexOf('-')
-        if(firstDash > 0 && lastDash > 0 && firstDash !== lastDash) {
-          secret.name = secret.name.slice(0, lastDash)
-        }
         secrets.push(secret)
       })
     }

@@ -70,6 +70,17 @@ const plugin : ActionGroupSpec = {
                 vs.gateways.filter(vsg => vsg.includes(g.name)).length > 0
                 && vs.hosts.filter(vsh => g.hosts.filter(gh => gh.includes(vsh)).length > 0).length > 0
               ).length > 0)
+              .map(vs => {
+                return {
+                  name: vs.name,
+                  namespace: vs.namespace,
+                  gateways: vs.gateways,
+                  hosts: vs.hosts,
+                  http: vs.http,
+                  tls: vs.tls,
+                  tcp: vs.tcp
+                }
+              })
             const isAnyVSUsingCert = certVirtualServices.filter(vs => vs.tls).length > 0
 
             output.push([
@@ -78,11 +89,10 @@ const plugin : ActionGroupSpec = {
                 : certVirtualServices.length === 0 ? " <span style='color:red'>(not used by any VirtualService)</span>"
                 : " <span style='color:red'>(not in use by any of the "+certVirtualServices.length+" VirtualServices)</span>"
                 ),
-              {
-                mountPath: mountPaths.length > 0 ? mountPaths[0] : "", 
-                gateways: certGateways,
-                virtualServices: certVirtualServices
-              }
+              [{"Mount Path": mountPaths.length > 0 ? mountPaths[0] : ""},
+                {"Gateways Usage": certGateways},
+                {"Related VirtualServices": certVirtualServices}]
+              
             ])
           })
 

@@ -64,6 +64,11 @@ const plugin : ActionGroupSpec = {
     }
   },
   async performAction(actionContext: ActionContext, action: ActionSpec, tail: boolean) {
+    const selections = K8sPluginHelper.getSelections(actionContext, "name")
+    if(selections.length < 1) {
+      action.onOutput && action.onOutput([["No service selected"]], ActionOutputStyle.Text)
+      return
+    }
     action.setScrollMode && action.setScrollMode(true)
     this.storeSelectedServices(actionContext, action)
     this.selectedPodAndContainers = []

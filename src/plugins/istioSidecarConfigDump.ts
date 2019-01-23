@@ -42,6 +42,10 @@ const plugin : ActionGroupSpec = {
       
       async act(actionContext) {
         const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
+        if(sidecars.length < 1) {
+          this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
+          return
+        }
         await outputConfig(this, actionContext, sidecars, "ClustersConfigDump", "cluster.name")
       },
       refresh(actionContext) {
@@ -56,6 +60,10 @@ const plugin : ActionGroupSpec = {
       
       async act(actionContext) {
         const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
+        if(sidecars.length < 1) {
+          this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
+          return
+        }
         await outputConfig(this, actionContext, sidecars, "ListenersConfigDump", "listener.name")
       },
       refresh(actionContext) {
@@ -70,6 +78,10 @@ const plugin : ActionGroupSpec = {
       
       async act(actionContext) {
         const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
+        if(sidecars.length < 1) {
+          this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
+          return
+        }
         await outputConfig(this, actionContext, sidecars, "RoutesConfigDump", "route_config.name", "route_config.virtual_hosts")
       },
       refresh(actionContext) {
@@ -85,6 +97,10 @@ const plugin : ActionGroupSpec = {
       
       async act(actionContext) {
         const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
+        if(sidecars.length < 1) {
+          this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
+          return
+        }
         this.onOutput && this.onOutput([["", "Sidecar Stats"]], ActionOutputStyle.Log)
         this.showOutputLoading && this.showOutputLoading(true)
     

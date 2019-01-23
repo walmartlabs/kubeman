@@ -16,12 +16,12 @@ const plugin : ActionGroupSpec = {
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 5, true, false),
       
       async act(actionContext) {
-        this.setScrollMode && this.setScrollMode(true)
         const selections = await K8sPluginHelper.getPodSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
           return
         }
+        this.setScrollMode && this.setScrollMode(true)
         this.selections = selections
         this.onOutput && this.onOutput([[
           "Send Command To: " + selections.map(s => s.title).join(", ")

@@ -63,9 +63,14 @@ const plugin : ActionGroupSpec = {
       choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
 
       async act(actionContext) {
+        const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
+        if(sidecars.length < 1) {
+          this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
+          return
+        }
 
         this.showOutputLoading && this.showOutputLoading(true)
-        const sidecar = IstioPluginHelper.getSelectedSidecars(actionContext)[0]
+        const sidecar = sidecars[0]
         const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
 
         this.onOutput && this.onOutput([[

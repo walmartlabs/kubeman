@@ -17,6 +17,11 @@ const plugin : ActionGroupSpec = {
       
       async act(actionContext) {
         const selections = await K8sPluginHelper.getSelections(actionContext)
+        if(selections.length < 1) {
+          this.onOutput && this.onOutput([["No namespace selected"]], ActionOutputStyle.Text)
+          return
+        }
+
         const clusters = actionContext.getClusters()
 
         this.onOutput &&

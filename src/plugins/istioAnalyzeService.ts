@@ -23,6 +23,10 @@ const plugin : ActionGroupSpec = {
 
       async act(actionContext) {
         const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
+        if(selections.length < 1) {
+          this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
+          return
+        }
         const service = selections[0].item
         const namespace = selections[0].namespace
         const cluster = actionContext.getClusters()
@@ -67,10 +71,15 @@ const plugin : ActionGroupSpec = {
       },
 
       async act(actionContext) {
+        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
+        if(selections.length < 1) {
+          this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
+          return
+        }
+
         this.onOutput && this.onOutput([["Service Routing Analysis"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
 
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
         for(const selection of selections) {
           const service = selection.item
           const namespace = selection.namespace
@@ -107,12 +116,17 @@ const plugin : ActionGroupSpec = {
       },
 
       async act(actionContext) {
+        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
+        if(selections.length < 1) {
+          this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
+          return
+        }
+        
         this.onOutput && this.onOutput([["Service", "Policy/Dest Rule", "Using Sidecar?", 
                               "Global mTLS Enabled?", "Server mTLS Enforced?", 
                               "Client mTLS Required?", "Client mTLS Disabled?", "Access"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
 
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
         for(const selection of selections) {
           const service = selection.item
           const namespace = selection.namespace
