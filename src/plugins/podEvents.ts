@@ -16,10 +16,6 @@ const plugin : ActionGroupSpec = {
 
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext, true, false)
-        if(selections.length < 1) {
-          this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
-          return
-        }
         this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
 

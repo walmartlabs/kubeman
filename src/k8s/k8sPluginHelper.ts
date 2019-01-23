@@ -26,63 +26,69 @@ export interface PodSelection {
 
 export default class K8sPluginHelper {
   static items: StringStringArrayMap = {}
+  static useNamespace: boolean = true
 
-  private static async storeItems(actionContext: ActionContext, getItems: GetItemsFunction, ...fields) {
-    const clusters = actionContext.getClusters()
-    const namespaces = actionContext.getNamespaces()
-    this.items = {}
+  static createChoices(items, namespace, cluster, ...fields) {
     const choices: any[] = []
-
-    const createChoices = (items, namespace, cluster) => {
-      items.forEach(item => {
-        const choiceItem: any[] = []
-        if(fields.length > 0) {
-          fields.forEach(field => choiceItem.push(item[field]))
-        } else {
-          choiceItem.push(item.name || item)
-        }
-        choiceItem.push("Namespace: " + (item.namespace || namespace))
-        choiceItem.push("Cluster: " + cluster)
-        choices.push(choiceItem)
-      })
-    }
-
-    if(namespaces.length > 0) {
-      for(const namespace of namespaces) {
-        const nsCluster = namespace.cluster.name
-        if(!this.items[nsCluster]) {
-          this.items[nsCluster] = {}
-        }
-        if(!this.items[nsCluster][namespace.name]) {
-          this.items[nsCluster][namespace.name] = []
-        }
-        const k8sClient = clusters.filter(c => c.name === nsCluster)
-                                  .map(c => c.k8sClient)[0]
-        
-        const items = this.items[nsCluster][namespace.name] = await getItems(nsCluster, namespace.name, k8sClient)
-        createChoices(items, namespace.name, nsCluster)
+    items.forEach(item => {
+      const choiceItem: any[] = []
+      if(fields.length > 0) {
+        fields.forEach(field => choiceItem.push(item[field]))
+      } else {
+        choiceItem.push(item.name || item)
       }
-    } else {
-      for(const cluster of clusters) {
-        this.items[cluster.name]={}
-        const items = await getItems(cluster.name, "", cluster.k8sClient)
+      let itemNS = namespace
+      if(!itemNS) {
+        itemNS = item.namespace ? (item.namespace.name || item.namespace) : ""
+      }
+      if(itemNS) {
+        choiceItem.push("Namespace: " + itemNS)
+      }
+      choiceItem.push("Cluster: " + cluster)
+      choices.push(choiceItem)
+    })
+    return choices
+  }
+
+  private static async storeItems(actionContext: ActionContext, getItems: GetItemsFunction, 
+                                  useNamespace: boolean = true, ...fields) {
+    const clusters = actionContext.getClusters()
+    this.items = {}
+    this.useNamespace = useNamespace
+
+    let choices: any[] = []
+    for(const cluster of clusters) {
+      if(!this.items[cluster.name]) {
+        this.items[cluster.name] = {}
+      }
+      const namespaces = cluster.namespaces
+      if(useNamespace && namespaces.length > 0) {
+        for(const namespace of namespaces) {
+          if(!this.items[cluster.name][namespace.name]) {
+            this.items[cluster.name][namespace.name] = []
+          }
+          const items = this.items[cluster.name][namespace.name] = 
+            await getItems(cluster.name, namespace.name, cluster.k8sClient)
+          choices = choices.concat(this.createChoices(items, namespace.name, cluster.name, ...fields))
+        }
+      } else {
+        const items = await getItems(cluster.name, undefined, cluster.k8sClient)
         items.forEach(item => {
-          const namespace = item.namespace || ""
+          const namespace = item.namespace ? (item.namespace.name || item.namespace) : ""
           if(!this.items[cluster.name][namespace]) {
             this.items[cluster.name][namespace] = []
           }
           this.items[cluster.name][namespace].push(item)
         })
-        
-        createChoices(items, "", cluster.name)
+        choices = choices.concat(this.createChoices(items, undefined, cluster.name, ...fields))
       }
     }
     return choices
   }
 
   static async prepareChoices(actionContext: ActionContext, k8sFunction: GetItemsFunction, 
-                              name: string, min: number, max: number, ...fields) {
-    const choices: any[] = await K8sPluginHelper.storeItems(actionContext, k8sFunction, ...fields)
+                              name: string, min: number, max: number, useNamespace: boolean = true, ...fields) {
+    const choices: any[] = await K8sPluginHelper.storeItems(actionContext, k8sFunction, useNamespace, ...fields)
     let howMany = ""
     if(min === max && max > 0) {
       howMany = " " + max + " "
@@ -111,10 +117,16 @@ export default class K8sPluginHelper {
         lastIndex++
       }
       data.title = data.name || selection[0]
-      data.namespace = selection[lastIndex].replace("Namespace: ", "")
-      data.cluster = selection[lastIndex+1].replace("Cluster: ", "")
-      const items = K8sPluginHelper.items[data.cluster][data.namespace]
-                  .filter(item => (item[keyField] || item) === data.title)
+      if(this.useNamespace && selection[lastIndex].includes("Namespace")) {
+        data.namespace = selection[lastIndex].replace("Namespace: ", "")
+        lastIndex++
+      } else {
+        data.namespace = ""
+      }
+      data.cluster = selection[lastIndex].replace("Cluster: ", "")
+      const items = K8sPluginHelper.items[data.cluster][data.namespace] ?
+                  K8sPluginHelper.items[data.cluster][data.namespace]
+                    .filter(item => (item[keyField] || item) === data.title) : []
       items.length > 0 && (data.item = items[0])
       return data
     })
@@ -145,25 +157,20 @@ export default class K8sPluginHelper {
     const clusters = actionContext.getClusters()
     let namespaces = actionContext.getNamespaces()
     if(namespaces.length < min || namespaces.length > max) {
-      const clustersReported: string[] = []
       K8sPluginHelper.prepareChoices(actionContext, 
-        async (cluster, namespace, k8sClient) => {
+        async (clusterName, namespace, k8sClient) => {
           if(namespaces.length < min) {
-            if(!clustersReported.includes(cluster)) {
-              clustersReported.push(cluster)
-              return k8sFunctions.getClusterNamespaces(k8sClient)
-            } else {
-              return []
-            }
+            return k8sFunctions.getClusterNamespaces(k8sClient)
           } else {
-            return namespaces.filter(ns => ns.name === namespace)
+            const cluster = actionContext.context ? actionContext.context.cluster(clusterName) : undefined
+            return cluster ? cluster.namespaces : []
           }
         },
-      "Namespaces", min, max, "name")
+      "Namespaces", min, max, false, "name")
     } else {
       const selections = await K8sPluginHelper.storeItems(actionContext, async (cluster, namespace, k8sClient) => {
         return namespaces.filter(ns => ns.cluster.name === cluster)
-      })
+      }, false, "name")
       actionContext.context && (actionContext.context.selections = selections)
       actionContext.onSkipChoices && actionContext.onSkipChoices()
     }
@@ -180,7 +187,7 @@ export default class K8sPluginHelper {
         async (cluster, namespace, k8sClient) => {
           let pods : any[] = []
           if(contextHasLess) {
-            pods = await k8sFunctions.getAllPodsForNamespace(namespace, k8sClient)
+            pods = namespace ? await k8sFunctions.getAllPodsForNamespace(namespace, k8sClient) : []
           } else {
             const namespaces = actionContext.getNamespaces()
             pods = _.flatMap(
@@ -188,7 +195,7 @@ export default class K8sPluginHelper {
                     ns => ns.pods)
             if(loadDetails) {
               for(const i in pods) {
-                pods[i] = await k8sFunctions.getPodDetails(namespace, pods[i].name, k8sClient)
+                pods[i] = namespace ? await k8sFunctions.getPodDetails(namespace, pods[i].name, k8sClient) : undefined
               }
             }
           }
@@ -202,12 +209,12 @@ export default class K8sPluginHelper {
           }
           return pods
         },
-        chooseContainers ? "Container@Pod" : "Pod(s)", min, max, "name"
+        chooseContainers ? "Container@Pod" : "Pod(s)", min, max, true, "name"
       )
     } else {
       const selections = await K8sPluginHelper.storeItems(actionContext, async (clusterName, nsName, k8sClient) => {
         const cluster = actionContext.context && actionContext.context.cluster(clusterName)
-        const namespace = cluster && cluster.namespace(nsName)
+        const namespace = cluster && nsName && cluster.namespace(nsName)
         let pods: any[] = namespace ? namespace.pods : []
         if(namespace && loadDetails) {
           for(const i in pods) {
@@ -223,7 +230,7 @@ export default class K8sPluginHelper {
           }))
         }
         return Promise.resolve(pods)
-      })
+      }, true, "name")
       actionContext.context && (actionContext.context.selections = selections)
       actionContext.onSkipChoices && actionContext.onSkipChoices()
     }
@@ -232,8 +239,7 @@ export default class K8sPluginHelper {
   static async getPodSelections(actionContext: ActionContext, loadDetails: boolean = false, loadContainers: boolean = true) {
     const selections = actionContext.getSelections()
     const pods : PodSelection[] = []
-    for(const i in selections) {
-      const selection = selections[i]
+    for(const selection of selections) {
       const namespace = selection[1].replace("Namespace: ", "")
       const cluster = selection[2].replace("Cluster: ", "")
       const clusters = actionContext.getClusters()
@@ -243,6 +249,7 @@ export default class K8sPluginHelper {
       const podAndContainer = loadContainers ? title.split("@") : undefined
       const container = loadContainers ? podAndContainer[0] : undefined
       const pod = loadContainers ? podAndContainer[1] : title
+
       const podContainerDetails : PodDetails|PodContainerDetails|undefined = loadDetails ? 
               loadContainers ? await k8sFunctions.getContainerDetails(namespace, pod, container, k8sClient) 
                               : await k8sFunctions.getPodDetails(namespace, pod, k8sClient)
@@ -270,7 +277,7 @@ export default class K8sPluginHelper {
         } else {
           return []
         }
-      }, "CRDs", 1, 10, "name")
+      }, "CRDs", 1, 10, false, "name")
 
   }
 

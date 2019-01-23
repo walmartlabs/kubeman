@@ -9,7 +9,8 @@ const plugin : ActionGroupSpec = {
       name: "Compare Two Secrets",
       order: 21,
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceSecrets, "Secrets", 2, 2, "name")
+        await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceSecrets, 
+                                                  "Secrets", 2, 2, true, "name")
       },
 
       async act(actionContext) {
@@ -20,7 +21,8 @@ const plugin : ActionGroupSpec = {
       name: "Compare Two Config Maps",
       order: 22,
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceConfigMaps, "Config Maps", 2, 2, "name")
+        await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceConfigMaps, 
+                                            "Config Maps", 2, 2, true, "name")
       },
 
       async act(actionContext) {
@@ -31,7 +33,8 @@ const plugin : ActionGroupSpec = {
       name: "Compare Two Deployments",
       order: 24,
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceDeployments, "Deployments", 2, 2, "name")
+        await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceDeployments, 
+                                            "Deployments", 2, 2, true, "name")
       },
 
       async act(actionContext) {

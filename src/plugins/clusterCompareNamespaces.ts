@@ -27,7 +27,6 @@ const plugin : ActionGroupSpec = {
             allNamespaces[ns.name][ci]=true
           })
         }
-        console.log(allNamespaces)
         const output: ActionOutput = []
         const headers = ["Namespace"]
         clusters.forEach(cluster => {

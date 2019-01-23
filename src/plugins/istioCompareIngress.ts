@@ -33,8 +33,8 @@ const plugin : ActionGroupSpec = {
           this.onOutput([headers], ActionOutputStyle.Compare)
 
         this.showOutputLoading && this.showOutputLoading(true)
-        await this.compareDeployment(actionContext)
-        await this.compareIngressComponents(actionContext)
+        await this.compareDeployment(clusters, actionContext)
+        await this.compareIngressComponents(clusters, actionContext)
 
         const rows: any[][] = []
         Object.keys(this.comparisonMap).forEach(key => {
@@ -53,8 +53,7 @@ const plugin : ActionGroupSpec = {
         objects.forEach(o => this.comparisonMap[key].push(o[key]))
       },
       
-      async compareDeployment(actionContext: ActionContext) {
-        const clusters = actionContext.getClusters()
+      async compareDeployment(clusters: any[], actionContext: ActionContext) {
         const ingressDeployments: any[] = []
         for(const cluster of clusters) {
           const k8sClient = cluster.k8sClient
@@ -91,9 +90,7 @@ const plugin : ActionGroupSpec = {
         this.addKeyComparison("volumes", volumesAndMounts)
       },
       
-      async compareIngressComponents(actionContext: ActionContext) {
-        const clusters = actionContext.getClusters()
-      
+      async compareIngressComponents(clusters: any[], actionContext: ActionContext) {
         this.comparisonMap["Ingress Service Type"] = []
         this.comparisonMap["Ingress Service IPs"] = []
         this.comparisonMap["Ingress Service Ports"] = []

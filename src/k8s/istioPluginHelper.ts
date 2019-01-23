@@ -155,7 +155,7 @@ export default class IstioPluginHelper {
                   s['title'] = s.pod+"."+s.namespace
                   return s
                 })
-      }, "Sidecars", min, max, "title")
+      }, "Sidecars", min, max, true, "title")
   }
 
   static getSelectedSidecars(actionContext: ActionContext) {
@@ -176,6 +176,6 @@ export default class IstioPluginHelper {
         } else {
           return []
         }
-      }, "Istio CRDs", 1, 10)
+      }, "Istio CRDs", 1, 10, false)
   }
 }

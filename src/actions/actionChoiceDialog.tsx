@@ -123,7 +123,7 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
                     />
                     {subItems.map((subtext, i) =>
                        <span key={i} className={classes.choiceSubtext} 
-                        onClick={this.onChange.bind(this, itemId, item)}
+                       onClick={!selections.has(itemId) && maxSelected ? undefined : this.onChange.bind(this, itemId, item)}
                        >
                         {subtext}
                        </span>

@@ -13,6 +13,9 @@ const plugin : ActionGroupSpec = {
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Sidecars List"]], ActionOutputStyle.Table)
         listResources("Sidecars", IstioFunctions.getAllSidecars, this.onStreamOutput, actionContext)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       }
     },
     {
@@ -64,6 +67,9 @@ const plugin : ActionGroupSpec = {
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       }
     }
   ]

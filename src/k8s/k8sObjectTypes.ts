@@ -113,6 +113,7 @@ export interface Metadata {
   namespace: string
   creationTimestamp: string
   labels: string[]
+  annotations: string[]
 }
 
 export interface ContainerInfo {

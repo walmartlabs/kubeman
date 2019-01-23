@@ -16,7 +16,7 @@ const plugin : ActionGroupSpec = {
       
       async choose(actionContext) {
         await K8sPluginHelper.prepareChoices(actionContext, IstioFunctions.getVirtualServices, 
-                                                    "VirtualServices", 1, 5, "name")
+                                                    "VirtualServices", 1, 5, true, "name")
       },
 
       async act(actionContext) {
@@ -80,6 +80,9 @@ const plugin : ActionGroupSpec = {
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
     }
   ]
 }

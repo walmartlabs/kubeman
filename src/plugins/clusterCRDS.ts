@@ -38,7 +38,6 @@ const plugin : ActionGroupSpec = {
         const selections = await K8sPluginHelper.getSelections(actionContext)
         this.onOutput && this.onOutput([["CRD Details"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
-
         for(const selection of selections) {
           this.onStreamOutput && this.onStreamOutput([
             [">"+selection.title],

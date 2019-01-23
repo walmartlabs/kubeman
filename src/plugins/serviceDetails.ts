@@ -12,7 +12,8 @@ const plugin : ActionGroupSpec = {
       order: 1,
       
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, "Services", 1, 10, "name")
+        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, 
+                                                "Services", 1, 10, true, "name")
       },
 
       async act(actionContext) {
@@ -53,12 +54,16 @@ const plugin : ActionGroupSpec = {
           this.onStreamOutput && this.onStreamOutput(output)
         }
       },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
     },
     {
       name: "Compare Two Services",
       order: 2,
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, "Services", 2, 2, "name")
+        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, 
+                                              "Services", 2, 2, true, "name")
       },
 
       async act(actionContext) {

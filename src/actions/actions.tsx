@@ -80,7 +80,7 @@ export class Actions extends React.Component<IProps, IState> {
     if(action.act) {
       this.props.showLoading()
       action.chooseAndAct()
-      this.setAutoRefresh(this.state.autoRefresh)
+      this.setAutoRefresh(false)
     }
   }
 
@@ -103,16 +103,12 @@ export class Actions extends React.Component<IProps, IState> {
         this.currentAction && this.currentAction.refresh && this.currentAction.refresh()
       }, 
       this.currentAction.autoRefreshDelay ? this.currentAction.autoRefreshDelay * 1000 : 15000)
-    } else {
-      this.setState({autoRefresh: false})
     }
-
+    this.setState({autoRefresh})
   }
 
   onAutoRefresh = (event) => {
-    const autoRefresh = event.target.checked
-    this.setAutoRefresh(autoRefresh)
-    this.setState({autoRefresh})
+    this.setAutoRefresh(event.target.checked)
   }
 
   onAutoRefreshChange = (event) => {

@@ -6,7 +6,7 @@ import {Cluster, Namespace, Pod, Metadata, PodInfo, PodDetails, PodTemplate, Pod
 export type DataObject = {[key: string]: any}
 export type StringStringStringBooleanMap = {[key: string]: {[key: string]: {[key: string]: boolean}}}
 export type StringStringArrayMap = {[key: string]: {[key: string]: any[]}}
-export type GetItemsFunction = (cluster: string, namespace: string, k8sClient: K8sClient) => Promise<any[]>
+export type GetItemsFunction = (cluster: string, namespace: string|undefined, k8sClient: K8sClient) => Promise<any[]>
 
 export default class K8sFunctions {
 
@@ -133,7 +133,7 @@ export default class K8sFunctions {
     } as ServiceDetails
   }
 
-  static getServices: GetItemsFunction = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
+  static getServices: GetItemsFunction = async (cluster, namespace, k8sClient) => {
     const services : ServiceDetails[] = []
     let result = (namespace && namespace.length > 0) ? 
                 await k8sClient.namespaces(namespace).services.get()
@@ -233,9 +233,9 @@ export default class K8sFunctions {
     return deployments
   }
 
-  static getNamespaceDeployments: GetItemsFunction = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
+  static getNamespaceDeployments: GetItemsFunction = async (cluster, namespace, k8sClient) => {
     const deployments : any[] = []
-    const result = await k8sClient.apps.namespaces(namespace).deployments.get()
+    const result = namespace ? await k8sClient.apps.namespaces(namespace).deployments.get() : undefined
     if(result && result.body) {
       const items = result.body.items
       const metas = K8sFunctions.extractMetadata(items) as Metadata[]
@@ -282,9 +282,9 @@ export default class K8sFunctions {
     return undefined
   }
 
-  static getNamespaceSecrets: GetItemsFunction = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
+  static getNamespaceSecrets: GetItemsFunction = async (cluster, namespace, k8sClient) => {
     const secrets : any[] = []
-    const result = await k8sClient.namespaces(namespace).secrets.get()
+    const result = namespace ? await k8sClient.namespaces(namespace).secrets.get() : undefined
     if(result && result.body) {
       const items = result.body.items
       const metas = K8sFunctions.extractMetadata(items)
@@ -306,9 +306,9 @@ export default class K8sFunctions {
     return secrets
   }
 
-  static getNamespaceConfigMaps: GetItemsFunction = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
+  static getNamespaceConfigMaps: GetItemsFunction = async (cluster, namespace, k8sClient) => {
     const configMaps : any[] = []
-    const result = await k8sClient.namespaces(namespace).configmaps.get()
+    const result = namespace ? await k8sClient.namespaces(namespace).configmaps.get() : undefined
     if(result && result.body) {
       const items = result.body.items
       const metas = K8sFunctions.extractMetadata(items) as Metadata[]

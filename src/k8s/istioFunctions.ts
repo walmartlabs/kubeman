@@ -77,7 +77,7 @@ export default class IstioFunctions {
             .filter(v => v.gateways && v.gateways.filter(g => egressGateways.includes(g)).length > 0)
   }
 
-  static getVirtualServices = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
+  static getVirtualServices = async (cluster, namespace, k8sClient) => {
     const virtualServices = (namespace && namespace.length > 0) ?
                               await k8sClient.istio.namespaces(namespace).virtualservices.get()
                               : await k8sClient.istio.virtualservices.get()

@@ -44,6 +44,9 @@ const plugin : ActionGroupSpec = {
         const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
         await outputConfig(this, actionContext, sidecars, "ClustersConfigDump", "cluster.name")
       },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
     },
     {
       name: "Sidecar Listeners Config Dump",
@@ -55,6 +58,9 @@ const plugin : ActionGroupSpec = {
         const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
         await outputConfig(this, actionContext, sidecars, "ListenersConfigDump", "listener.name")
       },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
     },
     {
       name: "Sidecar Routes Config Dump",
@@ -66,6 +72,9 @@ const plugin : ActionGroupSpec = {
         const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
         await outputConfig(this, actionContext, sidecars, "RoutesConfigDump", "route_config.name", "route_config.virtual_hosts")
       },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
     },
     {
       name: "Sidecar Stats",

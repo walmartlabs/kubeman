@@ -10,7 +10,8 @@ const plugin : ActionGroupSpec = {
       order: 3,
       
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceDeployments, "Deployments", 1, 10, "name")
+        await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceDeployments, 
+                                          "Deployments", 1, 10, true, "name")
       },
 
       async act(actionContext) {

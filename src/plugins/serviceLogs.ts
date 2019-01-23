@@ -101,20 +101,30 @@ const plugin : ActionGroupSpec = {
     this.podsAndContainers = undefined
     action.stop && action.stop(actionContext)
     action.stopped = false
-    await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getServices, "Services", 1, 3, "name")
+    await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getServices, 
+                                          "Services", 1, 3, true, "name")
   },
 
   actions: [
     {
       name: "Check Service Logs",
       order: 31,
+      autoRefreshDelay: 15,
 
       async choose(actionContext) {
         await plugin.performChoose(actionContext, this)
       },
-
       async act(actionContext) {
         await plugin.performAction(actionContext, this, false)
+      },
+      async react(actionContext) {
+        if(actionContext.inputText && actionContext.inputText.includes("clear")) {
+          this.onOutput && this.onOutput([["Pod", 
+              "Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)
+        }
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       }
     },
     {
@@ -124,18 +134,15 @@ const plugin : ActionGroupSpec = {
       async choose(actionContext) {
         await plugin.performChoose(actionContext, this)
       },
-
       async act(actionContext) {
         await plugin.performAction(actionContext, this, true)
       },
-
       async react(actionContext) {
         if(actionContext.inputText && actionContext.inputText.includes("clear")) {
           this.onOutput && this.onOutput([["Pod", 
               "Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)
         }
       },
-
       stop(actionContext) {
         if(plugin.logStreams.length > 0) {
           plugin.logStreams.forEach(stream => stream.stop())

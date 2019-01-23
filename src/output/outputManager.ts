@@ -241,7 +241,7 @@ export class Cell {
 
 export class Row {
   index: number
-  cells: Cell[]
+  cells: Cell[] = []
   isLog: boolean = false
   isFirstAppendedRow: boolean = false
   groupIndex: number = 0
@@ -265,21 +265,23 @@ export class Row {
     this.groupIndex = groupIndex
     this.isLog = isLog || false 
     this.appliedFilters = appliedFilters || []
-    this._isSubgroup = content.length > 0 && content[0].toString().startsWith(">>") || false
-    this._isGroup = !this._isSubgroup && content[0].toString().startsWith(">") || false
+    if(content) {
+      this._isSubgroup = content.length > 0 && content[0].toString().startsWith(">>") || false
+      this._isGroup = !this._isSubgroup && content[0].toString().startsWith(">") || false
 
-    this.cells = content.map((cellContent, cellIndex) => 
-        new Cell(cellContent, cellIndex,  
-          formattedContent ? formattedContent[cellIndex] : undefined,
-          this.appliedFilters.length > 0,
-          this.isGroup, this.isSubGroup,
-          healthColumnIndex ? healthColumnIndex === cellIndex : false,
-          isLog || false
-          ))
-    this.healthColumnIndex = healthColumnIndex
-    this.firstColumn = this.cells.length > 0 ? this.cells[0] : undefined
-    this.lastColumn = this.cells.length > 0 ? this.cells[this.cells.length-1] : undefined
-    this.secondLastColumn = this.cells.length > 1 ? this.cells[this.cells.length-2] : undefined
+      this.cells = content.map((cellContent, cellIndex) => 
+          new Cell(cellContent, cellIndex,  
+            formattedContent ? formattedContent[cellIndex] : undefined,
+            this.appliedFilters.length > 0,
+            this.isGroup, this.isSubGroup,
+            healthColumnIndex ? healthColumnIndex === cellIndex : false,
+            isLog || false
+            ))
+      this.healthColumnIndex = healthColumnIndex
+      this.firstColumn = this.cells.length > 0 ? this.cells[0] : undefined
+      this.lastColumn = this.cells.length > 0 ? this.cells[this.cells.length-1] : undefined
+      this.secondLastColumn = this.cells.length > 1 ? this.cells[this.cells.length-2] : undefined
+    }
   }
 
   get lastTwoColumnsDiffer() : boolean {

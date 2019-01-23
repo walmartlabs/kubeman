@@ -45,6 +45,9 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         await outputConfig(this, actionContext, "ClustersConfigDump", "cluster.name")
       },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
     },
     {
       name: "IngressGateway Listeners Config",
@@ -53,6 +56,9 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         await outputConfig(this, actionContext, "ListenersConfigDump", "listener.name")
       },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
     },
     {
       name: "IngressGateway Routes Config",
@@ -61,6 +67,9 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         await outputConfig(this, actionContext, "RoutesConfigDump", "route_config.name", "route_config.virtual_hosts")
       },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
     },
     {
       name: "IngressGateway Stats",

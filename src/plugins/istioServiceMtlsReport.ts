@@ -13,7 +13,7 @@ const plugin : ActionGroupSpec = {
       name: "Services MTLS Report",
       order: 106,
 
-      choose: K8sPluginHelper.chooseNamespaces.bind(K8sPluginHelper, 1, 3),
+      choose: K8sPluginHelper.chooseNamespaces.bind(K8sPluginHelper, 1, 5),
       
       async act(actionContext) {
         const selections = await K8sPluginHelper.getSelections(actionContext)
@@ -21,31 +21,32 @@ const plugin : ActionGroupSpec = {
 
         this.onOutput &&
           this.onOutput([["Service", "Policy/Dest Rule", "Using Sidecar?", 
-                          "Server mTLS Enforced?", "Client mTLS Required?", "Access"]], ActionOutputStyle.Table)
+                          "Server mTLS Enforced?", "Client mTLS Required?", 
+                          "Client mTLS Disabled?", "Access"]], ActionOutputStyle.Table)
 
         this.showOutputLoading && this.showOutputLoading(true)
 
         for(const cluster of clusters) {
-          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name, "", "", "", "", ""]])
+          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name, "", "", "", "", "", ""]])
           if(!cluster.hasIstio) {
-            this.onStreamOutput  && this.onStreamOutput([["", "Istio not installed", "", "", "", ""]])
+            this.onStreamOutput  && this.onStreamOutput([["", "Istio not installed", "", "", "", "", ""]])
             continue
           }
           let clusterNamespaces = selections.filter(s => s.cluster === cluster.name)
                                         .map(s => s.item).map(ns => ns.name)
           if(clusterNamespaces.length === 0) {
-            this.onStreamOutput  && this.onStreamOutput([["No Namespace Selected", "", "", "", ""]])
+            this.onStreamOutput  && this.onStreamOutput([["No Namespace Selected", "", "", "", "", "", ""]])
             continue
           }
           const k8sClient = cluster.k8sClient
 
           const mtlsStatus = await IstioFunctions.getMtlsStatus(k8sClient)
           const mtlsStatusOutput: ActionOutput = []
-          mtlsStatusOutput.push(["Global MTLS Enabled", mtlsStatus.isGlobalMtlsEnabled.toString()])
+          mtlsStatusOutput.push(["Global MTLS Enabled", mtlsStatus.isGlobalMtlsEnabled.toString(), "", "", "", "", ""])
           if(mtlsStatus.servicesWithMtlsPolicies.length > 0) {
             const policiesByNamespace = _.groupBy(mtlsStatus.servicesWithMtlsPolicies, p => p.namespace)
 
-            mtlsStatusOutput.push([">>Services With MTLS Policies", ""])
+            mtlsStatusOutput.push([">>Services With MTLS Policies", "", "", "", "", "", ""])
             Object.keys(policiesByNamespace)
               .filter(ns => clusterNamespaces.includes(ns))
               .map(ns => policiesByNamespace[ns])
@@ -64,7 +65,7 @@ const plugin : ActionGroupSpec = {
               }
               const output: ActionOutput = []
 
-              output.push([">>"+namespace, "", "", "", "", ""])
+              output.push([">>"+namespace, "", "", "", "", "", ""])
               for(const status of statusByNamespace[namespace]) {
                 status.policy = status.policy === "-" ? "" : status.policy
 
@@ -82,6 +83,7 @@ const plugin : ActionGroupSpec = {
                             mtlsAccessStatus.hasSidecar ? "Yes" : "No",
                             (mtlsAccessStatus.isServerMtlsEnforced ? mtlsAccessStatus.isServerMtlsPermissive ? "Permissive" : "Yes" : "No"),
                             mtlsAccessStatus.isClientMtlsRequired ? "Yes" : "No",
+                            mtlsAccessStatus.isClientMtlsDisabled ? "Yes" : "No",
                             mtlsAccessStatus.access])
               }
               this.onStreamOutput  && this.onStreamOutput(output)
@@ -93,6 +95,9 @@ const plugin : ActionGroupSpec = {
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
     }
   ]
 }

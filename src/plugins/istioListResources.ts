@@ -5,10 +5,13 @@ import IstioPluginHelper from '../k8s/istioPluginHelper';
 import K8sPluginHelper from '../k8s/k8sPluginHelper';
 
 export async function listResources(type: string, getResources: (k8sClient) => Promise<any[]>, 
-                              onStreamOutput, actionContext: ActionContext) {
+                              onStreamOutput, actionContext: ActionContext, clusterName?: string) {
   const clusters = actionContext.getClusters()
 
   for(const cluster of clusters) {
+    if(clusterName && cluster.name !== clusterName) {
+      continue
+    }
     const output: ActionOutput = []
     output.push([">"+type+" @ Cluster: " + cluster.name, ""])
 
@@ -97,9 +100,10 @@ const plugin : ActionGroupSpec = {
         const selections = await K8sPluginHelper.getSelections(actionContext)
         const resources = selections.map(s =>  s.name.split(".")[0])
         this.onOutput && this.onOutput([["Istio Resources:", resources.join(", ")]], ActionOutputStyle.Table)
-        resources.forEach(r => {
-          listResources(r, IstioFunctions.listAnyResource.bind(IstioFunctions, r), this.onStreamOutput, actionContext)
-        })
+        for(const i in selections) {
+          await listResources(resources[i], IstioFunctions.listAnyResource.bind(IstioFunctions, resources[i]), 
+                            this.onStreamOutput, actionContext, selections[i].cluster)
+        }
       }
     }
   ]

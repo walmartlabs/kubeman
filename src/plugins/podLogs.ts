@@ -47,14 +47,25 @@ const plugin : ActionGroupSpec = {
     {
       name: "Check Pod Logs",
       order: 4,
+      autoRefreshDelay: 15,
+
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 5, true, false),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, this, false)
+      },
+      react(actionContext) {
+        if(actionContext.inputText && actionContext.inputText.includes("clear")) {
+          this.onOutput && this.onOutput([["Pod","Logs"]], ActionOutputStyle.Log)
+        }
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       }
     },
     {
       name: "Tail Pod Logs",
       order: 5,
+      
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 5, true, false),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, this, true)

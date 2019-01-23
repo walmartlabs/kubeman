@@ -26,7 +26,7 @@ const plugin : ActionGroupSpec = {
           const cluster = selection.cluster
           const podDetails = selection.podContainerDetails as PodDetails
           const output: ActionOutput = []
-          output.push([">" + pod +", Cluster: " + cluster, ""])
+          output.push([">" + pod + ",Namespace: " + namespace + ", Cluster: " + cluster, ""])
           output.push(["cluster", cluster])
           if(podDetails) {
             Object.keys(podDetails).forEach((key, index) => 

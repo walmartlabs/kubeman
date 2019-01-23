@@ -58,7 +58,8 @@ const plugin : ActionGroupSpec = {
       order: 42,
       
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, "Services", 1, 10, "name")
+        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, 
+                                                  "Services", 1, 10, true, "name")
       },
       
       async act(actionContext) {
@@ -77,6 +78,9 @@ const plugin : ActionGroupSpec = {
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
     }
   ]
 }
