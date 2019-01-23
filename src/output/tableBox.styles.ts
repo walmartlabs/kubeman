@@ -22,6 +22,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     padding: 0,
     paddingLeft: 5,
     margin: 0,
+    tableLayout: 'fixed',
     backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
   },
   table: {

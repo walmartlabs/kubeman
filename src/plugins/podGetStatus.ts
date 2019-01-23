@@ -12,6 +12,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "View Pod(s) Status",
       order: 2,
+      autoRefreshDelay: 15,
 
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 10, false, false),
 
@@ -57,6 +58,9 @@ const plugin : ActionGroupSpec = {
         })
         this.onOutput && this.onOutput(output, ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       }
     }
   ]

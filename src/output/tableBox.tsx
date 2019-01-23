@@ -95,6 +95,7 @@ export class TableBox extends React.Component<IProps, IState> {
   }
   outputManager: OutputManager = new OutputManager
   filterTimer: any = undefined
+  lastScrollTop: number = -1
   isScrolled: boolean = false
   scrollToRef: any
   bottomRef: any
@@ -168,14 +169,18 @@ export class TableBox extends React.Component<IProps, IState> {
   }
 
   scrollToBottom() {
-    if(this.scrollToRef) {
+    if(this.scrollToRef && !this.isScrolled) {
       setTimeout(() => this.scrollToRef && this.scrollToRef.scrollIntoView({behavior: 'smooth', block: 'center'}), 300)
     }
   }
 
-
-  onScroll = (event: SyntheticEvent<HTMLDivElement>) => {
-    this.isScrolled = true
+  onScroll = (event) => {
+    if(event.currentTarget.scrollTop < this.lastScrollTop) {
+      this.isScrolled = true
+    } else {
+      this.isScrolled = false
+    }
+    this.lastScrollTop = event.currentTarget.scrollTop
   }
 
   onGroupClick = (groupIndex?: number) => {
@@ -215,6 +220,10 @@ export class TableBox extends React.Component<IProps, IState> {
             )
           })
         }
+      </TableRow>
+    )
+    components.push(
+      <TableRow key={rowIndex+".space"} className={classes.tableRowSpacer}>
       </TableRow>
     )
     return components
@@ -269,7 +278,7 @@ export class TableBox extends React.Component<IProps, IState> {
           const columnMatchedFilter = filterMatchedColumns.has(i)
           if(header instanceof Array){
             return(
-            <TableCell key={i} style={{width: i === 0 ? '25%' : 'auto'}}>
+            <TableCell key={i} style={{width: i===0?'22%':'auto', paddingLeft: 10}}>
               <Typography className={classes.tableHeaderText}>
               {header.map((text,hi) =>
                 <span key={hi} style={{display: 'block'}}>
@@ -283,7 +292,7 @@ export class TableBox extends React.Component<IProps, IState> {
             )
           } else {
             return(
-            <TableCell key={i} style={{width: i === 0 ? '25%' : 'auto', textAlign: 'center'}}>
+            <TableCell key={i} style={{width: i===0?'22%':'auto', paddingLeft: 10}}>
               <Typography className={classes.tableHeaderText}>
                 {header} 
                 {columnMatchedFilter && 

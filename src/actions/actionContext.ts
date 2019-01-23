@@ -6,7 +6,7 @@ import {ActionOutputCollector, ActionStreamOutputCollector, ActionOnChoice, Acti
 export default class ActionContext {
   context?: Context
   inputText?: string
-  onChoices? : ActionOnChoice
+  onActionInitChoices? : ActionOnChoice
   onSkipChoices? : BoundActionAct
 
   getClusters: () => Cluster[] = () => this.context ? this.context.clusters : []

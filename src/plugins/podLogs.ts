@@ -59,7 +59,7 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, this, true)
       },
-      async react(actionContext) {
+      react(actionContext) {
         if(actionContext.inputText && actionContext.inputText.includes("clear")) {
           this.onOutput && this.onOutput([["Pod","Logs"]], ActionOutputStyle.Log)
         }

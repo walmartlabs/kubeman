@@ -70,6 +70,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "Sidecar Stats",
       order: 50,
+      autoRefreshDelay: 30,
       
       choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
       
@@ -85,6 +86,9 @@ const plugin : ActionGroupSpec = {
           this.onStreamOutput && this.onStreamOutput(stats.split("\n").map(line => [line]))
         }
         this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       },
     }
   ]

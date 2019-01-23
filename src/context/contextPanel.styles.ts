@@ -23,6 +23,8 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     lineHeight: 2,
   },
   listItem: {
+    paddingTop: 2,
+    paddingBottom: 2,
     paddingLeft: 5,
   },
   listInfoText: {
@@ -38,7 +40,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     backgroundColor: palette.type === 'dark' ? palette.background.paper : '#daddf1',
   },
   grid: {
-    height: 200,
+    height: 150,
   },
   gridItem: {
     minWidth: 250,

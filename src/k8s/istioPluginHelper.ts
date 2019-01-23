@@ -97,6 +97,12 @@ export default class IstioPluginHelper {
 
   static async getServiceMtlsAccessStatus(namespace: string, serviceDetails: any, 
                                           serviceMtlsStatus: any, k8sClient: K8sClient) {
+    let isGlobalMtlsEnabled: boolean = false
+    const defaultMeshPolicy = (await IstioFunctions.listAllMeshPolicies(k8sClient))
+            .filter(policy => policy.name === 'default')
+    if(defaultMeshPolicy && defaultMeshPolicy.length > 0) {
+      isGlobalMtlsEnabled = true
+    }
     const serviceDestinationRules = await IstioFunctions.getServiceDestinationRules(
                                               serviceDetails.name, namespace, k8sClient)
     const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(namespace, serviceDetails, k8sClient)
@@ -123,7 +129,7 @@ export default class IstioPluginHelper {
     } else {
       if(isServerMtlsEnforced) {
         access = "Conflict. mTLS enabled without sidecar"
-      } else if(!isClientMtlsDisabled) {
+      } else if(isGlobalMtlsEnabled && !isClientMtlsDisabled) {
         access = "Non-sidecar only"
       } else {
         access = "Any client"
@@ -142,11 +148,10 @@ export default class IstioPluginHelper {
   static async chooseSidecar(min: number = 1, max: number = 1, actionContext: ActionContext) {
     K8sPluginHelper.prepareChoices(actionContext, 
       async (cluster, namespace, k8sClient) => {
-        if(!namespace || namespace.length === 0) {
-          return []
-        }
-        return (await IstioFunctions.getNamespaceSidecars(namespace, k8sClient))
-                .map(s => {
+        const sidecars = (namespace && namespace.length > 0) ?
+                          await IstioFunctions.getNamespaceSidecars(namespace, k8sClient)
+                          : await IstioFunctions.getAllSidecars(k8sClient)
+        return sidecars.map(s => {
                   s['title'] = s.pod+"."+s.namespace
                   return s
                 })

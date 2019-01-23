@@ -8,6 +8,8 @@ const plugin : ActionGroupSpec = {
     {
       name: "Get Events",
       order: 1,
+      autoRefreshDelay: 15,
+      
       async act(actionContext) {
         this.onOutput && this.onOutput([[
           ["Event", "LastTimestamp", "(Count)"],
@@ -46,6 +48,28 @@ const plugin : ActionGroupSpec = {
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
+      },
+      react(actionContext) {
+        switch(actionContext.inputText) {
+          case "clear": 
+            this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.TableWithHealth)
+            break
+          case "help":
+            this.showInfo && this.showInfo('Command Help', [
+              "/clear: clears output",
+              "/help: shows help"
+            ])
+            break
+          default:
+            if(actionContext.inputText && actionContext.inputText.length > 0) {
+              this.onOutput && this.onOutput([["Unknown Command"]], ActionOutputStyle.Text)
+            }
+            break
+        }
+        actionContext.inputText = undefined
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       },
     },
   ]

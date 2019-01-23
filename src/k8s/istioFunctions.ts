@@ -77,8 +77,11 @@ export default class IstioFunctions {
             .filter(v => v.gateways && v.gateways.filter(g => egressGateways.includes(g)).length > 0)
   }
 
-  static getNamespaceVirtualServices = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
-    return IstioFunctions.extractResource(await k8sClient.istio.namespaces(namespace).virtualservices.get(),
+  static getVirtualServices = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
+    const virtualServices = (namespace && namespace.length > 0) ?
+                              await k8sClient.istio.namespaces(namespace).virtualservices.get()
+                              : await k8sClient.istio.virtualservices.get()
+    return IstioFunctions.extractResource(virtualServices,
                             "gateways", "hosts", "http", "tls", "tcp") as any[]
   }
 

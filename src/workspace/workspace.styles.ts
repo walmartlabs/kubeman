@@ -18,7 +18,6 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
   upperRow: {
     verticalAlign: 'top',
     border: 'none',
-    height: '20%',
   },
   lowerRow: {
     verticalAlign: 'top',

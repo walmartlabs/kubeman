@@ -35,6 +35,7 @@ export type ActionOutputCollector = (output: ActionOutput|string[], style: Actio
 export type ActionStreamOutputCollector = (output: ActionOutput|string[]) => void
 export type ActionChoiceMaker = (act: BoundActionAct, title: string, choices: ActionChoices, minChoices: number, maxChoices: number) => void
 export type ActionOnChoice = (title: string, choices: ActionChoices, minChoices: number, maxChoices: number) => void
+export type ActionOnInfo = (title: string, info: any[]) => void
 
 export type ActionGroupSpecs = ActionGroupSpec[]
 
@@ -46,18 +47,23 @@ export interface ActionSpec {
   choose?: ActionAct
   act: ActionAct
   react?: ActionAct
+  refresh?: ActionAct
   stop?: ActionAct
   onOutput?: ActionOutputCollector
   onStreamOutput?: ActionStreamOutputCollector
+  showChoices?: ActionOnChoice
+  showInfo?: ActionOnInfo
+  autoRefreshDelay?: number
   setScrollMode?: (boolean) => void
   showOutputLoading?: (boolean) => void
   [x: string]: any
 }
 
 export interface BoundAction extends ActionSpec {
-  act: BoundActionAct
+  chooseAndAct: BoundActionAct
   stop?: BoundActionAct
   react?: BoundActionAct
+  refresh?: BoundActionAct
 }
 
 export interface ActionGroupSpec {

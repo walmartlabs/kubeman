@@ -179,6 +179,21 @@ class ActionsTheme {
             },
           }
         },
+        MuiCheckbox: {
+          root: {
+            paddingRight: 5,
+            paddingLeft: 20,
+            paddingTop: 12,
+          },
+        },
+        MuiFormControlLabel: {
+          root: {
+            marginRight: 2,
+          },
+          label: {
+            paddingTop: 0,
+          },
+        },
       }
     })
   }

@@ -6,6 +6,7 @@ import Switch from '@material-ui/core/Switch';
 
 import StyledActions, {Actions} from '../actions/actions'
 import ActionChoiceDialog from '../actions/actionChoiceDialog'
+import ActionInfoDialog from '../actions/actionInfoDialog'
 import ContextPanel from '../context/contextPanel'
 import ContextSelector from '../context/contextSelector'
 import Context from "../context/contextStore";
@@ -21,11 +22,15 @@ interface IState {
   output: ActionOutput|string[]
   outputStyle: ActionOutputStyle
   loading: boolean
-  showChoices: boolean
+  showActionInitChoices: boolean
+  showActionChoices: boolean
   minChoices: number
   maxChoices: number
   choiceTitle: string
   choices: any[]
+  showInfo: boolean
+  infoTitle: string,
+  info: any[]
   scrollMode: boolean
   deferredAction?: BoundActionAct
 }
@@ -48,11 +53,15 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     output: [],
     outputStyle: ActionOutputStyle.None,
     loading: false,
-    showChoices: false,
+    showActionInitChoices: false,
+    showActionChoices: false,
     minChoices: 0,
     maxChoices: 0,
     choiceTitle: '',
     choices: [],
+    showInfo: false,
+    infoTitle: '',
+    info: [],
     scrollMode: false,
   }
   commandHandler?: ((string) => void) = undefined
@@ -101,26 +110,53 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     this.setState({scrollMode})
   }
 
-  showChoices : ActionChoiceMaker = (act, title, choices, minChoices, maxChoices) => {
+  onActionInitChoices : ActionChoiceMaker = (act, title, choices, minChoices, maxChoices) => {
     this.setState({
       choices,
       minChoices,
       maxChoices,
       choiceTitle: title, 
-      showChoices: true,
+      showActionInitChoices: true,
       deferredAction: act,
+    })
+  }
+
+  onActionChoices : ActionChoiceMaker = (react, title, choices, minChoices, maxChoices) => {
+    this.setState({
+      choices,
+      minChoices,
+      maxChoices,
+      choiceTitle: title, 
+      showActionChoices: true,
+      deferredAction: react,
     })
   }
 
   onSelectActionChoice = (selections: ActionChoices) => {
     const {context, deferredAction} = this.state
     context.selections = selections
-    this.setState({showChoices: false})
+    this.setState({showActionInitChoices: false, showActionChoices: false, loading: false})
     deferredAction && deferredAction()
   }
 
   onCancelActionChoice = () => {
-    this.setState({showChoices: false, loading: false})
+    this.setState({showActionInitChoices: false, showActionChoices: false, loading: false})
+  }
+
+  showInfo = (infoTitle: string, info: any[]) => {
+    this.setState({
+      info,
+      infoTitle,
+      showInfo: true,
+    })
+  }
+
+  onInfoOK = () => {
+    this.setState({showInfo: false})
+  }
+
+  onInfoCancel = () => {
+    this.setState({showInfo: false})
   }
 
   onActionTextInput = (text: string) => {
@@ -149,7 +185,8 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   render() {
     const { classes } = this.props;
     const { context, output, outputStyle, loading, scrollMode,
-      showChoices, minChoices, maxChoices, choiceTitle, choices } = this.state;
+          showActionInitChoices, showActionChoices, minChoices, maxChoices, choiceTitle, choices,
+          showInfo, infoTitle, info } = this.state;
 
     const showBlackBox = outputStyle === ActionOutputStyle.Text
     const log = outputStyle === ActionOutputStyle.Log
@@ -158,6 +195,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     const showTable = outputStyle === ActionOutputStyle.Table || log || health || compare
     const acceptInput = this.actions && this.actions.acceptInput() ? true : false
     const accumulatedOutput = (output as any[]).concat(this.streamOutput)
+        
     return (
       <div className={classes.root} 
             tabIndex={0}
@@ -180,7 +218,9 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                         onCommand={this.onCommand}
                         onOutput={this.showOutput}
                         onStreamOutput={this.showStreamOutput}
-                        onChoices={this.showChoices}
+                        onActionInitChoices={this.onActionInitChoices}
+                        onActionChoices={this.onActionChoices}
+                        onShowInfo={this.showInfo}
                         onSetScrollMode={this.setScrollMode}
                         onAction={this.onAction}
                         onOutputLoading={this.showOutputLoading}
@@ -222,15 +262,25 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
             context={context} 
             onUpdateContext={this.onUpdateContext.bind(this)} />
         {
-          showChoices && 
+          (showActionInitChoices || showActionChoices) && 
           <ActionChoiceDialog
-            open={showChoices}
+            open={showActionInitChoices || showActionChoices}
             title={choiceTitle}
             choices={choices}
             minChoices={minChoices}
             maxChoices={maxChoices}
             onSelection={this.onSelectActionChoice}
             onCancel={this.onCancelActionChoice}
+          />
+        }
+        {
+          showInfo && 
+          <ActionInfoDialog
+            open={showInfo}
+            title={infoTitle}
+            items={info}
+            onOK={this.onInfoOK}
+            onCancel={this.onInfoCancel}
           />
         }
       </div>

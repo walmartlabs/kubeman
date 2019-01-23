@@ -12,6 +12,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "Test Pods Reachability",
       order: 7,
+      autoRefreshDelay: 60,
       
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 2, 5, true, true),
       
@@ -66,7 +67,8 @@ const plugin : ActionGroupSpec = {
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
-      stop(actionContext) {
+      refresh(actionContext) {
+        this.act(actionContext)
       }
     }
   ]

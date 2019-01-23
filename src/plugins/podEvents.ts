@@ -1,14 +1,16 @@
 import k8sFunctions from '../k8s/k8sFunctions'
 import K8sPluginHelper from '../k8s/k8sPluginHelper'
-import {ActionGroupSpec, ActionContextType, ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
+import {ActionGroupSpec, ActionContextOrder, ActionContextType, ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
   title: "Pod Recipes",
+  order: ActionContextOrder[ActionContextType.Namespace]+2,
   actions: [
     {
       name: "View Pod(s) Events",
       order: 1,
+      autoRefreshDelay: 15,
 
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 10, false, false),
 
@@ -48,6 +50,9 @@ const plugin : ActionGroupSpec = {
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       }
     }
   ]

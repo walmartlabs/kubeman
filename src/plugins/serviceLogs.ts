@@ -7,6 +7,7 @@ import { ServiceDetails } from '../k8s/k8sObjectTypes';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
+  title: "Service Recipes",
 
   selectedServices: undefined,
   selectedPodAndContainers: undefined,
@@ -100,7 +101,7 @@ const plugin : ActionGroupSpec = {
     this.podsAndContainers = undefined
     action.stop && action.stop(actionContext)
     action.stopped = false
-    await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceServices, "Services", 1, 3, "name")
+    await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getServices, "Services", 1, 3, "name")
   },
 
   actions: [

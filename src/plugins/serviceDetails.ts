@@ -1,16 +1,18 @@
-import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput} from '../actions/actionSpec'
+import {ActionGroupSpec, ActionContextOrder, ActionContextType, ActionOutputStyle, ActionOutput} from '../actions/actionSpec'
 import K8sPluginHelper, {ItemSelection} from '../k8s/k8sPluginHelper'
 import K8sFunctions from '../k8s/k8sFunctions'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
+  title: "Service Recipes",
+  order: ActionContextOrder[ActionContextType.Namespace]+1,
   actions: [
     {
       name: "View Service Details",
-      order: 2,
+      order: 1,
       
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getNamespaceServices, "Services", 1, 10, "name")
+        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, "Services", 1, 10, "name")
       },
 
       async act(actionContext) {
@@ -50,6 +52,17 @@ const plugin : ActionGroupSpec = {
           }
           this.onStreamOutput && this.onStreamOutput(output)
         }
+      },
+    },
+    {
+      name: "Compare Two Services",
+      order: 2,
+      async choose(actionContext) {
+        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, "Services", 2, 2, "name")
+      },
+
+      async act(actionContext) {
+        K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Services")
       },
     }
   ]

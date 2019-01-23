@@ -65,6 +65,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "IngressGateway Stats",
       order: 28,
+      autoRefreshDelay: 60,
       
       async act(actionContext) {
         this.onOutput && this.onOutput([["", "IngressGateway Stats"]], ActionOutputStyle.Log)
@@ -81,6 +82,9 @@ const plugin : ActionGroupSpec = {
           this.onStreamOutput && this.onStreamOutput(stats.split("\n").map(line => [line]))
         }
         this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       },
     }
   ]

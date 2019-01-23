@@ -15,12 +15,8 @@ const plugin : ActionGroupSpec = {
       order: 21,
       
       async choose(actionContext) {
-        if(actionContext.getNamespaces().length === 0) {
-          this.onOutput && this.onOutput(["No Namespace selected"], ActionOutputStyle.Text)
-        } else {
-          await K8sPluginHelper.prepareChoices(actionContext, IstioFunctions.getNamespaceVirtualServices, 
-                                                      "VirtualServices", 1, 5, "name")
-        }
+        await K8sPluginHelper.prepareChoices(actionContext, IstioFunctions.getVirtualServices, 
+                                                    "VirtualServices", 1, 5, "name")
       },
 
       async act(actionContext) {
@@ -34,7 +30,7 @@ const plugin : ActionGroupSpec = {
 
         for(const selection of selections) {
           const virtualService = selection.item
-          const namespace = selection.namespace
+          const namespace = virtualService.namespace
           const cluster = actionContext.getClusters()
                               .filter(c => c.name === selection.cluster)[0]
                               

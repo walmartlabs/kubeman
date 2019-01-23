@@ -1,7 +1,7 @@
 import PluginLoader from './pluginLoader'
 import {ActionContextType, ActionGroupSpec, ActionGroupSpecs, ActionContextOrder,
         isActionGroupSpec, isActionSpec, ActionOutput, ActionOutputStyle, 
-        ActionOutputCollector, ActionStreamOutputCollector, ActionChoiceMaker, BoundActionAct, } from './actionSpec'
+        ActionOutputCollector, ActionStreamOutputCollector, ActionChoiceMaker, BoundActionAct, ActionOnInfo, } from './actionSpec'
 import Context from "../context/contextStore";
 import ActionContext from './actionContext'
 
@@ -9,7 +9,9 @@ export class ActionLoader {
   static onLoad: (ActionGroupSpecs) => void
   static onOutput: (action, output, style) => void
   static onStreamOutput: (action, output) => void
-  static onChoices: ActionChoiceMaker
+  static onActionInitChoices: ActionChoiceMaker
+  static onActionChoices: ActionChoiceMaker
+  static onShowInfo: ActionOnInfo
   static onSetScrollMode: (boolean) => void
   static onOutputLoading: (boolean) => void
   static context: Context
@@ -33,8 +35,13 @@ export class ActionLoader {
     }
   }
 
-  static setOnChoices(callback: ActionChoiceMaker) {
-    this.onChoices = callback
+  static setOnActionChoices(onActionInitChoices: ActionChoiceMaker, onActionChoices: ActionChoiceMaker) {
+    this.onActionInitChoices = onActionInitChoices
+    this.onActionChoices = onActionChoices
+  }
+
+  static setOnShowInfo(callback: ActionOnInfo) {
+    this.onShowInfo = callback
   }
 
   static setOnSetScrollMode(callback: (boolean) => void) {
@@ -116,8 +123,7 @@ export class ActionLoader {
       if(!isActionSpec(action)) {
         console.log("Not ActionSpec: " + JSON.stringify(action))
       } else {
-        const originalAct = action.act
-        action.act = () => {
+        action.chooseAndAct = () => {
           action.stopped = false
           if(this.checkSelections({
             checkClusters: true,
@@ -129,17 +135,26 @@ export class ActionLoader {
             action.onStreamOutput = this.onStreamOutput.bind(this, action)
             action.setScrollMode = this.onSetScrollMode
             action.showOutputLoading = this.onOutputLoading
-
+            action.showInfo = this.onShowInfo
             if(action.choose) {
-              this.actionContext.onChoices = this.onChoices.bind(this, originalAct.bind(action, this.actionContext))
-              this.actionContext.onSkipChoices = originalAct.bind(action, this.actionContext)
+              this.actionContext.onActionInitChoices = this.onActionInitChoices.bind(this, action.act.bind(action, this.actionContext))
+              this.actionContext.onSkipChoices = action.act.bind(action, this.actionContext)
               action.choose(this.actionContext)
             } else {
-              originalAct.call(action, this.actionContext)
+              action.act(this.actionContext)
             }
           }
         }
-        action.react && (action.react = action.react.bind(action, this.actionContext))
+        if(action.react) {
+          const boundReact = action.react = action.react.bind(action, this.actionContext)
+          action.showChoices = this.onActionChoices.bind(this, boundReact)
+        }
+        const refresh = action.refresh
+        action.autoRefreshDelay = action.autoRefreshDelay || 60
+        refresh && (action.refresh = () => {
+          console.log("Refreshing action " + action.name)
+          refresh && refresh.call(action, this.actionContext)
+        })
         const stop = action.stop ? action.stop.bind(action, this.actionContext) : undefined
         action.stop = () => {
           action.stopped = true

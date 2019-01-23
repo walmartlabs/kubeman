@@ -28,17 +28,6 @@ const plugin : ActionGroupSpec = {
       },
     },
     {
-      name: "Compare Two Services",
-      order: 23,
-      async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceServices, "Services", 2, 2, "name")
-      },
-
-      async act(actionContext) {
-        K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Services")
-      },
-    },
-    {
       name: "Compare Two Deployments",
       order: 24,
       async choose(actionContext) {

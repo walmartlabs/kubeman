@@ -8,6 +8,8 @@ const plugin : ActionGroupSpec = {
     {
       name: "Get Events",
       order: 1,
+      autoRefreshDelay: 15,
+      
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.TableWithHealth)
@@ -35,6 +37,31 @@ const plugin : ActionGroupSpec = {
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
+      react(actionContext) {
+        switch(actionContext.inputText) {
+          case "clear": 
+            this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.TableWithHealth)
+            break
+          case "choose": 
+            this.showChoices && this.showChoices("Choices", ["A", "B", "C"], 1, 2)
+            break
+          case "help":
+            this.showInfo && this.showInfo('Command Help', [
+              "/clear: clears output",
+              "/help: shows help"
+            ])
+            break
+          default:
+            if(actionContext.inputText && actionContext.inputText.length > 0) {
+              this.onOutput && this.onOutput([["Unknown Command"]], ActionOutputStyle.Text)
+            }
+            break
+        }
+        actionContext.inputText = undefined
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
     },
   ]
 }

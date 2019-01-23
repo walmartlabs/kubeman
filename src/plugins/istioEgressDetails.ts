@@ -6,11 +6,10 @@ import IstioPluginHelper from '../k8s/istioPluginHelper'
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
   title: "More Istio Recipes",
-  order: ActionContextOrder[ActionContextType.Istio]+4,
   actions: [
     {
       name: "View Egress Details",
-      order: 101,
+      order: 102,
       
       async act(actionContext) {
         const clusters = actionContext.getClusters()

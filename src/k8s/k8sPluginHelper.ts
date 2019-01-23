@@ -41,7 +41,7 @@ export default class K8sPluginHelper {
         } else {
           choiceItem.push(item.name || item)
         }
-        choiceItem.push("Namespace: " + namespace)
+        choiceItem.push("Namespace: " + (item.namespace || namespace))
         choiceItem.push("Cluster: " + cluster)
         choices.push(choiceItem)
       })
@@ -65,7 +65,15 @@ export default class K8sPluginHelper {
     } else {
       for(const cluster of clusters) {
         this.items[cluster.name]={}
-        const items = this.items[cluster.name][""] = await getItems(cluster.name, "", cluster.k8sClient)
+        const items = await getItems(cluster.name, "", cluster.k8sClient)
+        items.forEach(item => {
+          const namespace = item.namespace || ""
+          if(!this.items[cluster.name][namespace]) {
+            this.items[cluster.name][namespace] = []
+          }
+          this.items[cluster.name][namespace].push(item)
+        })
+        
         createChoices(items, "", cluster.name)
       }
     }
@@ -83,40 +91,7 @@ export default class K8sPluginHelper {
       howMany += max > 0 && min > 0 ? ", and " : ""
       howMany += max > 0 ?  " up to " + max + " " : ""
     }
-    actionContext.onChoices && actionContext.onChoices("Choose" + howMany + name, choices, min, max)
-  }
-
-  static async generateComparisonOutput(actionContext, onOutput, name, ...fields) {
-    let selections = K8sPluginHelper.getSelections(actionContext, ...fields)
-    if(selections.length < 2) {
-      onOutput(["No " + name + " selected"], 'Text')
-      return
-    }
-    let output: ActionOutput = []
-    const outputHeaders = ["Keys"]
-    const outputRows: ActionOutput = []
-    outputRows.push(["cluster"])
-    const firstItem = selections[0].item
-    const outputKeys = firstItem && typeof firstItem !== 'string' ? Object.keys(firstItem) : []
-    outputKeys.forEach(key => outputRows.push([key]))
-
-    selections.forEach(selection => {
-      outputHeaders.push(selection.item ? selection.item.name || selection.item : 'N/A')
-      outputRows[0].push(selection.cluster||'')
-      if(selection.item && typeof selection.item !== 'string') {
-        outputKeys.forEach((key, index) => outputRows[index+1].push(selection.item[key] ||''))
-      }
-    })
-    outputRows.forEach((row,i) => {
-      const hasAnyValue = row.slice(1).map(value => value && value !== '')
-                                .reduce((r1,r2) => r1 || r2, false)
-      if(!hasAnyValue) {
-        delete outputRows[i]
-      }
-    })
-    output.push(outputHeaders)
-    output = output.concat(outputRows)
-    onOutput(output, "Compare")
+    actionContext.onActionInitChoices && actionContext.onActionInitChoices("Choose" + howMany + name, choices, min, max)
   }
 
   static getSelections(actionContext: ActionContext, ...fields) : ItemSelection[] {
@@ -153,7 +128,7 @@ export default class K8sPluginHelper {
       choices.push([cluster.name])
     })
     if(clusters.length > 2) {
-      actionContext.onChoices && actionContext.onChoices("Choose 2 Clusters", choices, 2, 2)
+      actionContext.onActionInitChoices && actionContext.onActionInitChoices("Choose 2 Clusters", choices, 2, 2)
     } else {
       actionContext.context && (actionContext.context.selections = choices)
       actionContext.onSkipChoices && actionContext.onSkipChoices()
@@ -164,6 +139,34 @@ export default class K8sPluginHelper {
     const selections = _.flatten(actionContext.getSelections())
     const clusters = actionContext.getClusters()
     return selections.map(s => clusters.filter(cluster => cluster.name === s)[0])
+  }
+
+  static async chooseNamespaces(min: number = 1, max: number = 5, actionContext: ActionContext) {
+    const clusters = actionContext.getClusters()
+    let namespaces = actionContext.getNamespaces()
+    if(namespaces.length < min || namespaces.length > max) {
+      const clustersReported: string[] = []
+      K8sPluginHelper.prepareChoices(actionContext, 
+        async (cluster, namespace, k8sClient) => {
+          if(namespaces.length < min) {
+            if(!clustersReported.includes(cluster)) {
+              clustersReported.push(cluster)
+              return k8sFunctions.getClusterNamespaces(k8sClient)
+            } else {
+              return []
+            }
+          } else {
+            return namespaces.filter(ns => ns.name === namespace)
+          }
+        },
+      "Namespaces", min, max, "name")
+    } else {
+      const selections = await K8sPluginHelper.storeItems(actionContext, async (cluster, namespace, k8sClient) => {
+        return namespaces.filter(ns => ns.cluster.name === cluster)
+      })
+      actionContext.context && (actionContext.context.selections = selections)
+      actionContext.onSkipChoices && actionContext.onSkipChoices()
+    }
   }
 
   static async choosePod(min: number = 1, max: number = 1, chooseContainers: boolean = false, 
@@ -269,5 +272,38 @@ export default class K8sPluginHelper {
         }
       }, "CRDs", 1, 10, "name")
 
+  }
+
+  static async generateComparisonOutput(actionContext, onOutput, name, ...fields) {
+    let selections = K8sPluginHelper.getSelections(actionContext, ...fields)
+    if(selections.length < 2) {
+      onOutput(["No " + name + " selected"], 'Text')
+      return
+    }
+    let output: ActionOutput = []
+    const outputHeaders = ["Keys"]
+    const outputRows: ActionOutput = []
+    outputRows.push(["cluster"])
+    const firstItem = selections[0].item
+    const outputKeys = firstItem && typeof firstItem !== 'string' ? Object.keys(firstItem) : []
+    outputKeys.forEach(key => outputRows.push([key]))
+
+    selections.forEach(selection => {
+      outputHeaders.push(selection.item ? selection.item.name || selection.item : 'N/A')
+      outputRows[0].push(selection.cluster||'')
+      if(selection.item && typeof selection.item !== 'string') {
+        outputKeys.forEach((key, index) => outputRows[index+1].push(selection.item[key] ||''))
+      }
+    })
+    outputRows.forEach((row,i) => {
+      const hasAnyValue = row.slice(1).map(value => value && value !== '')
+                                .reduce((r1,r2) => r1 || r2, false)
+      if(!hasAnyValue) {
+        delete outputRows[i]
+      }
+    })
+    output.push(outputHeaders)
+    output = output.concat(outputRows)
+    onOutput(output, "Compare")
   }
 }

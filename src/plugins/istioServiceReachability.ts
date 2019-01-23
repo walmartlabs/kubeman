@@ -12,13 +12,10 @@ const plugin : ActionGroupSpec = {
     {
       name: "Service Reachability From IngressGateway",
       order: 20,
+      autoRefreshDelay: 60,
       
       async choose(actionContext) {
-        if(actionContext.getNamespaces().length === 0) {
-          this.onOutput && this.onOutput(["No Namespace selected"], ActionOutputStyle.Text)
-        } else {
-          await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getNamespaceServices, "Services", 1, 5, "name")
-        }
+        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, "Services", 1, 5, "name")
       },
 
       async act(actionContext) {
@@ -32,7 +29,7 @@ const plugin : ActionGroupSpec = {
 
         for(const selection of selections) {
           const service = selection.item
-          const namespace = selection.namespace
+          const namespace = service.namespace
           const cluster = actionContext.getClusters()
                               .filter(c => c.name === selection.cluster)[0]
           this.onStreamOutput && this.onStreamOutput([[">Service: " + service.name + ", Cluster: " + cluster.name]])
@@ -44,6 +41,9 @@ const plugin : ActionGroupSpec = {
         }
 
         this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       },
     }
   ]

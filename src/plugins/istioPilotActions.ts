@@ -12,9 +12,11 @@ const plugin : ActionGroupSpec = {
     {
       name: "View Pilot Metrics",
       order: 40,
+      autoRefreshDelay: 15,
       
       async act(actionContext) {
         this.onOutput && this.onOutput([["Pilot Metrics"]], ActionOutputStyle.Log)
+        this.showOutputLoading && this.showOutputLoading(true)
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
           const result = await IstioFunctions.getPilotMetrics(cluster.k8sClient)
@@ -23,14 +25,20 @@ const plugin : ActionGroupSpec = {
             [result]
           ])
         }
+        this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       },
     },
     {
       name: "View Pilot-Sidecars Sync Status",
       order: 41,
+      autoRefreshDelay: 15,
       
       async act(actionContext) {
         this.onOutput && this.onOutput([["Pilot-Sidecars Sync Status"]], ActionOutputStyle.Log)
+        this.showOutputLoading && this.showOutputLoading(true)
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
           const result = await IstioFunctions.getPilotSidecarSyncStatus(cluster.k8sClient)
@@ -39,6 +47,10 @@ const plugin : ActionGroupSpec = {
             [result]
           ])
         }
+        this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       },
     },
     {
@@ -46,12 +58,13 @@ const plugin : ActionGroupSpec = {
       order: 42,
       
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getNamespaceServices, "Services", 1, 10, "name")
+        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, "Services", 1, 10, "name")
       },
       
       async act(actionContext) {
         this.onOutput && this.onOutput([["Service Endpoints Known to Pilot"]], ActionOutputStyle.Table)
-          const selections = await K8sPluginHelper.getSelections(actionContext, "name")
+        this.showOutputLoading && this.showOutputLoading(true)
+        const selections = await K8sPluginHelper.getSelections(actionContext, "name")
         for(const selection of selections) {
           const cluster = actionContext.getClusters().filter(c => c.name === selection.cluster)[0]
           const service = selection.item as ServiceDetails
@@ -62,6 +75,7 @@ const plugin : ActionGroupSpec = {
             [endpoints]
           ])
         }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     }
   ]

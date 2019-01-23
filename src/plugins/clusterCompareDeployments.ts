@@ -15,10 +15,6 @@ const plugin : ActionGroupSpec = {
 
       async act(actionContext: ActionContext) {
         const clusters = K8sPluginHelper.getSelectedClusters(actionContext)
-        if(clusters.length < 2) {
-          this.onOutput && this.onOutput([["Not enough clusters to compare"]], ActionOutputStyle.Text)
-          return
-        }
         this.showOutputLoading && this.showOutputLoading(true)
         const deployments = await k8sFunctions.getDeploymentsGroupedByClusterNamespace(clusters)
         const namespaces : any[] = []

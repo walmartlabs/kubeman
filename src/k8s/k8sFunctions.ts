@@ -133,9 +133,11 @@ export default class K8sFunctions {
     } as ServiceDetails
   }
 
-  static getNamespaceServices: GetItemsFunction = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
+  static getServices: GetItemsFunction = async (cluster: string, namespace: string, k8sClient: K8sClient) => {
     const services : ServiceDetails[] = []
-    const result = await k8sClient.namespaces(namespace).services.get()
+    let result = (namespace && namespace.length > 0) ? 
+                await k8sClient.namespaces(namespace).services.get()
+                : await k8sClient.services.get()
     if(result && result.body) {
       const items = result.body.items
       items.forEach((item, index) => {
@@ -146,12 +148,12 @@ export default class K8sFunctions {
   }
 
   static getServiceDetails = async (namespace: string, service: string, k8sClient: K8sClient) => {
-    let services = await K8sFunctions.getNamespaceServices("", namespace, k8sClient)
+    let services = await K8sFunctions.getServices("", namespace, k8sClient)
     services = services.filter(s => s.name.includes(service) || service.includes(s.name))
     return services.length > 0 ? services[0] : undefined
   }
 
-  static getClusterServices = async (cluster: string, k8sClient: K8sClient) => {
+  static getClusterServiceNames = async (cluster: string, k8sClient: K8sClient) => {
     const namespaces = await K8sFunctions.getClusterNamespaces(k8sClient)
     const services : {[name: string] : string[]} = {}
     for(const i in namespaces) {
@@ -167,7 +169,7 @@ export default class K8sFunctions {
       services[cluster.name] = {}
 
       if(!namespaces || namespaces.length === 0) {
-        services[cluster.name] = await K8sFunctions.getClusterServices(cluster.name, cluster.k8sClient)
+        services[cluster.name] = await K8sFunctions.getClusterServiceNames(cluster.name, cluster.k8sClient)
       } else {
         for(const j in namespaces) {
           if(namespaces[j].cluster.name === cluster.name) {

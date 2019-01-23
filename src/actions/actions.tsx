@@ -1,27 +1,24 @@
 import React from "react";
 import { withStyles, WithStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
-import ExpansionPanel from '@material-ui/core/ExpansionPanel';
-import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
-import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import Typography from '@material-ui/core/Typography';
-import List from '@material-ui/core/List';
-import ListItem from '@material-ui/core/ListItem';
-import ListItemText from '@material-ui/core/ListItemText';
+import {ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails} from '@material-ui/core';
+import {Typography, List, ListItem, ListItemText, InputBase,
+        FormGroup, FormControlLabel, Checkbox} from '@material-ui/core';
 
 import Context from "../context/contextStore";
 import {ActionLoader} from './actionLoader'
 
 import {ActionGroupSpecs, ActionSpec, BoundAction, ActionGroupSpec, ActionContextType,
-        ActionOutputCollector, ActionStreamOutputCollector, ActionChoiceMaker} from './actionSpec'
+        ActionOutputCollector, ActionStreamOutputCollector, ActionChoiceMaker, ActionOnInfo} from './actionSpec'
 
 import styles from './actions.styles'
 import {actionsTheme} from '../theme/theme'
 
 
 interface IState {
-  actionGroupSpecs: ActionGroupSpecs,
-  selectedAction?: BoundAction,
+  actionGroupSpecs: ActionGroupSpecs
+  autoRefresh: boolean
+  invalidAutoRefreshDelay: boolean
 }
 
 interface IProps extends WithStyles<typeof styles> {
@@ -30,7 +27,9 @@ interface IProps extends WithStyles<typeof styles> {
   onCommand: (string) => void
   onOutput: ActionOutputCollector
   onStreamOutput: ActionStreamOutputCollector
-  onChoices: ActionChoiceMaker
+  onActionInitChoices: ActionChoiceMaker
+  onActionChoices: ActionChoiceMaker
+  onShowInfo: ActionOnInfo
   onSetScrollMode: (boolean) => void
   onAction: (BoundAction) => void
   onOutputLoading: (boolean) => void
@@ -39,8 +38,13 @@ interface IProps extends WithStyles<typeof styles> {
 export class Actions extends React.Component<IProps, IState> {
   state: IState = {
     actionGroupSpecs: [],
-    selectedAction: undefined,
+    autoRefresh: false,
+    invalidAutoRefreshDelay: false,
   }
+  currentAction?: BoundAction
+  refreshTimer: any
+  refreshChangeTimer: any
+  lastRefreshed: any
 
   componentDidMount() {
     this.componentWillReceiveProps(this.props)
@@ -50,7 +54,8 @@ export class Actions extends React.Component<IProps, IState> {
   componentWillReceiveProps(props: IProps) {
     const {context} = props
     ActionLoader.setOnOutput(props.onOutput, props.onStreamOutput)
-    ActionLoader.setOnChoices(props.onChoices)
+    ActionLoader.setOnActionChoices(props.onActionInitChoices, props.onActionChoices)
+    ActionLoader.setOnShowInfo(props.onShowInfo)
     ActionLoader.setContext(context)
     ActionLoader.setOnSetScrollMode(props.onSetScrollMode)
     ActionLoader.setOnOutputLoading(props.onOutputLoading)
@@ -67,32 +72,84 @@ export class Actions extends React.Component<IProps, IState> {
 
   onAction = (action: BoundAction) => {
     this.props.onAction(action)
-    const {selectedAction: prevAction} = this.state
+    const prevAction = this.currentAction
     prevAction && prevAction.stop && prevAction.stop()
     ActionLoader.actionContext.inputText = undefined
-    this.setState({selectedAction: action})
+    this.currentAction = action
+    this.lastRefreshed = undefined
     if(action.act) {
       this.props.showLoading()
-      action.act()
+      action.chooseAndAct()
+      this.setAutoRefresh(this.state.autoRefresh)
+    }
+  }
+
+  cancelRefreshTimers() {
+    if(this.refreshTimer) {
+      clearInterval(this.refreshTimer)
+      this.refreshTimer = undefined
+    }
+    if(this.refreshChangeTimer) {
+      clearTimeout(this.refreshChangeTimer)
+      this.refreshChangeTimer = undefined
+    }
+  }
+
+  setAutoRefresh(autoRefresh: boolean) {
+    this.cancelRefreshTimers()
+    if(autoRefresh && this.currentAction && this.currentAction.refresh) {
+      this.refreshTimer = setInterval(() => {
+        this.lastRefreshed = new Date()
+        this.currentAction && this.currentAction.refresh && this.currentAction.refresh()
+      }, 
+      this.currentAction.autoRefreshDelay ? this.currentAction.autoRefreshDelay * 1000 : 15000)
+    } else {
+      this.setState({autoRefresh: false})
+    }
+
+  }
+
+  onAutoRefresh = (event) => {
+    const autoRefresh = event.target.checked
+    this.setAutoRefresh(autoRefresh)
+    this.setState({autoRefresh})
+  }
+
+  onAutoRefreshChange = (event) => {
+    this.cancelRefreshTimers()
+    if(this.currentAction && this.currentAction.autoRefreshDelay) {
+      const prev = this.currentAction.autoRefreshDelay
+      try {
+        let newVal = Number.parseInt(event.target.value)
+        if(newVal >= 5) {
+          this.setState({invalidAutoRefreshDelay: false})
+          this.currentAction.autoRefreshDelay = newVal
+          if(this.state.autoRefresh) {
+            this.refreshChangeTimer = setTimeout(this.setAutoRefresh.bind(this, this.state.autoRefresh), 500)
+          }
+        } else {
+          this.setState({invalidAutoRefreshDelay: true})
+        }
+      } catch(error) {
+        this.setState({invalidAutoRefreshDelay: true})
+        this.currentAction.autoRefreshDelay = prev
+      }
     }
   }
 
   acceptInput() : boolean {
-    const {selectedAction} = this.state
-    return selectedAction && selectedAction.react ? true : false
+    return this.currentAction && this.currentAction.react ? true : false
   }
 
   onActionTextInput = (text: string) => {
-    const {selectedAction: action} = this.state
-    if(action && action.react) {
+    if(this.currentAction && this.currentAction.react) {
       ActionLoader.actionContext.inputText = text
-      action.react()
+      this.currentAction.react()
     }
   }
 
   renderExpansionPanel(actionGroupSpec: ActionGroupSpec) {
     const { classes } = this.props;
-    const {selectedAction} = this.state
     const {title, actions} = actionGroupSpec
 
 
@@ -105,8 +162,8 @@ export class Actions extends React.Component<IProps, IState> {
           <List component="nav">
             {actions.map(action => 
               <ListItem key={action.name} button disableGutters
-              className={selectedAction && action.name === selectedAction.name 
-                          && action.context === selectedAction.context ? classes.selectedAction : ''}>
+              className={this.currentAction && action.name === this.currentAction.name 
+                          && action.context === this.currentAction.context ? classes.selectedAction : ''}>
                 <ListItemText className={classes.listText}
                       onClick={this.onAction.bind(this, action as BoundAction)}>
                   <Typography>{action.name}</Typography>
@@ -121,7 +178,7 @@ export class Actions extends React.Component<IProps, IState> {
 
   render() {
     const { context, classes } = this.props;
-    const {actionGroupSpecs} = this.state
+    const {actionGroupSpecs, invalidAutoRefreshDelay} = this.state
     const useDarkTheme = global['useDarkTheme']
     const theme = createMuiTheme(actionsTheme.getTheme(useDarkTheme));
 
@@ -139,6 +196,32 @@ export class Actions extends React.Component<IProps, IState> {
           actionShowNoShow.get(actionGroupSpec.context || ActionContextType.Other) &&
             this.renderExpansionPanel(actionGroupSpec)
         )}
+        {this.currentAction && this.currentAction.refresh &&
+          <div>
+            <FormGroup row>
+              <FormControlLabel control={
+                  <Checkbox
+                    checked={this.state.autoRefresh}
+                    onChange={this.onAutoRefresh}
+                  />
+                }
+                label={"Auto Refresh: "}
+              />
+              <InputBase 
+                defaultValue={this.currentAction.autoRefreshDelay}
+                inputProps={{size: 2, maxLength: 2,}}
+                classes={{
+                  root: classes.refreshRoot,
+                  input: classes.refreshInput + " " + (invalidAutoRefreshDelay ? classes.invalidRefreshInput: "")
+                }}
+                onChange={this.onAutoRefreshChange}
+              />
+            </FormGroup>
+            <Typography style={{paddingTop: 0, paddingLeft: 35}}>
+              Last Refreshed: {this.lastRefreshed ? this.lastRefreshed.toISOString() : 'None'}
+            </Typography>
+          </div>
+        }
       </MuiThemeProvider>  
     )
   }

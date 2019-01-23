@@ -37,6 +37,7 @@ const plugin : ActionGroupSpec = {
           const istioProxyContainer = podTemplate.containers.filter(c => c.name === "istio-proxy" 
                                       || c.name === 'ingressgateway')[0]
           if(istioProxyContainer) {
+            output.push(["Labels", podTemplate.labels])
             output.push(["Docker Image", istioProxyContainer.image])
             output.push(["Ports", istioProxyContainer.ports ? 
                           istioProxyContainer.ports.map(port => port.containerPort).join(", ") : ""])
