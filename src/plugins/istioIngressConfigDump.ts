@@ -21,11 +21,14 @@ async function outputConfig(action: ActionSpec, actionContext: ActionContext, ty
 
     const configs = await IstioFunctions.getIngressConfigDump(k8sClient, type)
     configs.forEach(c => {
-      output.push([">>"+JsonUtil.extract(c, titleField)])
       let data = dataField ? JsonUtil.extract(c, dataField) : c
       if(data instanceof Array) {
-        data.forEach(item => output.push([item]))
+        data.forEach(item => {
+          output.push([">>"+JsonUtil.extract(item, titleField)])
+          output.push([item])
+        })
       } else {
+        output.push([">>"+JsonUtil.extract(data, titleField)])
         output.push([data])
       }
     })
@@ -54,7 +57,7 @@ const plugin : ActionGroupSpec = {
       order: 26,
       
       async act(actionContext) {
-        await outputConfig(this, actionContext, "ListenersConfigDump", "listener.name")
+        await outputConfig(this, actionContext, "ListenersConfigDump", "listener.address.socket_address.port_value")
       },
       refresh(actionContext) {
         this.act(actionContext)
@@ -65,7 +68,7 @@ const plugin : ActionGroupSpec = {
       order: 27,
       
       async act(actionContext) {
-        await outputConfig(this, actionContext, "RoutesConfigDump", "route_config.name", "route_config.virtual_hosts")
+        await outputConfig(this, actionContext, "RoutesConfigDump", "name", "route_config.virtual_hosts")
       },
       refresh(actionContext) {
         this.act(actionContext)

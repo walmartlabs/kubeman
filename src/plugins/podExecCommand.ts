@@ -14,6 +14,12 @@ const plugin : ActionGroupSpec = {
       selections: undefined,
       
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 5, true, false),
+
+      showHeader() {
+        this.onOutput && this.onOutput([[
+          "Send Command To: " + this.selections.map(s => s.title).join(", ")
+        ]], ActionOutputStyle.Log)
+      },
       
       async act(actionContext) {
         const selections = await K8sPluginHelper.getPodSelections(actionContext)
@@ -23,20 +29,23 @@ const plugin : ActionGroupSpec = {
         }
         this.setScrollMode && this.setScrollMode(true)
         this.selections = selections
-        this.onOutput && this.onOutput([[
-          "Send Command To: " + selections.map(s => s.title).join(", ")
-        ]], ActionOutputStyle.Log)
+        this.showHeader()
       },
       
       async react(actionContext) {
+        const inputText = actionContext.inputText ? actionContext.inputText : ''
+        if(inputText === "clear") {
+          this.showHeader()
+          return
+        }
+
         this.showOutputLoading && this.showOutputLoading(true)
-        if(actionContext.inputText && actionContext.inputText.includes("ping")
-          && !actionContext.inputText.includes("-c")) {
+        if(inputText.includes("ping") && !inputText.includes("-c")) {
             this.onStreamOutput && this.onStreamOutput([["Can't execute ping command without -c option since this will run indefinitely."]])
             this.showOutputLoading && this.showOutputLoading(false)
             return
         }
-        const command = actionContext.inputText ? actionContext.inputText.split(" ") : []
+        const command = inputText.split(" ")
         for(const selection of this.selections) {
           try {
             const result = await k8sFunctions.podExec(selection.namespace, selection.pod, 

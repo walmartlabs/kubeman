@@ -36,29 +36,12 @@ const plugin : ActionGroupSpec = {
           const podTemplate = ingressDeployment.template
           const istioProxyContainer = podTemplate.containers.filter(c => c.name === "istio-proxy" 
                                       || c.name === 'ingressgateway')[0]
-          if(istioProxyContainer) {
-            output.push(["Labels", podTemplate.labels])
-            output.push(["Docker Image", istioProxyContainer.image])
-            output.push(["Ports", istioProxyContainer.ports ? 
-                          istioProxyContainer.ports.map(port => port.containerPort).join(", ") : ""])
-            output.push(["Resources", istioProxyContainer.resources || ""])
+          output.push(["Labels", podTemplate.labels])
+          output.push(["Istio-Proxy Container", istioProxyContainer])
+          const istioSDSContainer = podTemplate.containers.filter(c => c.name === "ingress-sds")
 
-            const volumesAndMounts: any[] = []
-            podTemplate.volumes && podTemplate.volumes.forEach(volume => {
-              const mountPaths = istioProxyContainer.volumeMounts ? 
-                                istioProxyContainer.volumeMounts.filter(mount => mount.name === volume.name)
-                                .map(mount => mount.mountPath) : []
-              volumesAndMounts.push({
-                volume: volume.name,
-                secret: volume.secret.secretName,
-                mountPath: mountPaths.length > 0 ? mountPaths[0] : ""
-              })
-            })
-            output.push(["Volumes & Mounts", volumesAndMounts])
-            output.push(["Replicas Available/Ready", ingressDeployment.status.availableReplicas
-                                                      + "/" + ingressDeployment.status.readyReplicas])
-          } else {
-            output.push(["Istio Proxy Container Not Found", ""])
+          if(istioSDSContainer.length > 0) {
+            output.push(["SDS Container", istioSDSContainer])
           }
           output.push(["Ingress Service", await IstioFunctions.getIstioServiceDetails("istio=ingressgateway", k8sClient)])
           output.push(["Ingress Pods", await IstioFunctions.getIngressGatewayPods(k8sClient)])

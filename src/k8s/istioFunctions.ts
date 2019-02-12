@@ -347,16 +347,18 @@ export default class IstioFunctions {
       }
       let configs = result.configs
       if(configType) {
-        configs = configs.filter(c => c["@type"].includes(configType))
+        configs = configs.filter(c => c["@type"].includes(configType))[0]
       }
-      configs = configs.map(config => {
-        if(configType) {
-          return config[Object.keys(config).filter(key => key.includes("dynamic"))[0]]
-        } else {
-          return config
-        }
-      })
-      return configType ? configs[0] : configs
+      if(configType) {
+        const dynamicItems = configs[Object.keys(configs).filter(key => key.includes("dynamic"))[0]]
+        const staticItems = configs[Object.keys(configs).filter(key => key.includes("static"))[0]]
+        const items: any[] = []
+        staticItems && staticItems.forEach(item => item && items.push(item))
+        dynamicItems && dynamicItems.forEach(item => item && items.push(item))
+        return items
+      } else {
+        return configs
+      }
     } catch(error) {
       console.log(error)
     }
