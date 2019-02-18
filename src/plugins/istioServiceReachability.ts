@@ -13,14 +13,15 @@ const plugin : ActionGroupSpec = {
       name: "Service Reachability From IngressGateway",
       order: 20,
       autoRefreshDelay: 60,
-      
+      loadingMessage: "Loading Services...",
+
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, 
+        await K8sPluginHelper.prepareCachedChoices(actionContext, K8sFunctions.getServices, 
                                               "Services", 1, 5, true, "name")
       },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
+        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return

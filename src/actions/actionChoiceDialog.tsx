@@ -5,7 +5,7 @@ import { Button, Input, FormControlLabel, Checkbox, Typography, } from '@materia
 import { Dialog, DialogTitle, DialogContent, DialogActions, } from '@material-ui/core';
 import { Table, TableBody, TableCell, TableRow } from '@material-ui/core';
 
-import {ActionChoices} from './actionSpec'
+import {Choice} from './actionSpec'
 import styles from './actionChoiceDialog.styles'
 import {filter} from '../util/filterUtil'
 
@@ -13,16 +13,19 @@ import {filter} from '../util/filterUtil'
 interface IProps extends WithStyles<typeof styles> {
   open: boolean
   title: string
-  choices: ActionChoices
+  choices: Choice[]
   minChoices: number
   maxChoices: number
+  showChoiceSubItems: boolean
   onSelection: (selections: any[]) => void
   onCancel: () => any
 }
 
 interface IState {
   selections: Map<any, any>
-  filteredChoices: ActionChoices
+  choiceItems: any[][]
+  choiceDataMap: Map<any, any>
+  filteredChoices: any[][]
   filterText: string
 }
 
@@ -32,6 +35,8 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
   }
   state: IState = {
     selections: new Map,
+    choiceDataMap: new Map,
+    choiceItems: [],
     filteredChoices: [],
     filterText: ''
   }
@@ -42,23 +47,29 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
   }
 
   componentWillReceiveProps(props: IProps) {
-    this.setState({filteredChoices: props.choices})
+    const {choices} = props
+    let choiceItems = choices.map(c => c.displayItem)
+    let choiceDataMap = new Map
+    choices.forEach(c => {
+      const choiceId = c.displayItem.join(".")
+      choiceDataMap.set(choiceId, c)
+    })
+    this.setState({choiceDataMap, choiceItems, filteredChoices: choiceItems})
   }
 
-  onChange = (itemId: any, item: any) => {
-    const {selections} = this.state
+  onChange = (itemId: any) => {
+    const {selections, choiceDataMap} = this.state
     if(selections.has(itemId)) {
       selections.delete(itemId)
     } else {
-      selections.set(itemId, item)
+      selections.set(itemId, choiceDataMap.get(itemId))
     }
     this.setState({selections})
   }
 
   filter = (filterText: string) => {
-    const {choices} = this.props
-    let filteredChoices: any[] = filter(filterText, choices)
-    this.setState({filterText: filterText, filteredChoices})
+    const {choiceItems} = this.state
+    this.setState({filterText: filterText, filteredChoices: filter(filterText, choiceItems)})
   }
 
   onFilterChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -67,7 +78,8 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
     }
     const text = event.target.value
     if(text.length === 0) {
-      this.setState({filterText: '', filteredChoices: this.props.choices})
+      const {choiceItems} = this.state
+      this.setState({filterText: '', filteredChoices: choiceItems})
     } else {
       this.filterTimer = setTimeout(this.filter.bind(this, text), 400)
     }
@@ -83,12 +95,12 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
   }
 
   render() {
-    const {open, title, minChoices, maxChoices, classes} = this.props
+    const {open, title, minChoices, maxChoices, showChoiceSubItems, classes} = this.props
     const {selections, filteredChoices} = this.state
     let countSelected = selections.size
     const minSelected = minChoices > 0 && countSelected >= minChoices
     const maxSelected = maxChoices > 0 && countSelected >= maxChoices
-
+    
     return (
       <Dialog open={open} className={classes.dialog}
               onClose={this.onCancel} >
@@ -104,10 +116,9 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
           <Table className={classes.table} aria-labelledby="tableTitle">
             <TableBody>
             {filteredChoices.map((item, index) => {
-              const isArray = item instanceof Array
-              const itemId = isArray ? item.join(".") : item
-              const text = isArray ? item[0] : item
-              const subItems = isArray ? item.slice(1) : []
+              const itemId = item.join(".")
+              const text = item[0]
+              const subItems = item.slice(1)
               return (
                 <TableRow key={index} hover>
                   <TableCell className={classes.tableCell}>
@@ -118,12 +129,12 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
                                   disabled={!selections.has(itemId) && maxSelected}
                                   indeterminate={!selections.has(itemId) && maxSelected}
                                   className={classes.choiceCheckbox}
-                                  onChange={this.onChange.bind(this, itemId, item)} />}
+                                  onChange={this.onChange.bind(this, itemId)} />}
                       label={text}
                     />
-                    {subItems.map((subtext, i) =>
+                    {showChoiceSubItems && subItems.map((subtext, i) =>
                        <span key={i} className={classes.choiceSubtext} 
-                       onClick={!selections.has(itemId) && maxSelected ? undefined : this.onChange.bind(this, itemId, item)}
+                       onClick={!selections.has(itemId) && maxSelected ? undefined : this.onChange.bind(this, itemId)}
                        >
                         {subtext}
                        </span>
@@ -135,7 +146,7 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
             {filteredChoices.length === 0 &&
               <TableRow>
                 <TableCell className={classes.tableCell}>
-                  No choice available (no namespace selected?)
+                  No choice available
                 </TableCell>
               </TableRow>
             }

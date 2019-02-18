@@ -3,7 +3,6 @@ import {K8sClient} from './k8sClient'
 import {Cluster, Namespace, Pod, Metadata, PodInfo, PodDetails, PodTemplate, PodStatus,
         ContainerInfo, ContainerStatus, PodContainerDetails, ServiceDetails} from "./k8sObjectTypes";
 
-export type DataObject = {[key: string]: any}
 export type StringStringStringBooleanMap = {[key: string]: {[key: string]: {[key: string]: boolean}}}
 export type StringStringArrayMap = {[key: string]: {[key: string]: any[]}}
 export type GetItemsFunction = (cluster: string, namespace: string|undefined, k8sClient: K8sClient) => Promise<any[]>
@@ -11,7 +10,7 @@ export type GetItemsFunction = (cluster: string, namespace: string|undefined, k8
 export default class K8sFunctions {
 
   static extractMetadata = (data : any) : Metadata|Metadata[] => {
-    const prettifyLabels = (meta: DataObject) => {
+    const prettifyLabels = meta => {
       if(meta.labels) {
         meta.labels = jsonUtil.convertObjectToArray(meta.labels)
       } 
@@ -44,7 +43,7 @@ export default class K8sFunctions {
         const node = {
           ...meta,
           network: {
-            ip: spec.podCIDR,
+            ipCIDR: spec.podCIDR,
           },
           condition: {},
           info: {
@@ -130,6 +129,7 @@ export default class K8sFunctions {
       sessionAffinityConfig: spec.sessionAffinityConfig,
       type: spec.type,
       loadBalancer: status.loadBalancer,
+      yaml: service,
     } as ServiceDetails
   }
 
@@ -164,18 +164,14 @@ export default class K8sFunctions {
 
   static getServicesGroupedByClusterNamespace = async (clusters: Cluster[], namespaces?: Namespace[]) => {
     const services: StringStringArrayMap = {}
-    for(const i in clusters) {
-      const cluster = clusters[i]
+    for(const cluster of clusters) {
       services[cluster.name] = {}
 
       if(!namespaces || namespaces.length === 0) {
         services[cluster.name] = await K8sFunctions.getClusterServiceNames(cluster.name, cluster.k8sClient)
       } else {
-        for(const j in namespaces) {
-          if(namespaces[j].cluster.name === cluster.name) {
-            const namespace = namespaces[j].name
-            services[cluster.name][namespace] = await K8sFunctions.getNamespaceServiceNames(namespace, cluster.k8sClient)
-          }
+        for(const namespace of namespaces) {
+          services[cluster.name][namespace.name] = await K8sFunctions.getNamespaceServiceNames(namespace.name, cluster.k8sClient)
         }
       }
     }
@@ -215,18 +211,14 @@ export default class K8sFunctions {
 
   static getDeploymentsGroupedByClusterNamespace = async (clusters: Cluster[], namespaces?: Namespace[]) => {
     const deployments: StringStringArrayMap = {}
-    for(const i in clusters) {
-      const cluster = clusters[i]
+    for(const cluster of clusters) {
       deployments[cluster.name] = {}
 
       if(!namespaces || namespaces.length === 0) {
         deployments[cluster.name] = await K8sFunctions.getDeploymentListForCluster(cluster.name, cluster.k8sClient)
       } else {
-        for(const j in namespaces) {
-          if(namespaces[j].cluster.name === cluster.name) {
-            const namespace = namespaces[j]
-            deployments[cluster.name][namespace.name] = await K8sFunctions.getDeploymentListForNamespace(namespace.name, cluster.k8sClient)
-          }
+        for(const namespace of namespaces) {
+          deployments[cluster.name][namespace.name] = await K8sFunctions.getDeploymentListForNamespace(namespace.name, cluster.k8sClient)
         }
       }
     }
@@ -252,7 +244,8 @@ export default class K8sFunctions {
           selector: spec.selector,
           strategy: spec.strategy,
           template: K8sFunctions.extractPodTemplate(spec.template),
-          status: statuses[index]
+          status: statuses[index],
+          yaml: items[index]
         })
       })
     }
@@ -277,6 +270,7 @@ export default class K8sFunctions {
           strategy: spec.strategy,
           template: K8sFunctions.extractPodTemplate(spec.template),
           status,
+          yaml: result.body,
       }
     }
     return undefined
@@ -378,6 +372,15 @@ export default class K8sFunctions {
     return pods
   }
 
+  static getAllClusterPods = async(k8sClient: K8sClient) => {
+    const pods : any[] = []
+    const result = await k8sClient.pods.get()
+    if(result && result.body) {
+      result.body.items.forEach(item => pods.push(K8sFunctions.extractPodDetails(item)))
+    }
+    return pods
+  }
+
   static async getPodsAndContainersForService(namespace: string, service: ServiceDetails, 
                                             k8sClient: K8sClient, loadDetails: boolean = false) {
     if(!service || !service.selector || service.selector.length === 0) {
@@ -416,6 +419,7 @@ export default class K8sFunctions {
       containers: containers,
       initContainers: initContainers,
       volumes: podTemplate.spec.volumes,
+      yaml: podTemplate
     }
   }
 
@@ -452,11 +456,13 @@ export default class K8sFunctions {
   static extractPodStatus = (pod) : PodStatus => {
     const conditions = jsonUtil.extractMulti(pod, "$.status.conditions[*]",
                             "type", "status", "message")
-                        .map(jsonUtil.convertObjectToString)
-    const containerStatuses: ContainerStatus[] = jsonUtil.extractMulti(pod, "$.status.containerStatuses[*]", "name", "state")
-                                .map(jsonUtil.convertObjectToString)
-    const initContainerStatuses: ContainerStatus[] = jsonUtil.extractMulti(pod, "$.status.initContainerStatuses[*]", "name", "state")
-                                .map(jsonUtil.convertObjectToString)
+    let containerStatuses: ContainerStatus[] = jsonUtil.extractMulti(pod, "$.status.containerStatuses[*]", "name", "state", "message")
+    containerStatuses = containerStatuses.map(cs => {
+      cs.state.message = cs.message
+      return cs
+    })
+    const initContainerStatuses: ContainerStatus[] = jsonUtil.extractMulti(pod, "$.status.initContainerStatuses[*]", "name", "state", "message")
+
     return {
       podIP: pod.status.podIP,
       hostIP: pod.status.hostIP,

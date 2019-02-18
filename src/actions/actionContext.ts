@@ -1,7 +1,7 @@
 import {Cluster, Namespace, Pod, Item} from "../k8s/k8sObjectTypes";
 import Context from "../context/contextStore";
 import * as k8s from '../k8s/k8sClient'
-import {ActionOutputCollector, ActionStreamOutputCollector, ActionOnChoice, ActionChoices, BoundActionAct} from './actionSpec'
+import {ActionOutputCollector, ActionStreamOutputCollector, ActionOnChoice, Choice, BoundActionAct} from './actionSpec'
 
 export default class ActionContext {
   context?: Context
@@ -15,6 +15,6 @@ export default class ActionContext {
   
   getPods: () => Pod[] = () => this.context ? this.context.pods : []
 
-  getSelections: () => ActionChoices = () =>  this.context ? this.context.selections : []
+  getSelections: () => Choice[] = () =>  this.context ? this.context.selections : []
 
 }

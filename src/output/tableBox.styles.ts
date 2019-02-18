@@ -86,9 +86,10 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   tableCell: {
     padding: '0px',
     color: 'inherit',
-    verticalAlign: 'top',
-    minWidth: 120,
     fontSize: palette.type ==='dark' ? '0.9rem' : '0.87rem',
+    verticalAlign: 'top',
+    width: 'auto',
+    minWidth: 120,
     [breakpoints.up('sm')]: {
       maxWidth: '200px'
     },

@@ -1,15 +1,17 @@
 import k8sFunctions from '../k8s/k8sFunctions'
 import {K8sClient} from '../k8s/k8sClient'
 import K8sPluginHelper from '../k8s/k8sPluginHelper'
-import {ActionGroupSpec, ActionContextType, 
+import {ActionGroupSpec, ActionContextType, ActionContextOrder,
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,
+  title: "Namespace Recipes",
+  order: ActionContextOrder.Namespace,
   actions: [
     {
-      name: "Compare Namespaces",
-      order: 10,
+      name: "Compare Cluster Namespaces",
+      order: 11,
       
       choose: K8sPluginHelper.chooseClusters,
 

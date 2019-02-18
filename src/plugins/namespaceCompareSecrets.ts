@@ -1,51 +1,59 @@
-import k8sFunctions from '../k8s/k8sFunctions'
-import {ActionGroupSpec, ActionContextType, 
+import K8sFunctions from '../k8s/k8sFunctions'
+import K8sPluginHelper from '../k8s/k8sPluginHelper';
+import {ActionGroupSpec, ActionContextType, ActionContextOrder,
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
+import { Namespace } from '../k8s/k8sObjectTypes';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
+  title: "Resources",
+  order: ActionContextOrder.Resources,
   actions: [
     {
       name: "List/Compare Secrets",
-      order: 12,
+      order: 5,
+      loadingMessage: "Loading Namespaces...",
+
+      choose: K8sPluginHelper.chooseNamespaces.bind(K8sPluginHelper, true, 1, 10),
+
       async act(actionContext) {
-        this.showOutputLoading && this.showOutputLoading(true)
         const clusters = actionContext.getClusters()
-        const namespaces = actionContext.getNamespaces()
-
-        const secretsMap = {}
-        const secretIndexToNameMap = {}
-        for(const i in namespaces) {
-          const namespace = namespaces[i]
-          const nsCluster = namespace.cluster.name
-          if(!secretsMap[namespace.name]) {
-            secretsMap[namespace.name] = {}
-          }
-          const k8sClient = clusters.filter(cluster => cluster.name === nsCluster)
-                                      .map(cluster => cluster.k8sClient)[0]
-          const secrets = await k8sFunctions.getNamespaceSecrets(namespace.cluster.name, namespace.name, k8sClient)
-          secrets.forEach(secret => {
-            let secretIndexName = secret.name
-            const firstDash = secret.name.indexOf('-') 
-            const lastDash = secret.name.lastIndexOf('-')
-            if(firstDash > 0 && lastDash > 0 && firstDash !== lastDash) {
-              secretIndexName = secret.name.slice(0, lastDash)
-            }
-            if(!secretsMap[namespace.name][secretIndexName]) {
-              secretsMap[namespace.name][secretIndexName] = {}
-            }
-            secretsMap[namespace.name][secretIndexName][nsCluster] = true
-            secretIndexToNameMap[secretIndexName] = secret.name
-          })
-        }
-
-        const output: ActionOutput = []
         const headers = ["Namespace/Secret"]
         clusters.forEach(cluster => {
           headers.push("Cluster: " + cluster.name)
         })
-        output.push(headers)
-      
+        this.onOutput && this.onOutput([headers], ActionOutputStyle.Compare)
+
+        this.showOutputLoading && this.showOutputLoading(true)
+        const selections = await K8sPluginHelper.getSelections(actionContext)
+        const namespaces = selections.map(s => s.item) as Namespace[]
+
+        const secretsMap = {}
+        const secretIndexToNameMap = {}
+        for(const namespace of namespaces) {
+          if(!secretsMap[namespace.name]) {
+            secretsMap[namespace.name] = {}
+          }
+          for(const cluster of clusters) {
+            const secrets = await K8sFunctions.getNamespaceSecrets(namespace.cluster.name, namespace.name, cluster.k8sClient)
+            secrets.forEach(secret => {
+              let secretIndexName = secret.name
+              const firstDash = secret.name.indexOf('-') 
+              const lastDash = secret.name.lastIndexOf('-')
+              if(firstDash > 0 && lastDash > 0 && firstDash !== lastDash) {
+                secretIndexName = secret.name.slice(0, lastDash)
+                secret.name = secretIndexName+"-..."
+              }
+              if(!secretsMap[namespace.name][secretIndexName]) {
+                secretsMap[namespace.name][secretIndexName] = {}
+              }
+              secretsMap[namespace.name][secretIndexName][cluster.name] = true
+              secretIndexToNameMap[secretIndexName] = secret.name
+            })
+          }
+        }
+
+        const output: ActionOutput = []
         Object.keys(secretsMap).forEach(namespace => {
           const groupTitle = [">Namespace: " + namespace]
           clusters.forEach(cluster => {
@@ -67,7 +75,7 @@ const plugin : ActionGroupSpec = {
             })
           }
         })
-        this.onOutput && this.onOutput(output, ActionOutputStyle.Compare)
+        this.onStreamOutput && this.onStreamOutput(output)
         this.showOutputLoading && this.showOutputLoading(false)
       },
     }

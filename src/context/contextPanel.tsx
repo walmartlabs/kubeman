@@ -4,7 +4,7 @@ import _ from 'lodash'
 import { withStyles, WithStyles } from '@material-ui/core/styles'
 import { Paper, Tabs, Tab, Grid, Button } from '@material-ui/core';
 import {List, ListSubheader, ListItem, ListItemText}  from '@material-ui/core';
-import {Card, CardContent, CardActions, Typography} from '@material-ui/core';
+import {Avatar, Chip, Card, CardContent, CardActions, Typography} from '@material-ui/core';
 
 import {Cluster, Namespace, Pod, Item} from "../k8s/k8sObjectTypes";
 import Context from "./contextStore";
@@ -49,7 +49,7 @@ class ContextPanel extends React.Component<IProps, IState> {
     }
   };
 
-  renderNamespace = (namespace: Namespace) => {
+  renderNamespaceWithPods = (namespace: Namespace) => {
     const {classes, context} = this.props
     const pods = namespace.pods
 
@@ -70,6 +70,16 @@ class ContextPanel extends React.Component<IProps, IState> {
           </ListItem>
         ))}
       </List>
+    )
+  }
+
+  renderNamespace = (namespace: Namespace) => {
+    const {classes, context} = this.props
+    return (
+      <Chip label={namespace.name}
+            avatar={<Avatar>NS</Avatar>} 
+            color="primary"
+      />
     )
   }
 

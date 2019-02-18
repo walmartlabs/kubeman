@@ -46,8 +46,9 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Check Pod Logs",
-      order: 4,
+      order: 10,
       autoRefreshDelay: 15,
+      loadingMessage: "Loading Containers@Pods...",
 
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 5, true, false),
       async act(actionContext) {
@@ -64,8 +65,9 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Tail Pod Logs",
-      order: 5,
-      
+      order: 11,
+      loadingMessage: "Loading Containers@Pods...",
+
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 5, true, false),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, this, true)

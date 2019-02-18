@@ -1,16 +1,24 @@
-import k8sFunctions from '../k8s/k8sFunctions'
+import K8sFunctions from '../k8s/k8sFunctions'
+import K8sPluginHelper from '../k8s/k8sPluginHelper';
 import {ActionGroupSpec, ActionContextType, 
-        ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
+        ActionOutput, ActionOutputStyle, ActionContextOrder} from '../actions/actionSpec'
+import { Namespace } from '../k8s/k8sObjectTypes';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
+  title: "Events",
+  order: ActionContextOrder.Events,
   actions: [
     {
-      name: "Get Events",
+      name: "Namespace Events",
       order: 1,
       autoRefreshDelay: 15,
+
+      choose: K8sPluginHelper.chooseNamespaces.bind(K8sPluginHelper, false, 1, 10),
       
       async act(actionContext) {
+        const selections = await K8sPluginHelper.getSelections(actionContext)
+
         this.onOutput && this.onOutput([[
           ["Event", "LastTimestamp", "(Count)"],
           "Details",
@@ -24,26 +32,25 @@ const plugin : ActionGroupSpec = {
           const cluster = clusters[i]
           output.push([">Cluster: " + cluster.name, ""])
 
-          for(const j in namespaces) {
-            const namespace = namespaces[j]
-            if(namespace.cluster.name === cluster.name) {
-              output.push([">>Namespace: "+namespace.name, ""])
-              const events = await k8sFunctions.getNamespaceEvents(namespace.name, cluster.k8sClient)
-              events.forEach(event => {
-                if(event.reason === "No Events") {
-                  output.push([event.reason])
-                } else {
-                  output.push([
-                    [event.reason, event.lastTimestamp, event.count ? "(" + event.count + ")" : ""],
-                    event.type ? [
-                      "type: " + event.type,
-                      "source: " + event.source,
-                      "message: " + event.message,
-                    ] : [],
-                  ])
-                }
-              })
-            }
+          let clusterNamespaces = selections.filter(s => s.cluster === cluster.name).map(s => s.item) as Namespace[]
+
+          for(const namespace of clusterNamespaces) {
+            output.push([">>Namespace: "+namespace.name, ""])
+            const events = await K8sFunctions.getNamespaceEvents(namespace.name, cluster.k8sClient)
+            events.forEach(event => {
+              if(event.reason === "No Events") {
+                output.push([event.reason])
+              } else {
+                output.push([
+                  [event.reason, event.lastTimestamp, event.count ? "(" + event.count + ")" : ""],
+                  event.type ? [
+                    "type: " + event.type,
+                    "source: " + event.source,
+                    "message: " + event.message,
+                  ] : [],
+                ])
+              }
+            })
           }
           this.onStreamOutput && this.onStreamOutput(output)
         }

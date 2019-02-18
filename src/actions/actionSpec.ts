@@ -1,21 +1,23 @@
 import ActionContext from './actionContext'
 
 export enum ActionContextType {
-  Common = "Common",
   Cluster = "Cluster",
   Namespace = "Namespace",
-  Pod = "Pod",
   Istio = "Istio",
   Other = "Other",
 }
 
-export const ActionContextOrder = {}
-ActionContextOrder[ActionContextType.Common] = 1
-ActionContextOrder[ActionContextType.Cluster] = 10
-ActionContextOrder[ActionContextType.Namespace] = 100
-ActionContextOrder[ActionContextType.Pod] = 200
-ActionContextOrder[ActionContextType.Istio] = 300
-ActionContextOrder[ActionContextType.Other] = 1000
+export enum ActionContextOrder {
+  Cluster = 1,
+  Events = 10,
+  Resources = 20,
+  Namespace = 50,
+  Deployment = 100,
+  Service = 200,
+  Pod = 300,
+  Istio = 500,
+  Other = 100,
+}
 
 export enum ActionOutputStyle {
   None = "None",
@@ -26,15 +28,19 @@ export enum ActionOutputStyle {
   Log = "Log"
 }
 
+export interface Choice {
+  displayItem: any[]
+  data: any
+}
+export type ActionChoiceMaker = (act: BoundActionAct, title: string, choices: Choice[], minChoices: number, maxChoices: number, showChoiceSubItems: boolean) => void
+export type ActionOnChoice = (title: string, choices: Choice[], minChoices: number, maxChoices: number, showChoiceSubItems: boolean) => void
+
+
 export type ActionOutput = any[][]
-export type ActionChoices = any[]
 export type ActionAct = (actionContext: ActionContext) => void
 export type BoundActionAct = () => void
-
 export type ActionOutputCollector = (output: ActionOutput|string[], style: ActionOutputStyle) => void
 export type ActionStreamOutputCollector = (output: ActionOutput|string[]) => void
-export type ActionChoiceMaker = (act: BoundActionAct, title: string, choices: ActionChoices, minChoices: number, maxChoices: number) => void
-export type ActionOnChoice = (title: string, choices: ActionChoices, minChoices: number, maxChoices: number) => void
 export type ActionOnInfo = (title: string, info: any[]) => void
 
 export type ActionGroupSpecs = ActionGroupSpec[]

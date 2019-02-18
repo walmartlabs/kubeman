@@ -1,7 +1,7 @@
 import _ from 'lodash'
-import {DataObject, StringStringArrayMap, GetItemsFunction} from './k8sFunctions'
+import K8sFunctions, {StringStringArrayMap, GetItemsFunction} from './k8sFunctions'
 import ActionContext from '../actions/actionContext'
-import {ActionOutput, ActionOutputStyle} from '../actions/actionSpec'
+import {ActionOutput, ActionOutputStyle, Choice} from '../actions/actionSpec'
 import {Cluster, Namespace, Pod, PodTemplate, PodDetails, PodContainerDetails} from "./k8sObjectTypes"
 import k8sFunctions from './k8sFunctions'
 import { K8sClient } from './k8sClient'
@@ -27,15 +27,37 @@ export interface PodSelection {
 export default class K8sPluginHelper {
   static items: StringStringArrayMap = {}
   static useNamespace: boolean = true
+  static showChoiceSubItems: boolean = true
+  static cacheKey: string|undefined = undefined
+  static clearItemsTimer: any = undefined
+
+  static startClearItemsTimer() {
+    if(this.clearItemsTimer) {
+      clearTimeout(this.clearItemsTimer)
+    }
+    this.clearItemsTimer = setTimeout(() => {
+      this.items = {}
+      this.useNamespace = true
+      this.cacheKey = undefined
+      this.clearItemsTimer = undefined
+    }, 300000)
+  }
 
   static createChoices(items, namespace, cluster, ...fields) {
-    const choices: any[] = []
+    const choices: Choice[] = []
     items.forEach(item => {
       const choiceItem: any[] = []
+      const choiceData: any = {}
       if(fields.length > 0) {
-        fields.forEach(field => choiceItem.push(item[field]))
+        fields.forEach(field => {
+          choiceItem.push(item[field])
+          choiceData[field] = item[field]
+        })
+        choiceData['title'] = choiceData['name'] || choiceItem[0]
       } else {
-        choiceItem.push(item.name || item)
+        const itemName = item.name || item
+        choiceItem.push(itemName)
+        choiceData['title'] = choiceData['name'] = itemName
       }
       let itemNS = namespace
       if(!itemNS) {
@@ -45,50 +67,108 @@ export default class K8sPluginHelper {
         choiceItem.push("Namespace: " + itemNS)
       }
       choiceItem.push("Cluster: " + cluster)
-      choices.push(choiceItem)
+      choiceData.cluster = cluster
+      choiceData.namespace = itemNS
+      choiceData.item = item
+      choices.push({displayItem: choiceItem, data: choiceData})
     })
     return choices
   }
 
-  private static async storeItems(actionContext: ActionContext, getItems: GetItemsFunction, 
-                                  useNamespace: boolean = true, ...fields) {
+  private static async _storeItems(cache: boolean, cacheKey: string|undefined, 
+                                    actionContext: ActionContext, getItems: GetItemsFunction, 
+                                    useNamespace: boolean = true, ...fields) {
     const clusters = actionContext.getClusters()
-    this.items = {}
     this.useNamespace = useNamespace
+    const isCached = this.cacheKey === cacheKey
+    if(cache) {
+      if(!cacheKey || !isCached) {
+        this.startClearItemsTimer()
+        this.cacheKey = cacheKey
+        this.items = {}
+      } else {
+        Object.keys(this.items).forEach(c => {
+          const cluster = clusters.filter(cluster => cluster.name === c)[0]
+          if(!cluster) {
+            delete this.items[c]
+          } else if(useNamespace) {
+            if(cluster.namespaces.length > 0) {
+              Object.keys(this.items[c]).forEach(ns => {
+                if(cluster.namespaces.filter(namespace => namespace.name === ns).length === 0) {
+                  delete this.items[c][ns]
+                }
+              })
+            }
+          }
+        })
+      }
+    } else {
+      this.cacheKey = undefined
+      this.items = {}
+    }
 
     let choices: any[] = []
     for(const cluster of clusters) {
       if(!this.items[cluster.name]) {
         this.items[cluster.name] = {}
       }
-      const namespaces = cluster.namespaces
-      if(useNamespace && namespaces.length > 0) {
+      let namespaces = cluster.namespaces
+      if(useNamespace) {
+        if(namespaces.length === 0) {
+          namespaces = await K8sFunctions.getClusterNamespaces(cluster.k8sClient)
+        }
         for(const namespace of namespaces) {
+          let isNewNamespace = false
           if(!this.items[cluster.name][namespace.name]) {
             this.items[cluster.name][namespace.name] = []
+            isNewNamespace = true
           }
-          const items = this.items[cluster.name][namespace.name] = 
-            await getItems(cluster.name, namespace.name, cluster.k8sClient)
+          let items = this.items[cluster.name][namespace.name]
+          if(!cache || !isCached || isNewNamespace) {
+            items = this.items[cluster.name][namespace.name] = await getItems(cluster.name, namespace.name, cluster.k8sClient)
+          }
           choices = choices.concat(this.createChoices(items, namespace.name, cluster.name, ...fields))
         }
       } else {
-        const items = await getItems(cluster.name, undefined, cluster.k8sClient)
-        items.forEach(item => {
-          const namespace = item.namespace ? (item.namespace.name || item.namespace) : ""
-          if(!this.items[cluster.name][namespace]) {
-            this.items[cluster.name][namespace] = []
-          }
-          this.items[cluster.name][namespace].push(item)
+        const clusterItems = this.items[cluster.name]
+        if(!cache || Object.values(clusterItems).length === 0) {
+          const items = await getItems(cluster.name, undefined, cluster.k8sClient)
+          items.forEach(item => {
+            const namespace = item.namespace ? (item.namespace.name || item.namespace) : ""
+            if(!clusterItems[namespace]) {
+              clusterItems[namespace] = []
+            }
+            clusterItems[namespace].push(item)
+          })
+        }
+        Object.keys(clusterItems).forEach(ns => {
+          choices = choices.concat(this.createChoices(clusterItems[ns], undefined, cluster.name, ...fields))
         })
-        choices = choices.concat(this.createChoices(items, undefined, cluster.name, ...fields))
       }
     }
+    choices = choices.sort((c1, c2) => {
+      let result = c1.displayItem[0].localeCompare(c2.displayItem[0])
+      if(result === 0 && c1.displayItem.length > 1) {
+        result = c1.displayItem[1].localeCompare(c2.displayItem[1])
+      }
+      return result
+    })
     return choices
   }
 
-  static async prepareChoices(actionContext: ActionContext, k8sFunction: GetItemsFunction, 
+  private static async storeItems(actionContext: ActionContext, getItems: GetItemsFunction, 
+                                   useNamespace: boolean = true, ...fields) {
+    return this._storeItems(false, undefined, actionContext, getItems, useNamespace, ...fields)
+  }
+
+  private static async storeCachedItems(cacheKey: string, actionContext: ActionContext, getItems: GetItemsFunction, 
+                                          useNamespace: boolean = true, ...fields) {
+    return this._storeItems(true, cacheKey, actionContext, getItems, useNamespace, ...fields)
+  }
+
+  static async _prepareChoices(cache: boolean, cacheKey: string|undefined, actionContext: ActionContext, k8sFunction: GetItemsFunction, 
                               name: string, min: number, max: number, useNamespace: boolean = true, ...fields) {
-    const choices: any[] = await K8sPluginHelper.storeItems(actionContext, k8sFunction, useNamespace, ...fields)
+    const choices: any[] = await K8sPluginHelper._storeItems(cache, cacheKey, actionContext, k8sFunction, useNamespace, ...fields)
     let howMany = ""
     if(min === max && max > 0) {
       howMany = " " + max + " "
@@ -97,84 +177,88 @@ export default class K8sPluginHelper {
       howMany += max > 0 && min > 0 ? ", and " : ""
       howMany += max > 0 ?  " up to " + max + " " : ""
     }
-    actionContext.onActionInitChoices && actionContext.onActionInitChoices("Choose" + howMany + name, choices, min, max)
+    actionContext.onActionInitChoices && actionContext.onActionInitChoices("Choose" + howMany + name, choices, min, max, K8sPluginHelper.showChoiceSubItems)
   }
 
-  static getSelections(actionContext: ActionContext, ...fields) : ItemSelection[] {
-    let selections = actionContext.getSelections()
-    selections = selections.map(selection => {
-      const data: DataObject = {}
-      let lastIndex = 0
-      let keyField = 'name'
-      if(fields.length > 0) {
-        keyField = fields[0]
-        fields.forEach((field, index) => {
-          data[field] = selection[index]
-          lastIndex++
-        })
-      } else {
-        data.name = selection[0]
-        lastIndex++
-      }
-      data.title = data.name || selection[0]
-      if(this.useNamespace && selection[lastIndex].includes("Namespace")) {
-        data.namespace = selection[lastIndex].replace("Namespace: ", "")
-        lastIndex++
-      } else {
-        data.namespace = ""
-      }
-      data.cluster = selection[lastIndex].replace("Cluster: ", "")
-      const items = K8sPluginHelper.items[data.cluster][data.namespace] ?
-                  K8sPluginHelper.items[data.cluster][data.namespace]
-                    .filter(item => (item[keyField] || item) === data.title) : []
-      items.length > 0 && (data.item = items[0])
-      return data
-    })
-    return selections
+  static async prepareChoices(actionContext: ActionContext, k8sFunction: GetItemsFunction, 
+                              name: string, min: number, max: number, useNamespace: boolean = true, ...fields) {
+    return this._prepareChoices(false, undefined, actionContext, k8sFunction, name, min, max, useNamespace, ...fields)
+  }
+
+  static async prepareCachedChoices(actionContext: ActionContext, k8sFunction: GetItemsFunction, 
+                              name: string, min: number, max: number, useNamespace: boolean = true, ...fields) {
+    return this._prepareChoices(true, name, actionContext, k8sFunction, name, min, max, useNamespace, ...fields)
+  }
+
+  static getSelections(actionContext: ActionContext) : ItemSelection[] {
+    return actionContext.getSelections().map(selection => selection.data)
   }
 
   static async chooseClusters(actionContext: ActionContext) {
     const clusters = actionContext.getClusters()
-    const choices: any[] = []
-    clusters.forEach(cluster => {
-      choices.push([cluster.name])
-    })
-    if(clusters.length > 2) {
-      actionContext.onActionInitChoices && actionContext.onActionInitChoices("Choose 2 Clusters", choices, 2, 2)
+    const context = actionContext.context
+    const getCluster = async (cluster) => [context && context.cluster(cluster)]
+    if(clusters.length > 3) {
+      K8sPluginHelper.showChoiceSubItems = false
+      await K8sPluginHelper.prepareChoices(actionContext, getCluster, "Clusters", 2, 3, false, "name")
+      K8sPluginHelper.showChoiceSubItems = true
     } else {
-      actionContext.context && (actionContext.context.selections = choices)
+      const selections = await K8sPluginHelper.storeItems(actionContext, getCluster, false, "name")
+      actionContext.context && (actionContext.context.selections = selections)
       actionContext.onSkipChoices && actionContext.onSkipChoices()
     }
   }
 
   static getSelectedClusters(actionContext: ActionContext) : Cluster[] {
-    const selections = _.flatten(actionContext.getSelections())
-    const clusters = actionContext.getClusters()
-    return selections.map(s => clusters.filter(cluster => cluster.name === s)[0])
+    return this.getSelections(actionContext).map(s => s.item) as Cluster[]
   }
 
-  static async chooseNamespaces(min: number = 1, max: number = 5, actionContext: ActionContext) {
+
+  static async chooseCRDs(min: number = 1, max: number = 5, actionContext: ActionContext) {
+    K8sPluginHelper.prepareCachedChoices(actionContext, 
+      async (cluster, namespace,k8sClient) => {
+        return K8sFunctions.getClusterCRDs(k8sClient)
+      }, "CRDs", min, max, false, "name")
+}
+
+  static async chooseNamespaces(unique: boolean = false, min: number = 1, max: number = 5, actionContext: ActionContext) {
     const clusters = actionContext.getClusters()
     let namespaces = actionContext.getNamespaces()
+    let namespaceNames: string[] = []
+    const uniqueFilter = ns => {
+      if(namespaceNames.includes(ns.name)) {
+        return false
+      } else {
+        namespaceNames.push(ns.name)
+        return true
+      }
+    }
+    if(unique) {
+      namespaces = namespaces.filter(uniqueFilter)
+    }
+    if(namespaces.length < min) {
+      namespaces = []
+      namespaceNames = []
+      for(const cluster of clusters) {
+        let clusterNamespaces = await k8sFunctions.getClusterNamespaces(cluster.k8sClient)
+        if(unique) {
+          clusterNamespaces = clusterNamespaces.filter(uniqueFilter)
+        }
+        namespaces = namespaces.concat(clusterNamespaces.map(ns => {
+          ns.cluster = cluster
+          return ns
+        }))
+      }
+    }
     if(namespaces.length < min || namespaces.length > max) {
-      K8sPluginHelper.prepareChoices(actionContext, 
-        async (clusterName, namespace, k8sClient) => {
-          if(namespaces.length < min) {
-            const namespaces = await k8sFunctions.getClusterNamespaces(k8sClient)
-            return namespaces.map(ns => {
-              ns.cluster = clusters.filter(c => c.name === clusterName)[0]
-              return ns
-            })
-          } else {
-            const cluster = actionContext.context ? actionContext.context.cluster(clusterName) : undefined
-            return cluster ? cluster.namespaces : []
-          }
-        },
-      "Namespaces", min, max, false, "name")
+      K8sPluginHelper.showChoiceSubItems = !unique
+      await K8sPluginHelper.prepareChoices(actionContext, 
+        async (clusterName, namespace, k8sClient) => namespaces.filter(ns => ns.cluster.name === clusterName),
+        "Namespaces", min, max, false, "name")
+        K8sPluginHelper.showChoiceSubItems = true
     } else {
-      const selections = await K8sPluginHelper.storeItems(actionContext, async (cluster, namespace, k8sClient) => {
-        return namespaces.filter(ns => ns.cluster.name === cluster)
-      }, false, "name")
+      const selections = await K8sPluginHelper.storeItems(actionContext, 
+        async (cluster, namespace, k8sClient) => namespaces.filter(ns => ns.cluster.name === cluster), false, "name")
       actionContext.context && (actionContext.context.selections = selections)
       actionContext.onSkipChoices && actionContext.onSkipChoices()
     }
@@ -187,7 +271,7 @@ export default class K8sPluginHelper {
     const contextHasLess = chooseContainers ? containers.length < min : contextPods.length < min
     const contextHasMore = chooseContainers ? containers.length > max : contextPods.length > max
     if(contextHasLess || contextHasMore) {
-      K8sPluginHelper.prepareChoices(actionContext, 
+      K8sPluginHelper.prepareCachedChoices(actionContext, 
         async (cluster, namespace, k8sClient) => {
           let pods : any[] = []
           if(contextHasLess) {
@@ -244,12 +328,12 @@ export default class K8sPluginHelper {
     const selections = actionContext.getSelections()
     const pods : PodSelection[] = []
     for(const selection of selections) {
-      const namespace = selection[1].replace("Namespace: ", "")
-      const cluster = selection[2].replace("Cluster: ", "")
+      const namespace = selection.data.namespace
+      const cluster = selection.data.cluster
       const clusters = actionContext.getClusters()
       const k8sClient = clusters.filter(c => c.name === cluster)
                                   .map(cluster => cluster.k8sClient)[0]
-      const title = selection[0].name ? selection[0].name : selection[0] as string
+      const title = selection.data.name || selection.data.title
       const podAndContainer = loadContainers ? title.split("@") : undefined
       const container = loadContainers ? podAndContainer[0] : undefined
       const pod = loadContainers ? podAndContainer[1] : title
@@ -271,22 +355,8 @@ export default class K8sPluginHelper {
     return pods
   }
 
-  static async chooseCRDs(min: number = 1, max: number = 10, actionContext: ActionContext) {
-    const clustersReported: string[] = []
-    await K8sPluginHelper.prepareChoices(actionContext, 
-      async (cluster, namespace,k8sClient) => {
-        if(!clustersReported.includes(cluster)) {
-          clustersReported.push(cluster)
-          return await k8sFunctions.getClusterCRDs(k8sClient)
-        } else {
-          return []
-        }
-      }, "CRDs", 1, 10, false, "name")
-
-  }
-
   static async generateComparisonOutput(actionContext, onOutput, name, ...fields) {
-    let selections = K8sPluginHelper.getSelections(actionContext, ...fields)
+    let selections = K8sPluginHelper.getSelections(actionContext)
     if(selections.length < 2) {
       onOutput(["Not enough " + name + " selected"], ActionOutputStyle.Text)
       return

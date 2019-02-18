@@ -5,19 +5,20 @@ import K8sFunctions from '../k8s/k8sFunctions'
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
   title: "Service Recipes",
-  order: ActionContextOrder[ActionContextType.Namespace]+1,
+  order: ActionContextOrder.Service,
   actions: [
     {
       name: "View Service Details",
-      order: 1,
+      order: 10,
+      loadingMessage: "Loading Services...",
       
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, 
+        await K8sPluginHelper.prepareCachedChoices(actionContext, K8sFunctions.getServices, 
                                                 "Services", 1, 10, true, "name")
       },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
+        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
@@ -60,9 +61,10 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Compare Two Services",
-      order: 2,
+      order: 11,
+      loadingMessage: "Loading Services...",
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, 
+        await K8sPluginHelper.prepareCachedChoices(actionContext, K8sFunctions.getServices, 
                                               "Services", 2, 2, true, "name")
       },
 

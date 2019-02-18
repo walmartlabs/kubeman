@@ -31,12 +31,12 @@ export async function listResources(type: string, getResources: (k8sClient) => P
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Resource Lists",
-  order: ActionContextOrder[ActionContextType.Istio],
+  title: "Resources",
+  order: ActionContextOrder.Resources,
   actions: [
     {
       name: "List Gateways",
-      order: 1,
+      order: 11,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Istio Gateways List"]], ActionOutputStyle.Table)
         listResources("Gateways", IstioFunctions.listAllGateways, this.onStreamOutput, actionContext)
@@ -44,7 +44,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "List VirtualServices",
-      order: 2,
+      order: 12,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Istio VirtualServices List"]], ActionOutputStyle.Table)
         listResources("VirtualServices", IstioFunctions.listAllVirtualServices, this.onStreamOutput, actionContext)
@@ -52,7 +52,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "List DestinationRules",
-      order: 3,
+      order: 13,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Istio VirtualServices List"]], ActionOutputStyle.Table)
         listResources("VirtualServices", IstioFunctions.listAllDestinationRules, this.onStreamOutput, actionContext)
@@ -60,7 +60,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "List ServiceEntries",
-      order: 4,
+      order: 14,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Istio ServiceEntries List"]], ActionOutputStyle.Table)
         listResources("ServiceEntries", IstioFunctions.listAllServiceEntries, this.onStreamOutput, actionContext)
@@ -68,7 +68,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "List Policies",
-      order: 6,
+      order: 15,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Istio Policies List"]], ActionOutputStyle.Table)
         listResources("Policies", IstioFunctions.listAllPolicies, this.onStreamOutput, actionContext)
@@ -76,7 +76,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "List MeshPolicies",
-      order: 7,
+      order: 16,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Istio MeshPolicies List"]], ActionOutputStyle.Table)
         listResources("MeshPolicies", IstioFunctions.listAllMeshPolicies, this.onStreamOutput, actionContext)
@@ -84,15 +84,16 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "List Rules",
-      order: 8,
+      order: 17,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Istio Rules List"]], ActionOutputStyle.Table)
         listResources("Rules", IstioFunctions.listAllRules, this.onStreamOutput, actionContext)
       }
     },
     {
-      name: "List Any CRD",
-      order: 9,
+      name: "Istio CRD Resource Instances",
+      order: 20,
+      loadingMessage: "Loading CRDs...",
 
       choose: IstioPluginHelper.chooseIstioCRDs.bind(IstioPluginHelper, 1, 10),
 

@@ -11,9 +11,10 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Test Pods Reachability",
-      order: 7,
+      order: 20,
       autoRefreshDelay: 60,
-      
+      loadingMessage: "Loading Pods...",
+
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 2, 5, true, true),
       
       async act(actionContext) {

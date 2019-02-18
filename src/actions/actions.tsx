@@ -23,8 +23,7 @@ interface IState {
 
 interface IProps extends WithStyles<typeof styles> {
   context: Context,
-  showLoading: () => void
-  onCommand: (string) => void
+  showLoading: (string) => void
   onOutput: ActionOutputCollector
   onStreamOutput: ActionStreamOutputCollector
   onActionInitChoices: ActionChoiceMaker
@@ -66,10 +65,6 @@ export class Actions extends React.Component<IProps, IState> {
     ActionLoader.loadActionPlugins()
   }
 
-  clear = () => {
-    this.props.onCommand && this.props.onCommand("clear")
-  }
-
   onAction = (action: BoundAction) => {
     this.props.onAction(action)
     const prevAction = this.currentAction
@@ -78,7 +73,7 @@ export class Actions extends React.Component<IProps, IState> {
     this.currentAction = action
     this.lastRefreshed = undefined
     if(action.act) {
-      this.props.showLoading()
+      this.props.showLoading(action.loadingMessage)
       action.chooseAndAct()
       this.setAutoRefresh(false)
     }
@@ -179,10 +174,8 @@ export class Actions extends React.Component<IProps, IState> {
     const theme = createMuiTheme(actionsTheme.getTheme(useDarkTheme));
 
     const actionShowNoShow : Map<ActionContextType, boolean> = new Map
-    actionShowNoShow.set(ActionContextType.Common, true)
     actionShowNoShow.set(ActionContextType.Cluster, context.hasClusters)
-    actionShowNoShow.set(ActionContextType.Namespace, context.hasNamespaces)
-    actionShowNoShow.set(ActionContextType.Pod, context.hasPods)
+    actionShowNoShow.set(ActionContextType.Namespace, context.hasClusters)
     actionShowNoShow.set(ActionContextType.Istio, context.hasClusters)
     actionShowNoShow.set(ActionContextType.Other, context.hasClusters)
 

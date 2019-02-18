@@ -84,7 +84,7 @@ const plugin : ActionGroupSpec = {
             const isAnyVSUsingCert = certVirtualServices.filter(vs => vs.tls).length > 0
 
             output.push([
-              volume.secret.secretName +
+              (volume.secret ? volume.secret.secretName : "--- No Cert Name ---") +
                 (isAnyVSUsingCert ? "" 
                 : certVirtualServices.length === 0 ? " <span style='color:red'>(not used by any VirtualService)</span>"
                 : " <span style='color:red'>(not in use by any of the "+certVirtualServices.length+" VirtualServices)</span>"

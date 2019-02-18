@@ -1,14 +1,16 @@
 import k8sFunctions from '../k8s/k8sFunctions'
-import {ActionGroupSpec, ActionContextType, 
+import {ActionGroupSpec, ActionContextType, ActionContextOrder,
         ActionOutput, ActionOutputStyle } from '../actions/actionSpec'
 import ActionContext from '../actions/actionContext'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,
+  title: "Namespace Recipes",
+  order: ActionContextOrder.Namespace,
   actions: [
     {
-      order: 5,
-      name: "List Namespaces",
+      order: 10,
+      name: "List All Namespaces",
       async act(actionContext: ActionContext) {
         this.onOutput && this.onOutput([["Namespace", "Labels", "Created", "Status"]], ActionOutputStyle.TableWithHealth)
         this.showOutputLoading && this.showOutputLoading(true)

@@ -66,7 +66,18 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
   input: {
     display: 'none',
   },
-  loading: {
+  loadingMessage: {
+    display: 'block',
+    marginTop: '40%',
+    textAlign: 'center',
+  },
+  loadingLinear: {
+    display: 'block',
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    width: '40%',
+  },
+  loadingCircular: {
     display: 'block',
     marginTop: '40%',
     marginLeft: 'auto',

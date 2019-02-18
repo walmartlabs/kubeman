@@ -1,18 +1,12 @@
-import k8sFunctions, {StringStringStringBooleanMap} from '../k8s/k8sFunctions'
-import {ActionGroupSpec, ActionContextType, 
+import K8sFunctions, {StringStringStringBooleanMap} from '../k8s/k8sFunctions'
+import K8sPluginHelper from '../k8s/k8sPluginHelper';
+import {ActionGroupSpec, ActionContextType, ActionContextOrder,
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
 import ActionContext from '../actions/actionContext'
 import {Cluster, Namespace} from "../k8s/k8sObjectTypes";
 
 
-export function generateDeploymentComparisonOutput(clusters: Cluster[], namespaces: Namespace[], deployments: any) {
-  const output: ActionOutput = []
-  const headers = ["Namespace/Deployment"]
-  clusters.forEach(cluster => {
-    headers.push("Cluster: " + cluster.name)
-  })
-  output.push(headers)
-
+export function generateDeploymentComparisonOutput(clusters: Cluster[], namespaces: Namespace[], deployments: any, onStreamOutput) {
   const nsDeploymentToClusterMap : StringStringStringBooleanMap = {}
   namespaces.forEach(ns => {
     const namespace = ns.name
@@ -30,6 +24,7 @@ export function generateDeploymentComparisonOutput(clusters: Cluster[], namespac
   })
 
   Object.keys(nsDeploymentToClusterMap).forEach(namespace => {
+    const output: ActionOutput = []
     const groupTitle = [">Namespace: " + namespace]
     clusters.forEach(cluster => {
       groupTitle.push("")
@@ -49,25 +44,37 @@ export function generateDeploymentComparisonOutput(clusters: Cluster[], namespac
         output.push(deploymentRow)
       })
     }
+    onStreamOutput(output)
   })
-  return output
 }
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
+  title: "Deployment Recipes",
+  order: ActionContextOrder.Deployment,
   actions: [
     {
       name: "List/Compare Deployments",
-      order: 11,
+      order: 1,
+      loadingMessage: "Loading Namespaces...",
+
+      choose: K8sPluginHelper.chooseNamespaces.bind(K8sPluginHelper, true, 1, 10),
+
       async act(actionContext: ActionContext) {
-        this.showOutputLoading && this.showOutputLoading(true)
         const clusters = actionContext.getClusters()
-        const namespaces = actionContext.getNamespaces()
+        const headers = ["Namespace/Deployment"]
+        clusters.forEach(cluster => {
+          headers.push("Cluster: " + cluster.name)
+        })
+        this.onOutput && this.onOutput([headers], ActionOutputStyle.Compare)
+      
+        this.showOutputLoading && this.showOutputLoading(true)
+        const selections = await K8sPluginHelper.getSelections(actionContext)
+        const namespaces = selections.map(s => s.item) as Namespace[]
 
-        const deployments = await k8sFunctions.getDeploymentsGroupedByClusterNamespace(clusters, namespaces)
+        const deployments = await K8sFunctions.getDeploymentsGroupedByClusterNamespace(clusters, namespaces)
 
-        const output = generateDeploymentComparisonOutput(clusters, namespaces, deployments)
-        this.onOutput && this.onOutput(output, ActionOutputStyle.Compare)
+        generateDeploymentComparisonOutput(clusters, namespaces, deployments, this.onStreamOutput)
         this.showOutputLoading && this.showOutputLoading(false)
       },
     }

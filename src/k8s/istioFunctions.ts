@@ -297,6 +297,7 @@ export default class IstioFunctions {
                   +(port.targetPort?"->"+port.targetPort:"")
                   +"]"),
         selector: service.selector,
+        yaml: service.yaml,
     }})
   }
 

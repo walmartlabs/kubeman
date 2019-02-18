@@ -12,7 +12,8 @@ const defaultConfig = k8s.config.fromKubeconfig()
 export interface K8sClient extends k8s.ApiV1 {
   apps: k8s.ApisAppsV1
   extensions: k8s.ApisApiextensions_k8s_ioV1beta1
-  istio?: any
+  istio?: any,
+  crds: any,
 }
 
 export type K8sAdminClient = k8s.Api
@@ -39,6 +40,7 @@ export async function getClientForCluster(cluster: Cluster) {
     ...k8sV1Client,
     apps: k8sAppsClient,
     extensions,
+    crds: {},
   }
   try {
     const result = await extensions.customresourcedefinitions.get()
@@ -46,6 +48,10 @@ export async function getClientForCluster(cluster: Cluster) {
     const istioCRDS = crds.filter(item => item.spec.group.includes("istio.io")).map(crd => crd.metadata.name)
     crds.forEach(crd => {
       client.addCustomResourceDefinition(crd)
+      if(client.apis[crd.spec.group]) {
+        const crdName = crd.metadata.name.split(".")[0]
+        k8sClient.crds[crd.metadata.name]=client.apis[crd.spec.group][crd.spec.version][crdName]
+      }
     })
     if(client.apis["config.istio.io"]) {
       k8sClient.istio = client.apis["config.istio.io"].v1alpha2

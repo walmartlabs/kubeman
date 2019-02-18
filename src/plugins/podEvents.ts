@@ -4,13 +4,14 @@ import {ActionGroupSpec, ActionContextOrder, ActionContextType, ActionOutput, Ac
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
-  title: "Pod Recipes",
-  order: ActionContextOrder[ActionContextType.Namespace]+2,
+  title: "Events",
+  order: ActionContextOrder.Events,
   actions: [
     {
-      name: "View Pod(s) Events",
-      order: 1,
+      name: "Pod Events",
+      order: 3,
       autoRefreshDelay: 15,
+      loadingMessage: "Loading Pods...",
 
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 10, false, false),
 

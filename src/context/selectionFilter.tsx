@@ -39,16 +39,14 @@ export class SelectionFilter extends React.Component<SelectionFilterProps, Selec
     this.componentWillReceiveProps(this.props)
   }
 
-  componentWillReceiveProps(props: SelectionFilterProps) {
+  async componentWillReceiveProps(props: SelectionFilterProps) {
     const {filter} = props
     const {includePods} = this.state
-    let podSuggestions : Pod[] = []
-    let namespaceSuggestions: Namespace[] = []
+    this.setState({filterText: filter})
     if(filter && filter !== '') {
-      namespaceSuggestions = SelectionManager.getMatchingNamespaces(filter)
-      includePods && (podSuggestions = SelectionManager.getMatchingPods(filter))
+      const matches = await SelectionManager.getMatchingNamespacesAndPods(filter, includePods)
+      this.setState({podSuggestions: matches.pods, namespaceSuggestions: matches.namespaces})
     }
-    this.setState({filterText: filter, podSuggestions, namespaceSuggestions})
   }
 
   getSelections() {
@@ -60,14 +58,13 @@ export class SelectionFilter extends React.Component<SelectionFilterProps, Selec
     return item.name
   }
 
-  onSuggestionsFetchRequested = ({value, reason}) => {
+  onSuggestionsFetchRequested = async ({value, reason}) => {
     const {includePods} = this.state
     value = reason === 'suggestion-selected' ? this.state.filterText : value
-    const podSuggestions = includePods ? SelectionManager.getMatchingPods(value) : []
-    const namespaceSuggestions = SelectionManager.getMatchingNamespaces(value)
+    const matches = await SelectionManager.getMatchingNamespacesAndPods(value, includePods)
     this.setState({
-      podSuggestions,
-      namespaceSuggestions
+      podSuggestions: matches.pods, 
+      namespaceSuggestions: matches.namespaces
     })
   }
 
@@ -78,10 +75,14 @@ export class SelectionFilter extends React.Component<SelectionFilterProps, Selec
     }
   }
 
-  onIncludePods = (event) => {
+  onIncludePods = async (event) => {
     const includePods = event.target.checked
-    const podSuggestions = includePods ? SelectionManager.getMatchingPods(this.state.filterText) : []
-    this.setState({includePods, podSuggestions})
+    const matches = await SelectionManager.getMatchingNamespacesAndPods(this.state.filterText, includePods)
+    this.setState({
+      includePods, 
+      podSuggestions: matches.pods, 
+      namespaceSuggestions: matches.namespaces
+    })
   }
 
   onApply = () => {
@@ -199,7 +200,7 @@ export class SelectionFilter extends React.Component<SelectionFilterProps, Selec
     
     return (
       <div>
-        <FormGroup row>
+        {/* <FormGroup row>
           <FormControlLabel
             control={
               <Checkbox
@@ -209,7 +210,7 @@ export class SelectionFilter extends React.Component<SelectionFilterProps, Selec
             }
             label="Include Pods"
           />
-        </FormGroup>
+        </FormGroup> */}
         <Autosuggest
           suggestions={suggestions}
           inputProps={inputProps}

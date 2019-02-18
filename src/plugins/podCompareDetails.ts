@@ -7,8 +7,9 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Compare Two Pods",
-      order: 6,
-      
+      order: 15,
+      loadingMessage: "Loading Pods...",
+
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 2, 2, false, true),
 
       async act(actionContext) {

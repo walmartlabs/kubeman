@@ -6,7 +6,7 @@ import IstioFunctions from '../k8s/istioFunctions';
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
   title: "Istio Ingress Recipes",
-  order: ActionContextOrder[ActionContextType.Istio]+1,
+  order: ActionContextOrder.Istio+1,
   actions: [
     {
       name: "View Ingress Details",
@@ -43,10 +43,15 @@ const plugin : ActionGroupSpec = {
           if(istioSDSContainer.length > 0) {
             output.push(["SDS Container", istioSDSContainer])
           }
-          output.push(["Ingress Service", await IstioFunctions.getIstioServiceDetails("istio=ingressgateway", k8sClient)])
+          const ingressService = (await IstioFunctions.getIstioServiceDetails("istio=ingressgateway", k8sClient))[0]
+          const ingressServiceYaml = ingressService.yaml
+          delete ingressService.yaml
+          output.push(["Ingress Service", ingressService])
           output.push(["Ingress Pods", await IstioFunctions.getIngressGatewayPods(k8sClient)])
           output.push(["Ingress Gateways", await IstioFunctions.listAllIngressGateways(k8sClient, false)])
           output.push(["Ingress VirtualServices", await IstioFunctions.listAllIngressVirtualServices(k8sClient, false)])
+          output.push(["Ingress Service Yaml", ingressServiceYaml])
+          output.push(["Ingress Deployment Yaml", ingressDeployment.yaml])
           this.onStreamOutput  && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)

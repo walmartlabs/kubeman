@@ -54,11 +54,14 @@ function compareConfigs(onStreamOutput, pilotConfigs: any[], sidecarConfigs: any
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
   title: "Istio Pilot Recipes",
-  order: ActionContextOrder[ActionContextType.Istio]+2,
+  order: ActionContextOrder.Istio+2,
+  loadingMessage: "Loading Envoy Sidecars...",
+
   actions: [
     {
       name: "Compare Pilot-Sidecar Config",
-      order: 43,
+      order: 50,
+      loadingMessage: "Loading Envoy Sidecars...",
       
       choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
 
@@ -87,6 +90,28 @@ const plugin : ActionGroupSpec = {
         compareConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, "RoutesConfigDump", "routeConfig", "route_config")
 
         this.showOutputLoading && this.showOutputLoading(false)
+      },
+    },
+    {
+      name: "View Pilot-Sidecars Sync Status",
+      order: 51,
+      autoRefreshDelay: 15,
+      
+      async act(actionContext) {
+        this.onOutput && this.onOutput([["Pilot-Sidecars Sync Status"]], ActionOutputStyle.Log)
+        this.showOutputLoading && this.showOutputLoading(true)
+        const clusters = actionContext.getClusters()
+        for(const cluster of clusters) {
+          const result = await IstioFunctions.getPilotSidecarSyncStatus(cluster.k8sClient)
+          this.onStreamOutput && this.onStreamOutput([
+            [">Cluster: " + cluster.name],
+            [result]
+          ])
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
       },
     }
   ]

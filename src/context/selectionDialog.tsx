@@ -109,8 +109,6 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
         this.loadClusters()
         break
       case SelectionTabs.Pattern:
-        this.loadPodsForFilter()
-        break
       case SelectionTabs.Namespaces:
         this.loadNamespaces()
         break
@@ -129,39 +127,24 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     })
   }
 
-  loadNamespacesIntoState(state: SelectionDialogState) : SelectionDialogState {
-    SelectionManager.loadNamespacesForSelectedClusters()
-    Object.assign(state, {
-      reportClusterError: SelectionManager.isAnyClusterInError,
-    })
-    return state
-  }
-
   loadNamespaces() {
-    this.setState(this.loadNamespacesIntoState.bind(this))
-  }
-
-  loadPodsIntoState(allNamespaces: boolean, state: SelectionDialogState) : SelectionDialogState {
-    SelectionManager.loadPodsForNamespaces(allNamespaces)
-    Object.assign(state, {
-      reportNamespaceError: SelectionManager.isAnySelectedClusterInError ||
-                            SelectionManager.isAnyNamespaceInError,
+    this.setState(state => {
+      SelectionManager.loadNamespacesForSelectedClusters()
+      Object.assign(state, {
+        reportClusterError: SelectionManager.isAnyClusterInError,
+      })
+      return state
     })
-    return state
   }
 
-  loadPods() {
-    this.setState(this.loadPodsIntoState.bind(this, false))
-  }
-
-  loadPodsForFilter() {
-    this.setState((state) => {
-      state = this.loadNamespacesIntoState(state)
-      const {reportClusterError} = state
-      if(reportClusterError) {
-        return state
-      }
-      return this.loadPodsIntoState(true, state)
+  async loadPods() {
+    await SelectionManager.loadPodsForSelectedNamespaces()
+    this.setState(state => {
+      Object.assign(state, {
+        reportNamespaceError: SelectionManager.isAnySelectedClusterInError ||
+                              SelectionManager.isAnyNamespaceInError,
+      })
+      return state
     })
   }
 
@@ -272,7 +255,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                 <Tab label="Clusters" />
                 <Tab label="Select by Pattern" disabled={selectedClusters.size === 0} />
                 <Tab label="Namespaces" disabled={selectedClusters.size === 0} />
-                <Tab label="Pods" disabled={selectedNamespaces.size === 0} />
+                {/* <Tab label="Pods" disabled={selectedNamespaces.size === 0} /> */}
               </Tabs>
             </AppBar>
             {initialLoading && <CircularProgress className={classes.loading} />}

@@ -12,8 +12,9 @@ const plugin : ActionGroupSpec = {
     {
       name: "Services MTLS Report",
       order: 106,
+      loadingMessage: "Loading Namespaces...",
 
-      choose: K8sPluginHelper.chooseNamespaces.bind(K8sPluginHelper, 1, 5),
+      choose: K8sPluginHelper.chooseNamespaces.bind(K8sPluginHelper, false, 1, 5),
       
       async act(actionContext) {
         const selections = await K8sPluginHelper.getSelections(actionContext)

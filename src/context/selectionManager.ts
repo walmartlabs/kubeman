@@ -53,17 +53,44 @@ export default class SelectionManager {
     })
   }
 
-  static loadPodsForNamespaces(allNamespaces: boolean) {
+  static async loadPodsForSelectedNamespaces() {
+    await this.loadPodsForNamespaces(Array.from(this.selectedNamespaces.values()))
+  }
+
+  static async loadPodsForNamespaces(namespaces: Namespace[]) {
     this.namespacePods = {}
-    const namespacesToLoad : Namespace[] = allNamespaces ? 
-            _.flatten(_.values(this.clusterNamespaces))
-            : 
-            Array.from(this.selectedNamespaces.values())
-    namespacesToLoad.forEach(namespace => {
-      const pods = this.getPodsForNamespace(namespace)
-      this.namespacePods[namespace.text()] = pods
-      pods.forEach(pod => this.allPods.push(pod))
-    })
+    this.allPods = []
+    for(const namespace of namespaces) {
+      await this.loadNamespacePods(namespace)
+    }
+  }
+
+  private static async loadNamespacePods(namespace: Namespace) {
+    const clusterNamespaceMap = this.clusterData.get(namespace.cluster.name)
+    const namespaceMap = clusterNamespaceMap ? clusterNamespaceMap[1] : new Map
+    await k8s.getPodsForNamespace(namespace)
+      .then(pods => {
+        const podMap : PodData = new Map
+        pods.forEach(pod => {
+          podMap.set(pod.text(), pod)
+          this.allPods.push(pod)
+        })
+        this.namespacePods[namespace.text()] = pods
+        namespaceMap.set(namespace.text(), [namespace, podMap])
+        this.clusterData.set(namespace.cluster.name, [namespace.cluster, namespaceMap])
+      })
+      .catch(error => {
+        this.namespacesInError.push(namespace.text())
+        console.log("Error while loading pods for namespace %s: %s", namespace.name, error)
+      })
+  }
+
+  static getPodsForNamespace(namespace: Namespace) : Pod[] {
+    const clusterNamespaceData = this.clusterData.get(namespace.cluster.text())
+    const namespaceData = clusterNamespaceData && clusterNamespaceData[1].get(namespace.text())
+    return namespaceData ? Array.from(namespaceData[1].values())
+                      .sort((p1,p2) => p1.name.localeCompare(p2.name)) : []
+
   }
 
   static setSelections(selectedClusters: SelectedClusters, selectedNamespaces: SelectedNamespaces, selectedPods: Map<string, Pod>) {
@@ -94,19 +121,10 @@ export default class SelectionManager {
       const namespaceMap : NamespaceData = new Map
       k8s.getNamespacesForCluster(cluster)
         .then(namespaces => {
-          Promise.all(
-            namespaces.map(ns => this.loadNamespaceData(ns, namespaceMap))
-          )
-          .then(result => {
-            this.clusterData.set(cluster.text(), [cluster, namespaceMap])
-            this.loadingCounter--
-            resolve(true)
-          })
-          .catch(err => {
-            this.loadingCounter--
-            console.log("Failed to load pods for some namespaces: " + err)
-            resolve(false)
-          })
+          namespaces.forEach(namespace => namespaceMap.set(namespace.text(), [namespace, new Map]))
+          this.clusterData.set(cluster.name, [cluster, namespaceMap])
+          this.loadingCounter--
+          resolve(true)
         })
         .catch(error => {
           this.clustersInError.push(cluster.text())
@@ -116,23 +134,6 @@ export default class SelectionManager {
         })
     })
   }
-
-  private static loadNamespaceData(namespace: Namespace,  namespaceMap : NamespaceData) : Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      k8s.getPodsForNamespace(namespace)
-      .then(pods => {
-        const podMap : PodData = new Map
-        pods.forEach(pod => podMap.set(pod.text(), pod))
-        namespaceMap.set(namespace.text(), [namespace, podMap])
-        resolve(true)
-      })
-      .catch(error => {
-        this.namespacesInError.push(namespace.text())
-        console.log("Error while loading pods for namespace %s: %s", namespace.name, error)
-        resolve(false)
-      })
-    })
-  }  
 
   private static removeInvalidItems() {
     this.selectedClusters.forEach(c => {
@@ -207,32 +208,24 @@ export default class SelectionManager {
               .sort((n1,n2) => n1.name.localeCompare(n2.name)) : []
   }
 
-  static getPodsForNamespace(namespace: Namespace) : Pod[] {
-    const clusterNamespaceData = this.clusterData.get(namespace.cluster.text())
-    const namespaceData = clusterNamespaceData && clusterNamespaceData[1].get(namespace.text())
-    return namespaceData ? Array.from(namespaceData[1].values())
-                      .sort((p1,p2) => p1.name.localeCompare(p2.name)) : []
-
-  }
-
   static filter(filterText: string, type: KubeComponentType) : KubeComponent[] {
     const items: KubeComponent[] = type === KubeComponentType.Namespace ? this.allNamespaces : this.allPods
     return filter(filterText, items, 'name') as KubeComponent[]
   }
 
-  static getMatchingNamespaces(filterText: string) : Namespace[] {
+  static async getMatchingNamespacesAndPods(filterText: string, loadPods: boolean) {
     const namespaces = this.filter(filterText, KubeComponentType.Namespace) as Namespace[]
-    const pods = this.getMatchingPods(filterText)
-    pods.forEach(pod => {
-      if(!namespaces.includes(pod.namespace)) {
-        namespaces.push(pod.namespace)
-      }
-    })
-    return namespaces
-  }
-
-  static getMatchingPods(filterText: string) : Pod[] {
-    return this.filter(filterText, KubeComponentType.Pod) as Pod[]
+    let pods: Pod[] = []
+    if(loadPods) {
+      await this.loadPodsForNamespaces(namespaces)
+      pods = this.filter(filterText, KubeComponentType.Pod) as Pod[]
+      pods.forEach(pod => {
+        if(!namespaces.includes(pod.namespace)) {
+          namespaces.push(pod.namespace)
+        }
+      })
+    }
+    return {namespaces, pods}
   }
 
   static get isLoading() {

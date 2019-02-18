@@ -1,15 +1,18 @@
 import k8sFunctions from '../k8s/k8sFunctions'
-import {ActionGroupSpec, ActionContextType} from '../actions/actionSpec'
+import {ActionGroupSpec, ActionContextType, ActionContextOrder} from '../actions/actionSpec'
 import K8sPluginHelper from '../k8s/k8sPluginHelper'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
+  title: "Resources",
+  order: ActionContextOrder.Resources,
   actions: [
     {
       name: "Compare Two Secrets",
       order: 21,
+      loadingMessage: "Loading Secrets...",
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceSecrets, 
+        await K8sPluginHelper.prepareCachedChoices(actionContext, k8sFunctions.getNamespaceSecrets, 
                                                   "Secrets", 2, 2, true, "name")
       },
 
@@ -20,25 +23,14 @@ const plugin : ActionGroupSpec = {
     {
       name: "Compare Two Config Maps",
       order: 22,
+      loadingMessage: "Loading Config Maps...",
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceConfigMaps, 
+        await K8sPluginHelper.prepareCachedChoices(actionContext, k8sFunctions.getNamespaceConfigMaps, 
                                             "Config Maps", 2, 2, true, "name")
       },
 
       async act(actionContext) {
         K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Config Maps")
-      },
-    },
-    {
-      name: "Compare Two Deployments",
-      order: 24,
-      async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getNamespaceDeployments, 
-                                            "Deployments", 2, 2, true, "name")
-      },
-
-      async act(actionContext) {
-        K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Deployments")
       },
     }
   ]

@@ -146,7 +146,7 @@ export default class IstioPluginHelper {
   }
 
   static async chooseSidecar(min: number = 1, max: number = 1, actionContext: ActionContext) {
-    K8sPluginHelper.prepareChoices(actionContext, 
+    K8sPluginHelper.prepareCachedChoices(actionContext, 
       async (cluster, namespace, k8sClient) => {
         const sidecars = (namespace && namespace.length > 0) ?
                           await IstioFunctions.getNamespaceSidecars(namespace, k8sClient)
@@ -159,7 +159,7 @@ export default class IstioPluginHelper {
   }
 
   static getSelectedSidecars(actionContext: ActionContext) {
-    const selections = K8sPluginHelper.getSelections(actionContext, "title")
+    const selections = K8sPluginHelper.getSelections(actionContext)
     return selections.map(s => {
       s.item.cluster = s.cluster
       return s.item
@@ -167,15 +167,9 @@ export default class IstioPluginHelper {
   }
 
   static async chooseIstioCRDs(min: number = 1, max: number = 10, actionContext: ActionContext) {
-    const clustersReported: string[] = []
-    await K8sPluginHelper.prepareChoices(actionContext, 
+    await K8sPluginHelper.prepareCachedChoices(actionContext, 
       async (cluster, namespace,k8sClient) => {
-        if(!clustersReported.includes(cluster)) {
-          clustersReported.push(cluster)
-          return k8sClient.istio ? k8sClient.istio.crds : []
-        } else {
-          return []
-        }
+        return k8sClient.istio ? k8sClient.istio.crds : []
       }, "Istio CRDs", 1, 10, false)
   }
 }

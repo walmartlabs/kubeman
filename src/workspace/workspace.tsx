@@ -1,8 +1,7 @@
 import React from "react";
 import { withStyles, WithStyles } from '@material-ui/core/styles'
 import { Table, TableBody, TableRow, TableCell, CircularProgress,
-      FormGroup, FormControlLabel, Checkbox } from "@material-ui/core";
-import Switch from '@material-ui/core/Switch';
+      FormControlLabel, Typography, Switch, LinearProgress } from "@material-ui/core";
 
 import StyledActions, {Actions} from '../actions/actions'
 import ActionChoiceDialog from '../actions/actionChoiceDialog'
@@ -13,7 +12,7 @@ import Context from "../context/contextStore";
 import BlackBox from '../output/blackbox'
 import TableOutput, {TableBox} from '../output/tableBox'
 import {ActionOutput, ActionOutputStyle, ActionOutputCollector, ActionStreamOutputCollector,
-        ActionChoiceMaker, ActionChoices, BoundActionAct, BoundAction} from '../actions/actionSpec'
+        ActionChoiceMaker, Choice, BoundActionAct, BoundAction} from '../actions/actionSpec'
 
 import styles from './workspace.styles'
 
@@ -22,12 +21,14 @@ interface IState {
   output: ActionOutput|string[]
   outputStyle: ActionOutputStyle
   loading: boolean
+  loadingMessage: string
   showActionInitChoices: boolean
   showActionChoices: boolean
   minChoices: number
   maxChoices: number
   choiceTitle: string
-  choices: any[]
+  choices: Choice[]
+  showChoiceSubItems: boolean
   showInfo: boolean
   infoTitle: string,
   info: any[]
@@ -53,12 +54,14 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     output: [],
     outputStyle: ActionOutputStyle.None,
     loading: false,
+    loadingMessage: '',
     showActionInitChoices: false,
     showActionChoices: false,
     minChoices: 0,
     maxChoices: 0,
     choiceTitle: '',
     choices: [],
+    showChoiceSubItems: true,
     showInfo: false,
     infoTitle: '',
     info: [],
@@ -76,16 +79,9 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   componentWillReceiveProps(props: IProps) {
   }
 
-  registerCommandHandler(commandHandler: (string) => void) {
-    this.commandHandler = commandHandler
-  }
-
-  onCommand = (command: string) => {
-    this.commandHandler && this.commandHandler(command)
-  }
-
   onAction = (action: BoundAction) => {
-    this.setState({scrollMode: false})
+    this.streamOutput = []
+    this.setState({scrollMode: false, output: []})
   }
 
   showOutputLoading = (loading: boolean) => {
@@ -110,29 +106,35 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     this.setState({scrollMode})
   }
 
-  onActionInitChoices : ActionChoiceMaker = (act, title, choices, minChoices, maxChoices) => {
+  onActionInitChoices : ActionChoiceMaker = (act, title, choices, minChoices, maxChoices, showChoiceSubItems) => {
+    this.streamOutput = []
     this.setState({
       choices,
       minChoices,
       maxChoices,
       choiceTitle: title, 
       showActionInitChoices: true,
+      showChoiceSubItems,
       deferredAction: act,
+      output: [],
+      loading: false,
     })
   }
 
-  onActionChoices : ActionChoiceMaker = (react, title, choices, minChoices, maxChoices) => {
+  onActionChoices : ActionChoiceMaker = (react, title, choices, minChoices, maxChoices, showChoiceSubItems) => {
     this.setState({
       choices,
       minChoices,
       maxChoices,
       choiceTitle: title, 
       showActionChoices: true,
+      showChoiceSubItems,
       deferredAction: react,
+      loading: false,
     })
   }
 
-  onSelectActionChoice = (selections: ActionChoices) => {
+  onSelectActionChoice = (selections: Choice[]) => {
     const {context, deferredAction} = this.state
     context.selections = selections
     this.setState({showActionInitChoices: false, showActionChoices: false, loading: false})
@@ -148,6 +150,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
       info,
       infoTitle,
       showInfo: true,
+      loading: false,
     })
   }
 
@@ -163,9 +166,9 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     this.actions && this.actions.onActionTextInput(text)
   }
 
-  showLoading = () => {
+  showLoading = (loadingMessage: string) => {
     this.tableBox && this.tableBox.clearFilter()
-    this.setState({loading: true, outputStyle: ActionOutputStyle.None})
+    this.setState({loading: true, loadingMessage, outputStyle: ActionOutputStyle.None})
   }
 
   onUpdateContext = (context: Context) => {
@@ -184,15 +187,14 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   render() {
     const { classes } = this.props;
-    const { context, output, outputStyle, loading, scrollMode,
-          showActionInitChoices, showActionChoices, minChoices, maxChoices, choiceTitle, choices,
+    const { context, output, outputStyle, loading, loadingMessage, scrollMode,
+          showActionInitChoices, showActionChoices, minChoices, maxChoices, choiceTitle, choices, showChoiceSubItems,
           showInfo, infoTitle, info } = this.state;
 
     const showBlackBox = outputStyle === ActionOutputStyle.Text
     const log = outputStyle === ActionOutputStyle.Log
     const health = outputStyle === ActionOutputStyle.TableWithHealth
     const compare = outputStyle === ActionOutputStyle.Compare
-    const showTable = outputStyle === ActionOutputStyle.Table || log || health || compare
     const acceptInput = this.actions && this.actions.acceptInput() ? true : false
     const accumulatedOutput = (output as any[]).concat(this.streamOutput)
         
@@ -215,7 +217,6 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                 <StyledActions innerRef={ref => this.actions=ref}
                         context={context}
                         showLoading={this.showLoading}
-                        onCommand={this.onCommand}
                         onOutput={this.showOutput}
                         onStreamOutput={this.showStreamOutput}
                         onActionInitChoices={this.onActionInitChoices}
@@ -227,9 +228,19 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                         />
               </TableCell>
               <TableCell className={classes.outputCell}>
-                {loading && <CircularProgress className={classes.loading} />}
+                {loading && loadingMessage &&
+                  <div>
+                    <Typography variant="h5" gutterBottom className={classes.loadingMessage}>
+                      {loadingMessage}
+                    </Typography>
+                    <LinearProgress className={classes.loadingLinear} />
+                  </div>
+                }
+                {loading && !loadingMessage &&
+                  <CircularProgress className={classes.loadingCircular} />
+                }
                 {showBlackBox && <BlackBox output={output} />}
-                {showTable && 
+                {!showBlackBox && 
                     <TableOutput  innerRef={ref => this.tableBox=ref}
                                   output={accumulatedOutput}
                                   compare={compare} 
@@ -269,6 +280,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
             choices={choices}
             minChoices={minChoices}
             maxChoices={maxChoices}
+            showChoiceSubItems={showChoiceSubItems}
             onSelection={this.onSelectActionChoice}
             onCancel={this.onCancelActionChoice}
           />

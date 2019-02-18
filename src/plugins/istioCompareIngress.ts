@@ -1,8 +1,7 @@
-import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
+import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionContextOrder} from '../actions/actionSpec'
 import ActionContext from '../actions/actionContext'
 import K8sFunctions from '../k8s/k8sFunctions'
 import K8sPluginHelper from '../k8s/k8sPluginHelper'
-import IstioPluginHelper from '../k8s/istioPluginHelper'
 import IstioFunctions from '../k8s/istioFunctions';
 
 const plugin : ActionGroupSpec = {
@@ -80,7 +79,7 @@ const plugin : ActionGroupSpec = {
             volumes:deployment.template.volumes.map(volume => {
               return {
                 volume: volume.name,
-                secret: volume.secret.secretName,
+                secret: volume.secret ? volume.secret.secretName : "",
                 mountPath: proxyContainers[i].volumeMounts ? 
                             proxyContainers[i].volumeMounts.filter(mount => mount.name === volume.name)
                               .map(mount => mount.mountPath).join(" ") : ""

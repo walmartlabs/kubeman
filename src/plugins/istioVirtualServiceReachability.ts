@@ -13,14 +13,16 @@ const plugin : ActionGroupSpec = {
     {
       name: "VirtualService Reachability From IngressGateway",
       order: 21,
-      
+      loadingMessage: "Loading VirtualServices...",
+      autoRefreshDelay: 60,
+
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, IstioFunctions.getVirtualServices, 
+        await K8sPluginHelper.prepareCachedChoices(actionContext, IstioFunctions.getVirtualServices, 
                                                     "VirtualServices", 1, 5, true, "name")
       },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
+        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No VirtualService selected"]], ActionOutputStyle.Text)
           return

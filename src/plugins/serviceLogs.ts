@@ -23,7 +23,7 @@ const plugin : ActionGroupSpec = {
   },
 
   storeSelectedServices(actionContext: ActionContext, action: ActionSpec) {
-    const selections = K8sPluginHelper.getSelections(actionContext, "name")
+    const selections = K8sPluginHelper.getSelections(actionContext)
     if(selections.length < 1) {
       action.onOutput && action.onOutput([["No service selected"]], ActionOutputStyle.Text)
       return
@@ -64,7 +64,7 @@ const plugin : ActionGroupSpec = {
     }
   },
   async performAction(actionContext: ActionContext, action: ActionSpec, tail: boolean) {
-    const selections = K8sPluginHelper.getSelections(actionContext, "name")
+    const selections = K8sPluginHelper.getSelections(actionContext)
     if(selections.length < 1) {
       action.onOutput && action.onOutput([["No service selected"]], ActionOutputStyle.Text)
       return
@@ -106,15 +106,16 @@ const plugin : ActionGroupSpec = {
     this.podsAndContainers = undefined
     action.stop && action.stop(actionContext)
     action.stopped = false
-    await K8sPluginHelper.prepareChoices(actionContext, k8sFunctions.getServices, 
+    await K8sPluginHelper.prepareCachedChoices(actionContext, k8sFunctions.getServices, 
                                           "Services", 1, 3, true, "name")
   },
 
   actions: [
     {
       name: "Check Service Logs",
-      order: 31,
+      order: 10,
       autoRefreshDelay: 15,
+      loadingMessage: "Loading Services...",
 
       async choose(actionContext) {
         await plugin.performChoose(actionContext, this)
@@ -134,7 +135,8 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Tail Service Logs",
-      order: 32,
+      order: 11,
+      loadingMessage: "Loading Services...",
 
       async choose(actionContext) {
         await plugin.performChoose(actionContext, this)

@@ -1,5 +1,5 @@
 import _ from 'lodash'
-import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
+import {ActionGroupSpec, ActionContextType, ActionOutputStyle} from '../actions/actionSpec'
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioFunctions from '../k8s/istioFunctions'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
@@ -15,14 +15,15 @@ const plugin : ActionGroupSpec = {
     {
       name: "Analyze Service",
       order: 110,
-      
+      loadingMessage: "Loading Services...",
+
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, "Services", 
+        await K8sPluginHelper.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", 
                                             1, 1, true, "name")
       },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
+        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
@@ -64,14 +65,15 @@ const plugin : ActionGroupSpec = {
     {
       name: "Analyze Service Routing",
       order: 111,
-      
+      loadingMessage: "Loading Services...",
+     
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, "Services", 
+        await K8sPluginHelper.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", 
                                               1, 10, true, "name")
       },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
+        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
@@ -109,14 +111,15 @@ const plugin : ActionGroupSpec = {
     {
       name: "Analyze Service mTLS Status",
       order: 112,
-      
+      loadingMessage: "Loading Services...",
+
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, "Services", 
+        await K8sPluginHelper.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", 
                                               1, 10, true, "name")
       },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext, "name")
+        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
@@ -295,12 +298,13 @@ const plugin : ActionGroupSpec = {
     const listeners = await IstioFunctions.getIngressConfigDump(k8sClient, "ListenersConfigDump")
     const ingressPorts: number[] = []
     listeners.forEach(l => ingressPorts.push(l.listener.address.socket_address.port_value))
-    vsGateways.gateways.forEach(g => g.matchingServers.forEach(s => {
-      const found = ingressPorts.includes(s.port.number)
-      this.onStreamOutput && this.onStreamOutput([[
-        "Ingress Gateway is " + (found ? "" : "not ")
-        + "listening for gateway port " + s.port.number + " for gateway " + g.name
-      ]])
+    vsGateways.gateways && vsGateways.gateways.forEach(g => 
+      g.matchingServers && g.matchingServers.forEach(s => {
+        const found = ingressPorts.includes(s.port.number)
+        this.onStreamOutput && this.onStreamOutput([[
+          "Ingress Gateway is " + (found ? "" : "not ")
+          + "listening for gateway port " + s.port.number + " for gateway " + g.name
+        ]])
     }))
 
     if(ingressPods && ingressPods.length > 0 && podsAndContainers.pods && podsAndContainers.pods.length > 0) {

@@ -70,7 +70,7 @@ export class ActionLoader {
             if(!actionGroupSpec.order) {
               actionGroupSpec.order = ActionContextOrder[actionGroupSpec.context || ActionContextType.Other]
               const existingGroupOrders = Array.from(actionGroupsMap.values())
-                                            .filter(group => group.context === actionGroupSpec.context)
+                                            .filter(group => (group.title || group.context) === (actionGroupSpec.title || actionGroupSpec.context))
                                             .map(group => group.order)
                                             .sort((o1,o2) => (o2||100)-(o1||100))
               if(actionGroupSpec.title && existingGroupOrders.length > 0) {
@@ -97,24 +97,7 @@ export class ActionLoader {
 
   static configureActions(actionGroupSpec: ActionGroupSpec) {
     actionGroupSpec.title = actionGroupSpec.title || (actionGroupSpec.context + " Recipes")
-
-    switch(actionGroupSpec.context) {
-      case ActionContextType.Common:
-        this.configureCommonActions(actionGroupSpec)
-        break
-      default:
-        this.bindActions(actionGroupSpec)
-        break
-    }
-  }
-
-  static configureCommonActions(actionGroupSpec: ActionGroupSpec) {
-    actionGroupSpec.actions.forEach(action => {
-      action.context = actionGroupSpec.context
-      if(action.act) {
-        action.act = action.act.bind(action, this.actionContext)
-      }
-    })
+    this.bindActions(actionGroupSpec)
   }
 
   static bindActions(actionGroupSpec: ActionGroupSpec) {
@@ -127,9 +110,7 @@ export class ActionLoader {
           action.stopped = false
           if(this.checkSelections({
             checkClusters: true,
-            checkNamespaces: actionGroupSpec.context === ActionContextType.Namespace
-                            || actionGroupSpec.context === ActionContextType.Pod,
-            checkPods: actionGroupSpec.context === ActionContextType.Pod,
+            checkNamespaces: false
           })) {
             action.onOutput = this.onOutput.bind(this, action)
             action.onStreamOutput = this.onStreamOutput.bind(this, action)
@@ -164,8 +145,8 @@ export class ActionLoader {
     })
   }
 
-  static checkSelections({checkClusters, checkNamespaces, checkPods}: 
-                          {checkClusters?: boolean, checkNamespaces?: boolean, checkPods?: boolean}) {
+  static checkSelections({checkClusters, checkNamespaces}: 
+                          {checkClusters?: boolean, checkNamespaces?: boolean}) {
     let result = true
     if(checkClusters && this.context.clusters.length === 0) {
       result = false
@@ -173,9 +154,6 @@ export class ActionLoader {
     } else if(checkNamespaces && this.context.namespaces.length === 0) {
       result = false
       this.onOutput && this.onOutput(undefined, [["No namespaces selected"]], ActionOutputStyle.Text)
-    } else if(checkPods && this.context.pods.length === 0) {
-      result = false
-      this.onOutput && this.onOutput(undefined, [["No pods selected"]], ActionOutputStyle.Text)
     }
     return result
   }

@@ -247,12 +247,11 @@ export class Row {
   groupIndex: number = 0
   isHidden: boolean = false
   matchedColumns: Set<number> = new Set
+  columnsDiffer: boolean = false
 
   private content: CellContent[]
   private healthColumnIndex?: number
   private firstColumn?: Cell
-  private lastColumn?: Cell
-  private secondLastColumn?: Cell
   private appliedFilters: string[] = []
   private _isGroup: boolean = false
   private _isSubgroup: boolean = false
@@ -279,16 +278,19 @@ export class Row {
             ))
       this.healthColumnIndex = healthColumnIndex
       this.firstColumn = this.cells.length > 0 ? this.cells[0] : undefined
-      this.lastColumn = this.cells.length > 0 ? this.cells[this.cells.length-1] : undefined
-      this.secondLastColumn = this.cells.length > 1 ? this.cells[this.cells.length-2] : undefined
+      this.checkColumnsDiffer()
     }
   }
 
-  get lastTwoColumnsDiffer() : boolean {
-    if(this.secondLastColumn && this.lastColumn) {
-      return !this.secondLastColumn.matches(this.lastColumn)
-    } else {
-      return false
+  private checkColumnsDiffer() {
+    const colCount = this.cells.length
+    const baseCell = this.cells[colCount-1]
+    this.columnsDiffer = false
+    for(let i = colCount-2; i > 0; i--) {
+      if(!baseCell.matches(this.cells[i])) {
+        this.columnsDiffer = true
+        return
+      }
     }
   }
 

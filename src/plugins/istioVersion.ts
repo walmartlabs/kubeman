@@ -9,8 +9,8 @@ async function showIstioComponentVersion(cluster: string, deploymentName: string
   try {
     const deployment = await K8sFunctions.getDeploymentDetails(cluster, "istio-system", deploymentName, k8sClient)
     let versionLabel = deployment ? deployment.template.labels.filter(l => l.includes("version")) : undefined
-    if(!versionLabel || versionLabel.length === 0) {
-      versionLabel = deployment ? deployment.labels.filter(l => l.includes("chart")) : undefined
+    if(deployment && (!versionLabel || versionLabel.length === 0)) {
+      versionLabel = deployment.template.containers.map(c => c.name + ": " + c.image)
     }
     output.push([deploymentName, versionLabel ? versionLabel : "N/A"])
   } catch(error) {
@@ -21,7 +21,7 @@ async function showIstioComponentVersion(cluster: string, deploymentName: string
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
   title: "More Istio Recipes",
-  order: ActionContextOrder[ActionContextType.Istio]+4,
+  order: ActionContextOrder.Istio+4,
   actions: [
     {
       name: "View Istio Versions",

@@ -9,8 +9,10 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Execute Pod Command",
-      order: 10,
+      order: 25,
       autoRefreshDelay: 15,
+      loadingMessage: "Loading Pods...",
+
       selections: undefined,
       
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 5, true, false),

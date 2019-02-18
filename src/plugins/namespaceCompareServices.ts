@@ -1,16 +1,12 @@
-import k8sFunctions from '../k8s/k8sFunctions'
-import {ActionGroupSpec, ActionContextType, 
+import K8sFunctions from '../k8s/k8sFunctions'
+import K8sPluginHelper from '../k8s/k8sPluginHelper';
+import {ActionGroupSpec, ActionContextType, ActionContextOrder,
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
+import { Namespace } from '../k8s/k8sObjectTypes';
 
 
 export function generateServiceComparisonOutput(clusters, namespaces, clusterServices) {
   const output: ActionOutput = []
-  const headers: string[] = ["Namespace/Service"]
-  clusters.forEach(cluster => {
-    headers.push("Cluster: " + cluster.name)
-  })
-  output.push(headers)
-
   const nsServiceToClusterMap = {}
   namespaces.forEach(ns => {
     const namespace = ns.name
@@ -55,19 +51,31 @@ export function generateServiceComparisonOutput(clusters, namespaces, clusterSer
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
+  title: "Service Recipes",
+  order: ActionContextOrder.Service,
   actions: [
     {
-      name: "List/Compare Services",
-      order: 10,
-      async act(actionContext) {
-        this.showOutputLoading && this.showOutputLoading(true)
-        const clusters = actionContext.getClusters()
-        const namespaces = actionContext.getNamespaces()
+      name: "Compare Namespace Services",
+      order: 2,
+      loadingMessage: "Loading Namespaces...",
 
-        const clusterServices = await k8sFunctions.getServicesGroupedByClusterNamespace(clusters, namespaces)
+      choose: K8sPluginHelper.chooseNamespaces.bind(K8sPluginHelper, true, 1, 10),
+
+      async act(actionContext) {
+        const clusters = actionContext.getClusters()
+        const headers: string[] = ["Namespace/Service"]
+        clusters.forEach(cluster => {
+          headers.push("Cluster: " + cluster.name)
+        })
+        this.onOutput && this.onOutput([headers], ActionOutputStyle.Compare)
+        this.showOutputLoading && this.showOutputLoading(true)
+        const selections = await K8sPluginHelper.getSelections(actionContext)
+        const namespaces = selections.map(s => s.item) as Namespace[]
+
+        const clusterServices = await K8sFunctions.getServicesGroupedByClusterNamespace(clusters, namespaces)
 
         const output = generateServiceComparisonOutput(clusters, namespaces, clusterServices)
-        this.onOutput && this.onOutput(output, ActionOutputStyle.Compare)
+        this.onStreamOutput && this.onStreamOutput(output)
         this.showOutputLoading && this.showOutputLoading(false)
       },
     }

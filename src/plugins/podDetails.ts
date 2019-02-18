@@ -8,8 +8,9 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "View Pod(s) Details",
-      order: 3,
-      
+      order: 4,
+      loadingMessage: "Loading Pods...",
+
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 10, false, true),
 
       async act(actionContext) {

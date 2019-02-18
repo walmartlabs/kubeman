@@ -1,12 +1,14 @@
 import k8sFunctions from '../k8s/k8sFunctions'
-import {ActionGroupSpec, ActionContextType, 
+import {ActionGroupSpec, ActionContextType, ActionContextOrder,
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,
+  title: "Events",
+  order: ActionContextOrder.Events,
   actions: [
     {
-      name: "Get Events",
+      name: "Cluster Events",
       order: 1,
       autoRefreshDelay: 15,
       
@@ -41,9 +43,6 @@ const plugin : ActionGroupSpec = {
         switch(actionContext.inputText) {
           case "clear": 
             this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.TableWithHealth)
-            break
-          case "choose": 
-            this.showChoices && this.showChoices("Choices", ["A", "B", "C"], 1, 2)
             break
           case "help":
             this.showInfo && this.showInfo('Command Help', [

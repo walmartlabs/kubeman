@@ -140,6 +140,7 @@ export interface ContainerStatus {
   restartCount: number
   state?: any
   lastState?: any
+  message?: string
 }
 
 export interface PodInfo extends Metadata{
@@ -171,7 +172,8 @@ export interface PodInfo extends Metadata{
 export interface PodTemplate extends PodInfo {
   containers: ContainerInfo[]
   initContainers?: ContainerInfo[]
-  volumes?: any[]  
+  volumes?: any[]
+  yaml?: any
 }
 
 export interface PodStatus {
@@ -220,5 +222,5 @@ export interface ServiceDetails extends Metadata {
   sessionAffinityConfig?: any,
   type: any,
   loadBalancer?: any,
-
+  yaml?: any
 }

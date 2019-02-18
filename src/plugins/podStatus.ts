@@ -13,18 +13,16 @@ const plugin : ActionGroupSpec = {
       name: "View Pod(s) Status",
       order: 2,
       autoRefreshDelay: 15,
+      loadingMessage: "Loading Pods...",
 
       choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 10, false, false),
 
       async act(actionContext) {
-        const selections = await K8sPluginHelper.getPodSelections(actionContext, true, false)
-        if(selections.length < 1) {
-          this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
-          return
-        }
-        const podsMap : ClusterNamespacePodsMap = {}
-
+        this.onOutput && this.onOutput([["Pod", "Status"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
+
+        const selections = await K8sPluginHelper.getPodSelections(actionContext, true, false)
+        const podsMap : ClusterNamespacePodsMap = {}
         for(const i in selections) {
           const selection = selections[i]
           const pod = selection.pod
@@ -37,26 +35,26 @@ const plugin : ActionGroupSpec = {
           podsMap[cluster][namespace].push(podDetails)
         }
         const output: ActionOutput = []
-        output.push(["Pod", "Created", "Container Status"])
       
         Object.keys(podsMap).forEach(cluster => {
-          output.push([">Cluster: "+cluster, "", ""])
+          output.push([">Cluster: "+cluster, ""])
       
           const namespaces = Object.keys(podsMap[cluster])
           namespaces.forEach(namespace => {
-            output.push([">>Namespace: "+namespace, "", ""])
+            output.push([">>Namespace: "+namespace, ""])
       
             const pods = podsMap[cluster][namespace]
             if(pods.length === 0) {
-              output.push(["No pods selected", "", ""])
+              output.push(["No pods selected", ])
             } else {
               pods.forEach(pod => {
-                output.push([pod.name, pod.creationTimestamp, pod.containerStatuses])
+                output.push([pod.name, ["Created: "+pod.creationTimestamp, 
+                                        pod.conditions, pod.containerStatuses]])
               })
             }
           })
         })
-        this.onOutput && this.onOutput(output, ActionOutputStyle.Table)
+        this.onStreamOutput && this.onStreamOutput(output)
         this.showOutputLoading && this.showOutputLoading(false)
       },
       refresh(actionContext) {
