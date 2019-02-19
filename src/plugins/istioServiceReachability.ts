@@ -2,7 +2,7 @@ import _ from 'lodash'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
-import K8sPluginHelper, {ItemSelection} from '../k8s/k8sPluginHelper'
+import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
 import { PodDetails } from '../k8s/k8sObjectTypes';
 
 const plugin : ActionGroupSpec = {
@@ -16,17 +16,17 @@ const plugin : ActionGroupSpec = {
       loadingMessage: "Loading Services...",
 
       async choose(actionContext) {
-        await K8sPluginHelper.prepareCachedChoices(actionContext, K8sFunctions.getServices, 
+        await ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, 
                                               "Services", 1, 5, true, "name")
       },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext)
+        const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
         }
-        this.onOutput && this.onOutput([["Service Reachability From IngressGateway"]], ActionOutputStyle.Log)
+        this.clear && this.clear(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
 
         for(const selection of selections) {
@@ -46,6 +46,9 @@ const plugin : ActionGroupSpec = {
       },
       refresh(actionContext) {
         this.act(actionContext)
+      },
+      clear() {
+        this.onOutput && this.onOutput([["Service Reachability From IngressGateway"]], ActionOutputStyle.Log)
       },
     }
   ]

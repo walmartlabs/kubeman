@@ -57,6 +57,13 @@ const styles = ({ palette, spacing, typography, transitions }: Theme) => createS
       boxShadow: '0 0 0 0.2rem rgba(255,0,0,.25)',
     },
   },
+  filterContainer: {
+    paddingLeft: 5,
+    marginBottom: 3,
+  },
+  filterInput: {
+    fontSize: '0.9rem',
+  },
 })
 
 export default styles

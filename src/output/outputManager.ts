@@ -95,14 +95,16 @@ export class Cell {
   isSubGroup: boolean = false  
   isHealthStatusField: boolean = false
   isMatched: boolean = false
+  isFiltered: boolean = false
 
   private content: CellContent
   private formattedContent: CellContent
+  private filteredIndexes: number[] = []
   private stringContent: string = ''
-  private isFiltered: boolean = false
   
   constructor(content: CellContent, index:number, formattedContent?: CellContent, 
-              isFiltered?: boolean, isGroup?: boolean, isSubGroup?: boolean, 
+              appliedFilters?: string[],
+              isGroup?: boolean, isSubGroup?: boolean, 
               isHealthStatusField?: boolean, isLog?: boolean) {
     this.index = index
     this.isText = jsonUtil.isText(content)
@@ -138,7 +140,10 @@ export class Cell {
       this.stringContent = (this.formattedContent as string).toLowerCase()
     }
 
-    this.isFiltered = isFiltered || false
+    if(appliedFilters && appliedFilters.length > 0) {
+      this.isFiltered = true
+      appliedFilters && this.match(appliedFilters)
+    }
     this.isGroup = isGroup || false
     this.isSubGroup = isSubGroup || false
     this.isHealthStatusField = isHealthStatusField || false
@@ -147,13 +152,32 @@ export class Cell {
   match(filters: string[]) : string[] {
     const appliedFilters : string[] = []
     this.isMatched = false
+    this.filteredIndexes = []
     filters.map(filter => {
-      if(this.stringContent.includes(filter)) {
+      if(this.isArray) {
+        (this.content as any[]).forEach((item,index) => {
+          item = JSON.stringify(item).toLowerCase()
+          if(item.includes(filter)) {
+            if(!this.filteredIndexes.includes(index)) {
+              this.filteredIndexes.push(index)
+            }
+          }
+        })
+        if(this.filteredIndexes.length > 0) {
+          this.isMatched = true
+          appliedFilters.push(filter)
+        }
+      } else if(this.stringContent.includes(filter)) {
         appliedFilters.push(filter)
         this.isMatched = true
       }
     })
     return appliedFilters
+  }
+
+  clearFilter() {
+    this.filteredIndexes = []
+    this.isMatched = false
   }
 
   highlight(filters: string[]) : [CellContent, boolean] {
@@ -191,10 +215,11 @@ export class Cell {
 
   render(renderer: ContentRenderer) : any {
     if(this.isArray) {
-      return (this.content as any[]).map((item, i) => {
-        return renderer(this.formatText(this.formattedContent[i], 
-                        jsonUtil.isObject(item) || jsonUtil.isArray(item)), i)
-      })
+      const indexes =  this.filteredIndexes.length > 0 ? this.filteredIndexes : (this.content as any[]).map((item,i) => i)
+      return indexes.map(i => {
+              return renderer(this.formatText(this.formattedContent[i], 
+                              jsonUtil.isObject(this.content[i]) || jsonUtil.isArray(this.content[i])), i)
+        })
     } else {
       return renderer(this.isGroup || this.isSubGroup ? this.groupText 
             : this.formatText(this.formattedContent, this.isJSON), 0)
@@ -271,7 +296,7 @@ export class Row {
       this.cells = content.map((cellContent, cellIndex) => 
           new Cell(cellContent, cellIndex,  
             formattedContent ? formattedContent[cellIndex] : undefined,
-            this.appliedFilters.length > 0,
+            this.appliedFilters,
             this.isGroup, this.isSubGroup,
             healthColumnIndex ? healthColumnIndex === cellIndex : false,
             isLog || false
@@ -317,7 +342,7 @@ export class Row {
   clearFilter() {
     this.appliedFilters = []
     this.matchedColumns.clear()
-    this.cells.forEach(cell => cell.isMatched = false)
+    this.cells.forEach(cell => cell.clearFilter())
   }
 
   filter(filterGroups: string[][]) : boolean {
@@ -447,11 +472,12 @@ export default class OutputManager {
   }
 
   filter = (inputText: string) => {
-    inputText = inputText.toLowerCase()
+    inputText = inputText.toLowerCase().trim()
+    inputText = inputText.endsWith(" or") ? inputText.slice(0, inputText.length-2) : inputText
     const filters : string[][] = 
-                  inputText.toLowerCase().split(" or ")
+                  inputText.split(" or ")
                   .filter(group => group.length > 0)
-                  .map(group => group.split(" "))
+                  .map(group => group.trim().split(" ").filter(word => word.trim().length > 0))
                   .filter(word => word.length > 0)
 
     if(filters.length === 0) {

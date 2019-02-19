@@ -13,9 +13,9 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 15,
       
       async act(actionContext) {
-        const clusters = actionContext.getClusters()
-        this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.TableWithHealth)
+        this.clear && this.clear(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
+        const clusters = actionContext.getClusters()
         for(const i in clusters) {
           const output: ActionOutput = []
           const cluster = clusters[i]
@@ -27,11 +27,11 @@ const plugin : ActionGroupSpec = {
             } else {
               output.push([
                 [event.reason, event.lastTimestamp, event.count ? "(" + event.count + ")" : ""],
-                event.type ? [
-                  "type: " + event.type,
-                  "source: " + event.source,
-                  "message: " + event.message,
-                ] : [],
+                event.type ? {
+                  type: event.type,
+                  source: event.source,
+                  message: event.message,
+                 } : {},
               ])
             }
           })
@@ -39,27 +39,11 @@ const plugin : ActionGroupSpec = {
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
-      react(actionContext) {
-        switch(actionContext.inputText) {
-          case "clear": 
-            this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.TableWithHealth)
-            break
-          case "help":
-            this.showInfo && this.showInfo('Command Help', [
-              "/clear: clears output",
-              "/help: shows help"
-            ])
-            break
-          default:
-            if(actionContext.inputText && actionContext.inputText.length > 0) {
-              this.onOutput && this.onOutput([["Unknown Command"]], ActionOutputStyle.Text)
-            }
-            break
-        }
-        actionContext.inputText = undefined
-      },
       refresh(actionContext) {
         this.act(actionContext)
+      },
+      clear() {
+        this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.TableWithHealth)
       }
     },
   ]

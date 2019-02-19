@@ -3,7 +3,7 @@ import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, Act
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioFunctions from '../k8s/istioFunctions'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
-import K8sPluginHelper, {ItemSelection} from '../k8s/k8sPluginHelper'
+import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
 import { PodDetails } from '../k8s/k8sObjectTypes';
 
 const plugin : ActionGroupSpec = {
@@ -17,18 +17,14 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 60,
 
       async choose(actionContext) {
-        await K8sPluginHelper.prepareCachedChoices(actionContext, IstioFunctions.getVirtualServices, 
+        await ChoiceManager.prepareCachedChoices(actionContext, IstioFunctions.getVirtualServices, 
                                                     "VirtualServices", 1, 5, true, "name")
       },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext)
-        if(selections.length < 1) {
-          this.onOutput && this.onOutput([["No VirtualService selected"]], ActionOutputStyle.Text)
-          return
-        }
-        this.onOutput && this.onOutput([["VirtualService Reachability From IngressGateway"]], ActionOutputStyle.Log)
+        this.clear && this.clear(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
+        const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
 
         for(const selection of selections) {
           const virtualService = selection.item
@@ -84,6 +80,9 @@ const plugin : ActionGroupSpec = {
       },
       refresh(actionContext) {
         this.act(actionContext)
+      },
+      clear() {
+        this.onOutput && this.onOutput([["VirtualService Reachability From IngressGateway"]], ActionOutputStyle.Log)
       }
     }
   ]

@@ -2,7 +2,7 @@ import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, Act
 import IstioFunctions from '../k8s/istioFunctions';
 import ActionContext from '../actions/actionContext';
 import IstioPluginHelper from '../k8s/istioPluginHelper';
-import K8sPluginHelper from '../k8s/k8sPluginHelper';
+import ChoiceManager from '../actions/choiceManager';
 
 export async function listResources(type: string, getResources: (k8sClient) => Promise<any[]>, 
                               onStreamOutput, actionContext: ActionContext, clusterName?: string) {
@@ -98,7 +98,7 @@ const plugin : ActionGroupSpec = {
       choose: IstioPluginHelper.chooseIstioCRDs.bind(IstioPluginHelper, 1, 10),
 
       async act(actionContext) {
-        const selections = await K8sPluginHelper.getSelections(actionContext)
+        const selections = await ChoiceManager.getSelections(actionContext)
         const resources = selections.map(s =>  s.name.split(".")[0])
         this.onOutput && this.onOutput([["Istio Resources:", resources.join(", ")]], ActionOutputStyle.Table)
         for(const i in selections) {

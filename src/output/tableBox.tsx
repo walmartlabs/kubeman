@@ -30,10 +30,13 @@ function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, 
     if(!isKeyColumn && compare) {
       className = className + " " + classes.tableCellCompare
     }
-    if(health && !isKeyColumn && !compare && !log && cell.isHealthStatusField) {
+    if(health && !isKeyColumn && !compare && !log && !cell.isMatched && cell.isHealthStatusField) {
       className = className + " " + (cell.isHealthy ? classes.tableCellHealthGood : 
                       cell.isUnhealthy ? classes.tableCellHealthBad : classes.tableCell)
     } 
+  }
+  if(cell.isMatched) {
+    className = className + " " + classes.tableCellFiltered
   }
   return className
 }
@@ -158,9 +161,14 @@ export class TableBox extends React.Component<IProps, IState> {
     this.forceUpdate()
   }
 
-  onKeyPress = (event: KeyboardEvent<HTMLInputElement>) => {
-    if(event.which === 13 /*Enter*/) {
-      this.props.onActionTextInput(this.filterText.slice(1))
+  onKeyDown = (event) => {
+    switch(event.which) {
+      case 27: /*Esc*/
+        this.clearFilter()
+        break
+      case 13: /*Enter*/
+        this.props.onActionTextInput(this.filterText.slice(1))
+        break
     }
   }
 
@@ -313,21 +321,21 @@ export class TableBox extends React.Component<IProps, IState> {
 
     const rows = this.outputManager.filteredRows
     const columnCount = this.outputManager.headers.length
-    const inputMessage = "Enter text to filter results" + 
-                        (acceptInput ? ", or /<command> to send a command" : "")
+    const inputMessage = "Type to filter results" + 
+                        (acceptInput ? ", or enter /<command> (enter /help to see commands)" : "")
     let hiddenIndicatorShown = false
     let parentIsGroup = false
     let isAppendedRow = false
 
     return (
       <div className={classes.root}>
-        <Paper  className={classes.filterContainer}>
-          <Input  fullWidth disableUnderline
+        <Paper className={classes.filterContainer}>
+          <Input  fullWidth disableUnderline autoFocus
                   value={this.filterText}
                   placeholder={inputMessage}
                   className={classes.filterInput}
                   onChange={this.onTextInput}
-                  onKeyPress={this.onKeyPress}
+                  onKeyDown={this.onKeyDown}
           />
         </Paper>
         <Table className={classes.tableContainer}>

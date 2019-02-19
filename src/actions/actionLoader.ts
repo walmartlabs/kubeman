@@ -126,20 +126,43 @@ export class ActionLoader {
             }
           }
         }
-        if(action.react) {
-          const boundReact = action.react = action.react.bind(action, this.actionContext)
-          action.showChoices = this.onActionChoices.bind(this, boundReact)
-        }
-        const refresh = action.refresh
+        const actionRefresh = action.refresh
         action.autoRefreshDelay = action.autoRefreshDelay || 60
-        refresh && (action.refresh = () => {
-          console.log("Refreshing action " + action.name)
-          refresh && refresh.call(action, this.actionContext)
+        actionRefresh && (action.refresh = () => {
+          actionRefresh && actionRefresh.call(action, this.actionContext)
         })
         const stop = action.stop ? action.stop.bind(action, this.actionContext) : undefined
         action.stop = () => {
           action.stopped = true
           stop && stop()
+        }
+        if(action.react || action.clear) {
+          const actionReact = action.react && action.react.bind(action)
+          const commands: string[] = [
+            "/c(lear): clears output",
+            "/h(elp): shows help"
+          ]
+          action.refresh && commands.push("/r(efresh): refresh output now")
+          const boundReact = action.react = () => {
+            switch(this.actionContext.inputText) {
+              case "help":
+              case "h":
+                this.onShowInfo('Command Help', commands)
+                break
+              case "clear":
+              case "c":
+                action.clear && action.clear(this.actionContext)
+                break
+              case "refresh":
+              case "r":
+                actionRefresh && actionRefresh.call(action, this.actionContext)
+                break
+              default:
+                actionReact && actionReact(this.actionContext)
+                break
+            }
+          }
+          action.showChoices = this.onActionChoices.bind(this, boundReact)
         }
       }
     })

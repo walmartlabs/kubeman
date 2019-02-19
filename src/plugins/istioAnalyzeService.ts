@@ -3,7 +3,7 @@ import {ActionGroupSpec, ActionContextType, ActionOutputStyle} from '../actions/
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioFunctions from '../k8s/istioFunctions'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
-import K8sPluginHelper, {ItemSelection} from '../k8s/k8sPluginHelper'
+import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
 import { ContainerInfo, PodDetails, ServiceDetails } from '../k8s/k8sObjectTypes';
 import { K8sClient } from '../k8s/k8sClient';
 import JsonUtil from '../util/jsonUtil';
@@ -18,12 +18,12 @@ const plugin : ActionGroupSpec = {
       loadingMessage: "Loading Services...",
 
       async choose(actionContext) {
-        await K8sPluginHelper.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", 
+        await ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", 
                                             1, 1, true, "name")
       },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext)
+        const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
@@ -68,12 +68,12 @@ const plugin : ActionGroupSpec = {
       loadingMessage: "Loading Services...",
      
       async choose(actionContext) {
-        await K8sPluginHelper.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", 
+        await ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", 
                                               1, 10, true, "name")
       },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext)
+        const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
@@ -114,12 +114,12 @@ const plugin : ActionGroupSpec = {
       loadingMessage: "Loading Services...",
 
       async choose(actionContext) {
-        await K8sPluginHelper.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", 
+        await ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", 
                                               1, 10, true, "name")
       },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext)
+        const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return

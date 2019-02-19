@@ -1,5 +1,5 @@
 import K8sFunctions from '../k8s/k8sFunctions'
-import K8sPluginHelper from '../k8s/k8sPluginHelper';
+import ChoiceManager from '../actions/choiceManager';
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, ActionContextOrder} from '../actions/actionSpec'
 import { Namespace } from '../k8s/k8sObjectTypes';
@@ -14,17 +14,12 @@ const plugin : ActionGroupSpec = {
       order: 1,
       autoRefreshDelay: 15,
 
-      choose: K8sPluginHelper.chooseNamespaces.bind(K8sPluginHelper, false, 1, 10),
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 10),
       
       async act(actionContext) {
-        const selections = await K8sPluginHelper.getSelections(actionContext)
-
-        this.onOutput && this.onOutput([[
-          ["Event", "LastTimestamp", "(Count)"],
-          "Details",
-        ]], ActionOutputStyle.TableWithHealth)
+        this.clear && this.clear(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
-
+        const selections = await ChoiceManager.getSelections(actionContext)
         const clusters = actionContext.getClusters()
         const namespaces = actionContext.getNamespaces()
         for(const i in clusters) {
@@ -43,11 +38,11 @@ const plugin : ActionGroupSpec = {
               } else {
                 output.push([
                   [event.reason, event.lastTimestamp, event.count ? "(" + event.count + ")" : ""],
-                  event.type ? [
-                    "type: " + event.type,
-                    "source: " + event.source,
-                    "message: " + event.message,
-                  ] : [],
+                  event.type ? {
+                    type: event.type,
+                    source: event.source,
+                    message: event.message,
+                   } : {},
                 ])
               }
             })
@@ -56,27 +51,11 @@ const plugin : ActionGroupSpec = {
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
-      react(actionContext) {
-        switch(actionContext.inputText) {
-          case "clear": 
-            this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.TableWithHealth)
-            break
-          case "help":
-            this.showInfo && this.showInfo('Command Help', [
-              "/clear: clears output",
-              "/help: shows help"
-            ])
-            break
-          default:
-            if(actionContext.inputText && actionContext.inputText.length > 0) {
-              this.onOutput && this.onOutput([["Unknown Command"]], ActionOutputStyle.Text)
-            }
-            break
-        }
-        actionContext.inputText = undefined
-      },
       refresh(actionContext) {
         this.act(actionContext)
+      },
+      clear() {
+        this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details",]], ActionOutputStyle.TableWithHealth)
       },
     },
   ]

@@ -41,10 +41,11 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   },
   grid: {
     height: 50,
+    width: '100%',
   },
   gridItem: {
     maxHeight: 50,
-    paddingTop: '10px !important',
+    paddingTop: '8px !important',
   },
   tabsRoot: {
     borderBottom: '1px solid #e8e8e8',

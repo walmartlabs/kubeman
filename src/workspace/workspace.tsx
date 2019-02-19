@@ -29,6 +29,7 @@ interface IState {
   choiceTitle: string
   choices: Choice[]
   showChoiceSubItems: boolean
+  previousSelections: Choice[]
   showInfo: boolean
   infoTitle: string,
   info: any[]
@@ -62,6 +63,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     choiceTitle: '',
     choices: [],
     showChoiceSubItems: true,
+    previousSelections: [],
     showInfo: false,
     infoTitle: '',
     info: [],
@@ -106,7 +108,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     this.setState({scrollMode})
   }
 
-  onActionInitChoices : ActionChoiceMaker = (act, title, choices, minChoices, maxChoices, showChoiceSubItems) => {
+  onActionInitChoices : ActionChoiceMaker = (act, title, choices, minChoices, maxChoices, showChoiceSubItems, previousSelections) => {
     this.streamOutput = []
     this.setState({
       choices,
@@ -115,13 +117,14 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
       choiceTitle: title, 
       showActionInitChoices: true,
       showChoiceSubItems,
+      previousSelections,
       deferredAction: act,
       output: [],
       loading: false,
     })
   }
 
-  onActionChoices : ActionChoiceMaker = (react, title, choices, minChoices, maxChoices, showChoiceSubItems) => {
+  onActionChoices : ActionChoiceMaker = (react, title, choices, minChoices, maxChoices, showChoiceSubItems, previousSelections) => {
     this.setState({
       choices,
       minChoices,
@@ -129,6 +132,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
       choiceTitle: title, 
       showActionChoices: true,
       showChoiceSubItems,
+      previousSelections,
       deferredAction: react,
       loading: false,
     })
@@ -142,6 +146,8 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
 
   onCancelActionChoice = () => {
+    const {context} = this.state
+    context.selections = []
     this.setState({showActionInitChoices: false, showActionChoices: false, loading: false})
   }
 
@@ -188,7 +194,8 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   render() {
     const { classes } = this.props;
     const { context, output, outputStyle, loading, loadingMessage, scrollMode,
-          showActionInitChoices, showActionChoices, minChoices, maxChoices, choiceTitle, choices, showChoiceSubItems,
+          showActionInitChoices, showActionChoices, minChoices, maxChoices, 
+          choiceTitle, choices, showChoiceSubItems, previousSelections,
           showInfo, infoTitle, info } = this.state;
 
     const showBlackBox = outputStyle === ActionOutputStyle.Text
@@ -281,6 +288,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
             minChoices={minChoices}
             maxChoices={maxChoices}
             showChoiceSubItems={showChoiceSubItems}
+            previousSelections={previousSelections}
             onSelection={this.onSelectActionChoice}
             onCancel={this.onCancelActionChoice}
           />

@@ -152,7 +152,7 @@ export interface PodInfo extends Metadata{
   hostIPC?: any
   hostNetwork?: any
   hostPID?: any
-  hostname?: string
+  hostName?: string
   nodeName?: string
   nodeSelector?: any
   priority?: any

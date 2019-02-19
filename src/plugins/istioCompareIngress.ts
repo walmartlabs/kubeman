@@ -1,7 +1,7 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionContextOrder} from '../actions/actionSpec'
 import ActionContext from '../actions/actionContext'
 import K8sFunctions from '../k8s/k8sFunctions'
-import K8sPluginHelper from '../k8s/k8sPluginHelper'
+import ChoiceManager from '../actions/choiceManager'
 import IstioFunctions from '../k8s/istioFunctions';
 
 const plugin : ActionGroupSpec = {
@@ -13,10 +13,10 @@ const plugin : ActionGroupSpec = {
       order: 11,
       comparisonMap: {},
       
-      choose: K8sPluginHelper.chooseClusters,
+      choose: ChoiceManager.chooseClusters,
       
       async act(actionContext) {
-        const clusters = K8sPluginHelper.getSelectedClusters(actionContext)
+        const clusters = ChoiceManager.getSelectedClusters(actionContext)
         if(clusters.length < 2) {
           this.onOutput && this.onOutput([["Not enough clusters to compare"]], ActionOutputStyle.Text)
           return

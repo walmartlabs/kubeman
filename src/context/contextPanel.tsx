@@ -112,7 +112,7 @@ class ContextPanel extends React.Component<IProps, IState> {
         </Tabs>
         {
         <Paper className={classes.panel}>
-          <Grid container direction='column' spacing={8}
+          <Grid container direction='column' spacing={8} justify="flex-start" alignItems="center"
                 className={classes.grid} >
           {
             clusters.length > 0 &&

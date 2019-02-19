@@ -1,5 +1,5 @@
 import {ActionGroupSpec, ActionContextOrder, ActionContextType, ActionOutputStyle, ActionOutput} from '../actions/actionSpec'
-import K8sPluginHelper, {ItemSelection} from '../k8s/k8sPluginHelper'
+import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
 import K8sFunctions from '../k8s/k8sFunctions'
 import { Namespace } from '../k8s/k8sObjectTypes';
 
@@ -13,14 +13,14 @@ const plugin : ActionGroupSpec = {
       order: 1,
       loadingMessage: "Loading Namespaces...",
 
-      choose: K8sPluginHelper.chooseNamespaces.bind(K8sPluginHelper, false, 1, 10),
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 10),
 
       async act(actionContext) {
         this.onOutput && this.onOutput([["Service Name", "Summary Info"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const clusters = actionContext.getClusters()
-        const selections = await K8sPluginHelper.getSelections(actionContext)
+        const selections = await ChoiceManager.getSelections(actionContext)
         for(const cluster of clusters) {
           this.onStreamOutput && this.onStreamOutput([[">Cluster: "+cluster.name, ""]])
       

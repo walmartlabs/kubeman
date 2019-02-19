@@ -1,5 +1,6 @@
 import k8sFunctions from '../k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, ActionContextOrder} from '../actions/actionSpec'
+import ChoiceManager from '../actions/choiceManager'
 import K8sPluginHelper from '../k8s/k8sPluginHelper'
 
 const plugin : ActionGroupSpec = {
@@ -12,7 +13,7 @@ const plugin : ActionGroupSpec = {
       order: 21,
       loadingMessage: "Loading Secrets...",
       async choose(actionContext) {
-        await K8sPluginHelper.prepareCachedChoices(actionContext, k8sFunctions.getNamespaceSecrets, 
+        await ChoiceManager.prepareCachedChoices(actionContext, k8sFunctions.getNamespaceSecrets, 
                                                   "Secrets", 2, 2, true, "name")
       },
 
@@ -25,7 +26,7 @@ const plugin : ActionGroupSpec = {
       order: 22,
       loadingMessage: "Loading Config Maps...",
       async choose(actionContext) {
-        await K8sPluginHelper.prepareCachedChoices(actionContext, k8sFunctions.getNamespaceConfigMaps, 
+        await ChoiceManager.prepareCachedChoices(actionContext, k8sFunctions.getNamespaceConfigMaps, 
                                             "Config Maps", 2, 2, true, "name")
       },
 

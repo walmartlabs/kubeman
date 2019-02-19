@@ -1,6 +1,6 @@
 import k8sFunctions from '../k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, } from '../actions/actionSpec'
-import K8sPluginHelper from '../k8s/k8sPluginHelper'
+import ChoiceManager from '../actions/choiceManager'
 
 
 const plugin : ActionGroupSpec = {
@@ -11,42 +11,37 @@ const plugin : ActionGroupSpec = {
       name: "Execute Pod Command",
       order: 25,
       autoRefreshDelay: 15,
-      loadingMessage: "Loading Pods...",
+      loadingMessage: "Loading Containers@Pods...",
 
       selections: undefined,
       
-      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 5, true, false),
-
-      showHeader() {
-        this.onOutput && this.onOutput([[
-          "Send Command To: " + this.selections.map(s => s.title).join(", ")
-        ]], ActionOutputStyle.Log)
-      },
+      choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 10, true, false),
       
       async act(actionContext) {
-        const selections = await K8sPluginHelper.getPodSelections(actionContext)
-        if(selections.length < 1) {
-          this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
-          return
-        }
-        this.setScrollMode && this.setScrollMode(true)
+        const selections = await ChoiceManager.getPodSelections(actionContext)
         this.selections = selections
-        this.showHeader()
+        this.clear && this.clear(actionContext)
+        this.setScrollMode && this.setScrollMode(true)
       },
       
       async react(actionContext) {
         const inputText = actionContext.inputText ? actionContext.inputText : ''
-        if(inputText === "clear") {
-          this.showHeader()
-          return
-        }
-
-        this.showOutputLoading && this.showOutputLoading(true)
         if(inputText.includes("ping") && !inputText.includes("-c")) {
             this.onStreamOutput && this.onStreamOutput([["Can't execute ping command without -c option since this will run indefinitely."]])
             this.showOutputLoading && this.showOutputLoading(false)
             return
         }
+        if(inputText.includes("top")) {
+          this.onStreamOutput && this.onStreamOutput([[inputText + ": can't execute a command that runs indefinitely"]])
+          this.showOutputLoading && this.showOutputLoading(false)
+          return
+        }
+        if(inputText.includes("rm") || inputText.includes("rmdir")) {
+          this.onStreamOutput && this.onStreamOutput([[inputText + ": prohibited command"]])
+          this.showOutputLoading && this.showOutputLoading(false)
+          return
+      }
+      this.showOutputLoading && this.showOutputLoading(true)
         const command = inputText.split(" ")
         for(const selection of this.selections) {
           try {
@@ -65,6 +60,11 @@ const plugin : ActionGroupSpec = {
       },
       refresh(actionContext) {
         this.react && this.react(actionContext)
+      },
+      clear() {
+        this.onOutput && this.onOutput([[
+          "Send Command To: " + this.selections.map(s => s.title).join(", ")
+        ]], ActionOutputStyle.Log)
       },
     }
   ]

@@ -1,5 +1,5 @@
 import k8sFunctions from '../k8s/k8sFunctions'
-import K8sPluginHelper from '../k8s/k8sPluginHelper'
+import ChoiceManager from '../actions/choiceManager'
 import {ActionGroupSpec, ActionContextOrder, ActionContextType, ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
 
 const plugin : ActionGroupSpec = {
@@ -13,16 +13,12 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 15,
       loadingMessage: "Loading Pods...",
 
-      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 10, false, false),
+      choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 10, false, false),
 
       async act(actionContext) {
-        const selections = await K8sPluginHelper.getPodSelections(actionContext, true, false)
-        if(selections.length < 1) {
-          this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
-          return
-        }
-        this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.Table)
+        this.clear && this.clear(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
+        const selections = await ChoiceManager.getPodSelections(actionContext, true, false)
 
         for(const i in selections) {
           const selection = selections[i]
@@ -40,11 +36,11 @@ const plugin : ActionGroupSpec = {
             else {
               output.push([
                 [event.reason, event.lastTimestamp, "(" + event.count + ")"],
-                [
-                  "type: " + event.type,
-                  "source: " + event.source,
-                  "message: " + event.message,
-                ],
+                event.type ? {
+                  type: event.type,
+                  source: event.source,
+                  message: event.message,
+                 } : {},
               ])
             }
           })
@@ -54,6 +50,9 @@ const plugin : ActionGroupSpec = {
       },
       refresh(actionContext) {
         this.act(actionContext)
+      },
+      clear() {
+        this.onOutput && this.onOutput([[["Event", "LastTimestamp", "(Count)"], "Details"]], ActionOutputStyle.TableWithHealth)
       }
     }
   ]

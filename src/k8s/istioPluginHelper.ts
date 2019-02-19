@@ -1,9 +1,9 @@
 import { K8sClient } from '../k8s/k8sClient'
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioFunctions from '../k8s/istioFunctions'
-import { ServiceDetails, PodDetails } from './k8sObjectTypes';
-import ActionContext from '../actions/actionContext';
-import K8sPluginHelper from './k8sPluginHelper';
+import { ServiceDetails, PodDetails } from './k8sObjectTypes'
+import ActionContext from '../actions/actionContext'
+import ChoiceManager from '../actions/choiceManager'
 
 export default class IstioPluginHelper {
 
@@ -146,7 +146,7 @@ export default class IstioPluginHelper {
   }
 
   static async chooseSidecar(min: number = 1, max: number = 1, actionContext: ActionContext) {
-    K8sPluginHelper.prepareCachedChoices(actionContext, 
+    ChoiceManager.prepareCachedChoices(actionContext, 
       async (cluster, namespace, k8sClient) => {
         const sidecars = (namespace && namespace.length > 0) ?
                           await IstioFunctions.getNamespaceSidecars(namespace, k8sClient)
@@ -159,7 +159,7 @@ export default class IstioPluginHelper {
   }
 
   static getSelectedSidecars(actionContext: ActionContext) {
-    const selections = K8sPluginHelper.getSelections(actionContext)
+    const selections = ChoiceManager.getSelections(actionContext)
     return selections.map(s => {
       s.item.cluster = s.cluster
       return s.item
@@ -167,7 +167,7 @@ export default class IstioPluginHelper {
   }
 
   static async chooseIstioCRDs(min: number = 1, max: number = 10, actionContext: ActionContext) {
-    await K8sPluginHelper.prepareCachedChoices(actionContext, 
+    await ChoiceManager.prepareCachedChoices(actionContext, 
       async (cluster, namespace,k8sClient) => {
         return k8sClient.istio ? k8sClient.istio.crds : []
       }, "Istio CRDs", 1, 10, false)

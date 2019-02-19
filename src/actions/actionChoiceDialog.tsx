@@ -1,9 +1,12 @@
 import React, { ChangeEvent } from 'react';
 
 import { withStyles, WithStyles} from '@material-ui/core/styles'
-import { Button, Input, FormControlLabel, Checkbox, Typography, } from '@material-ui/core';
-import { Dialog, DialogTitle, DialogContent, DialogActions, } from '@material-ui/core';
-import { Table, TableBody, TableCell, TableRow } from '@material-ui/core';
+import { Button, Input, FormControlLabel, Checkbox, Typography, 
+        ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails,
+        Dialog, DialogTitle, DialogContent, DialogActions,
+        Table, TableBody, TableCell, TableRow, List, ListItem, ListItemText, ListItemIcon } from '@material-ui/core';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import ChevronRightIcon from '@material-ui/icons/ChevronRight';
 
 import {Choice} from './actionSpec'
 import styles from './actionChoiceDialog.styles'
@@ -17,6 +20,7 @@ interface IProps extends WithStyles<typeof styles> {
   minChoices: number
   maxChoices: number
   showChoiceSubItems: boolean
+  previousSelections: Choice[]
   onSelection: (selections: any[]) => void
   onCancel: () => any
 }
@@ -26,7 +30,6 @@ interface IState {
   choiceItems: any[][]
   choiceDataMap: Map<any, any>
   filteredChoices: any[][]
-  filterText: string
 }
 
 class ActionChoiceDialog extends React.Component<IProps, IState> {
@@ -38,7 +41,6 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
     choiceDataMap: new Map,
     choiceItems: [],
     filteredChoices: [],
-    filterText: ''
   }
   filterTimer: any = undefined
 
@@ -69,7 +71,7 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
 
   filter = (filterText: string) => {
     const {choiceItems} = this.state
-    this.setState({filterText: filterText, filteredChoices: filter(filterText, choiceItems)})
+    this.setState({filteredChoices: filter(filterText, choiceItems)})
   }
 
   onFilterChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -79,10 +81,15 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
     const text = event.target.value
     if(text.length === 0) {
       const {choiceItems} = this.state
-      this.setState({filterText: '', filteredChoices: choiceItems})
+      this.setState({filteredChoices: choiceItems})
     } else {
       this.filterTimer = setTimeout(this.filter.bind(this, text), 400)
     }
+  }
+
+  onUsePreviousSelections = () => {
+    const {maxChoices, previousSelections} = this.props
+    this.props.onSelection(previousSelections.slice(0, maxChoices))
   }
 
   onCancel = () => {
@@ -94,25 +101,59 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
     this.props.onSelection(Array.from(selections.values()))
   }
 
+  onKeyDown = (event) => {
+    if(event.which === 27 /*Esc*/) {
+      this.onCancel()
+    }
+  }
+
   render() {
-    const {open, title, minChoices, maxChoices, showChoiceSubItems, classes} = this.props
+    const {classes, open, title, minChoices, maxChoices, 
+          showChoiceSubItems, previousSelections,} = this.props
     const {selections, filteredChoices} = this.state
     let countSelected = selections.size
     const minSelected = minChoices > 0 && countSelected >= minChoices
     const maxSelected = maxChoices > 0 && countSelected >= maxChoices
-    
+    const hasPreviousSelections = previousSelections && previousSelections.length > 0
+    const hasEnoughPreviousSelections = previousSelections.length >= minChoices
+    const hasMorePreviousSelections = previousSelections.length > maxChoices
     return (
-      <Dialog open={open} className={classes.dialog}
+      <Dialog open={open} classes={{paper: classes.dialog}}
               onClose={this.onCancel} >
         <DialogTitle className={classes.dialogTitle}>
           <Typography className={classes.heading}>{title}</Typography>
-          <Input  fullWidth
+          <Input fullWidth autoFocus
                 placeholder="Type here to filter data from the results" 
                 onChange={this.onFilterChange}
+                onKeyDown={this.onKeyDown}
                 className={classes.filterInput}
             />
         </DialogTitle>
         <DialogContent className={classes.dialogContent}>
+          {hasPreviousSelections &&
+            <ExpansionPanel className={classes.expansion}>
+              <ExpansionPanelSummary expandIcon={<ExpandMoreIcon/>} className={classes.expansionHead}>
+                <Typography className={classes.expansionHeadText}>Previous Selections</Typography>
+              </ExpansionPanelSummary>
+              <ExpansionPanelDetails className={classes.expansionDetails}>
+                <List component="nav" dense> 
+                  {previousSelections.map((item, index) => {
+                    let text = item.displayItem[0] + " ["
+                    text += item.displayItem.slice(1).join(",")
+                    text += "]"
+                    return (
+                      <ListItem key={index} disableGutters>
+                        <ListItemIcon style={{marginRight: 5}}><ChevronRightIcon/></ListItemIcon>
+                        <ListItemText style={{paddingLeft: 0}}>
+                          <Typography>{text}</Typography>
+                        </ListItemText>
+                      </ListItem>
+                    )
+                  })}
+                </List>
+              </ExpansionPanelDetails>
+            </ExpansionPanel>
+          }
           <Table className={classes.table} aria-labelledby="tableTitle">
             <TableBody>
             {filteredChoices.map((item, index) => {
@@ -133,11 +174,11 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
                       label={text}
                     />
                     {showChoiceSubItems && subItems.map((subtext, i) =>
-                       <span key={i} className={classes.choiceSubtext} 
-                       onClick={!selections.has(itemId) && maxSelected ? undefined : this.onChange.bind(this, itemId)}
-                       >
+                      <span key={i} className={classes.choiceSubtext} 
+                      onClick={!selections.has(itemId) && maxSelected ? undefined : this.onChange.bind(this, itemId)}
+                      >
                         {subtext}
-                       </span>
+                      </span>
                     )}
                   </TableCell>
                 </TableRow>
@@ -154,6 +195,14 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
           </Table>
         </DialogContent>
         <DialogActions className={classes.dialogActions}>
+          {hasPreviousSelections &&
+            <Button onClick={this.onUsePreviousSelections} 
+                    disabled={!hasEnoughPreviousSelections}
+                    className={hasEnoughPreviousSelections ? classes.dialogButton : classes.dialogButtonDisabled} >
+              { hasMorePreviousSelections ? "Use First " + maxChoices + " Previous Selection(s)" :
+                hasEnoughPreviousSelections ? "Use Previous Selections" : "Not Enough Previous Selections"}
+            </Button>
+          }
           <Button onClick={this.onCancel} className={classes.dialogButton} >
             Cancel
           </Button>

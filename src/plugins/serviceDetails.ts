@@ -1,6 +1,7 @@
 import {ActionGroupSpec, ActionContextOrder, ActionContextType, ActionOutputStyle, ActionOutput} from '../actions/actionSpec'
-import K8sPluginHelper, {ItemSelection} from '../k8s/k8sPluginHelper'
+import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
 import K8sFunctions from '../k8s/k8sFunctions'
+import K8sPluginHelper from '../k8s/k8sPluginHelper'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
@@ -13,12 +14,12 @@ const plugin : ActionGroupSpec = {
       loadingMessage: "Loading Services...",
       
       async choose(actionContext) {
-        await K8sPluginHelper.prepareCachedChoices(actionContext, K8sFunctions.getServices, 
+        await ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, 
                                                 "Services", 1, 10, true, "name")
       },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await K8sPluginHelper.getSelections(actionContext)
+        const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
@@ -64,7 +65,7 @@ const plugin : ActionGroupSpec = {
       order: 11,
       loadingMessage: "Loading Services...",
       async choose(actionContext) {
-        await K8sPluginHelper.prepareCachedChoices(actionContext, K8sFunctions.getServices, 
+        await ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, 
                                               "Services", 2, 2, true, "name")
       },
 

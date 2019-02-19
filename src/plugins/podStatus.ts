@@ -1,4 +1,4 @@
-import K8sPluginHelper from '../k8s/k8sPluginHelper'
+import ChoiceManager from '../actions/choiceManager'
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
 import { PodDetails } from '../k8s/k8sObjectTypes';
@@ -15,13 +15,13 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 15,
       loadingMessage: "Loading Pods...",
 
-      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 10, false, false),
+      choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 10, false, false),
 
       async act(actionContext) {
-        this.onOutput && this.onOutput([["Pod", "Status"]], ActionOutputStyle.Table)
+        this.clear && this.clear(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
 
-        const selections = await K8sPluginHelper.getPodSelections(actionContext, true, false)
+        const selections = await ChoiceManager.getPodSelections(actionContext, true, false)
         const podsMap : ClusterNamespacePodsMap = {}
         for(const i in selections) {
           const selection = selections[i]
@@ -59,6 +59,9 @@ const plugin : ActionGroupSpec = {
       },
       refresh(actionContext) {
         this.act(actionContext)
+      },
+      clear() {
+        this.onOutput && this.onOutput([["Pod", "Status"]], ActionOutputStyle.Table)
       }
     }
   ]

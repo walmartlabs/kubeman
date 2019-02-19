@@ -1,5 +1,5 @@
 import K8sFunctions, {StringStringStringBooleanMap} from '../k8s/k8sFunctions'
-import K8sPluginHelper from '../k8s/k8sPluginHelper';
+import ChoiceManager from '../actions/choiceManager';
 import {ActionGroupSpec, ActionContextType, ActionContextOrder,
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
 import ActionContext from '../actions/actionContext'
@@ -58,7 +58,7 @@ const plugin : ActionGroupSpec = {
       order: 1,
       loadingMessage: "Loading Namespaces...",
 
-      choose: K8sPluginHelper.chooseNamespaces.bind(K8sPluginHelper, true, 1, 10),
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, true, 1, 10),
 
       async act(actionContext: ActionContext) {
         const clusters = actionContext.getClusters()
@@ -69,7 +69,7 @@ const plugin : ActionGroupSpec = {
         this.onOutput && this.onOutput([headers], ActionOutputStyle.Compare)
       
         this.showOutputLoading && this.showOutputLoading(true)
-        const selections = await K8sPluginHelper.getSelections(actionContext)
+        const selections = await ChoiceManager.getSelections(actionContext)
         const namespaces = selections.map(s => s.item) as Namespace[]
 
         const deployments = await K8sFunctions.getDeploymentsGroupedByClusterNamespace(clusters, namespaces)

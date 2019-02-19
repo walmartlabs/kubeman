@@ -96,13 +96,11 @@ export class SelectionFilter extends React.Component<SelectionFilterProps, Selec
   
     return (
       <div>
-        <Input
-          fullWidth
+        <Input fullWidth autoFocus
           {...other}
           className={classes.input}
-          autoFocus
           inputProps={{
-            'aria-label': 'Pod Filter',
+            'aria-label': 'Namespace Filter',
           }}
           endAdornment={
             <InputAdornment position="end">

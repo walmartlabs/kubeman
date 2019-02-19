@@ -1,6 +1,6 @@
 import k8sFunctions from '../k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionSpec, } from '../actions/actionSpec'
-import K8sPluginHelper from '../k8s/k8sPluginHelper'
+import ChoiceManager from '../actions/choiceManager'
 import ActionContext from '../actions/actionContext';
 
 
@@ -9,18 +9,21 @@ const plugin : ActionGroupSpec = {
   title: "Pod Recipes",
 
   logStreams: [],
+  selections: undefined,
+
+  getSelectionAsText() {
+    return this.selections ? this.selections.map(s => 
+        "["+s.container+"@"+s.pod+"."+s.namespace+"."+s.cluster+"]")
+        .join(", ") : ""
+  },
 
   async getPodLogs(actionContext: ActionContext, action: ActionSpec, tail: boolean) {
+    this.selections = await ChoiceManager.getPodSelections(actionContext)
+    action.clear && action.clear(actionContext)
+    action.showOutputLoading && action.showOutputLoading(true)
     action.setScrollMode && action.setScrollMode(true)
-    const selections = await K8sPluginHelper.getPodSelections(actionContext)
-    if(selections.length < 1) {
-      action.onOutput && action.onOutput([["No pod selected"]], ActionOutputStyle.Text)
-      return
-    }
-    action.onOutput && action.onOutput([["Pod","Logs"]], ActionOutputStyle.Log)
-    const lineCount = (50/selections.length) < 20 ? 20 : (50/selections.length)
-    for(const selection of selections) {
-      action.showOutputLoading && action.showOutputLoading(true)
+    const lineCount = (50/this.selections.length) < 20 ? 20 : (50/this.selections.length)
+    for(const selection of this.selections) {
       const logStream = await k8sFunctions.getPodLog(selection.namespace, selection.pod, 
                                 selection.container, selection.k8sClient, tail, lineCount)
       logStream.onLog(lines => {
@@ -36,31 +39,27 @@ const plugin : ActionGroupSpec = {
         setTimeout(() => {
           action.showOutputLoading && action.showOutputLoading(false)
           logStream.stop()
-        }, 10000)
+        }, 5000)
       }
     }
-  
-    action.showOutputLoading && action.showOutputLoading(false)
   },
 
   actions: [
     {
       name: "Check Pod Logs",
       order: 10,
-      autoRefreshDelay: 15,
+      autoRefreshDelay: 30,
       loadingMessage: "Loading Containers@Pods...",
 
-      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 5, true, false),
+      choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 5, true, false),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, this, false)
       },
-      react(actionContext) {
-        if(actionContext.inputText && actionContext.inputText.includes("clear")) {
-          this.onOutput && this.onOutput([["Pod","Logs"]], ActionOutputStyle.Log)
-        }
-      },
       refresh(actionContext) {
         this.act(actionContext)
+      },
+      clear() {
+        this.onOutput && this.onOutput([["Pod","Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)
       }
     },
     {
@@ -68,20 +67,18 @@ const plugin : ActionGroupSpec = {
       order: 11,
       loadingMessage: "Loading Containers@Pods...",
 
-      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 5, true, false),
+      choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 5, true, false),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, this, true)
-      },
-      react(actionContext) {
-        if(actionContext.inputText && actionContext.inputText.includes("clear")) {
-          this.onOutput && this.onOutput([["Pod","Logs"]], ActionOutputStyle.Log)
-        }
       },
       stop(actionContext) {
         if(plugin.logStreams.length > 0) {
           plugin.logStreams.forEach(stream => stream.stop())
           plugin.logStreams = []
         }
+      },
+      clear() {
+        this.onOutput && this.onOutput([["Pod","Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)
       }
     }
   ]

@@ -1,6 +1,6 @@
 import k8sFunctions from '../k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, } from '../actions/actionSpec'
-import K8sPluginHelper from '../k8s/k8sPluginHelper'
+import ChoiceManager from '../actions/choiceManager'
 import { PodContainerDetails } from '../k8s/k8sObjectTypes';
 
 
@@ -13,17 +13,13 @@ const plugin : ActionGroupSpec = {
       name: "Test Pods Reachability",
       order: 20,
       autoRefreshDelay: 60,
-      loadingMessage: "Loading Pods...",
+      loadingMessage: "Loading Containers@Pods...",
 
-      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 2, 5, true, true),
+      choose: ChoiceManager.choosePod.bind(ChoiceManager, 2, 10, true, true),
       
       async act(actionContext) {
-        const selections = await K8sPluginHelper.getPodSelections(actionContext, true)
-        if(selections.length < 2) {
-          this.onOutput && this.onOutput([["Not enough pods selected"]], ActionOutputStyle.Text)
-          return
-        }
-        this.onOutput && this.onOutput([["Pod Reachability Test", "", ""]], ActionOutputStyle.Log)
+        this.clear && this.clear(actionContext)
+        const selections = await ChoiceManager.getPodSelections(actionContext, true)
         this.setScrollMode && this.setScrollMode(true)
         this.showOutputLoading && this.showOutputLoading(true)
 
@@ -70,6 +66,9 @@ const plugin : ActionGroupSpec = {
       },
       refresh(actionContext) {
         this.act(actionContext)
+      },
+      clear() {
+        this.onOutput && this.onOutput([["Pod Reachability Test", "", ""]], ActionOutputStyle.Log)
       }
     }
   ]

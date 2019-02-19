@@ -1,4 +1,5 @@
 import {ActionGroupSpec, ActionContextType} from '../actions/actionSpec'
+import ChoiceManager from '../actions/choiceManager'
 import K8sPluginHelper from '../k8s/k8sPluginHelper'
 
 const plugin : ActionGroupSpec = {
@@ -10,7 +11,7 @@ const plugin : ActionGroupSpec = {
       order: 15,
       loadingMessage: "Loading Pods...",
 
-      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 2, 2, false, true),
+      choose: ChoiceManager.choosePod.bind(ChoiceManager, 2, 2, false, true),
 
       async act(actionContext) {
         K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Pods")

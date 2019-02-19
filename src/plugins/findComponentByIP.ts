@@ -10,22 +10,20 @@ const plugin : ActionGroupSpec = {
       name: "Find Component By IP",
       order: 15,
       async act(actionContext) {
+        this.clear && this.clear(actionContext)
+      },
+      clear() {
         this.onOutput && this.onOutput([[
           "Enter /<ip address>,<ip address>... as command to find components by IP",
-        ]], ActionOutputStyle.TableWithHealth)
+        ]], ActionOutputStyle.Table)
       },
       async react(actionContext) {
-        if(actionContext.inputText && actionContext.inputText.includes("clear")) {
-          this.onOutput && this.onOutput([[
-            "Enter /<ip address> as command to find a component by IP",
-          ]], ActionOutputStyle.TableWithHealth)
-          return
-        }
         this.onOutput && this.onOutput([[
           "Component", "Cluster", "Namespace", "IP"
-        ]], ActionOutputStyle.TableWithHealth)
+        ]], ActionOutputStyle.Table)
 
         const ipAddresses = actionContext.inputText ? actionContext.inputText.split(",").map(value => value.trim()) : []
+        let countIPToFind = ipAddresses.length
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
           this.onStreamOutput && this.onStreamOutput([[">Cluster: " + cluster.name, "", "", ""]])
@@ -39,7 +37,10 @@ const plugin : ActionGroupSpec = {
                 node.name, cluster.name, "", node.network
               ]])
             })
-            continue
+            countIPToFind -= matchingNodes.length
+            if(countIPToFind === 0) {
+              return
+            }
           } else {
             this.onStreamOutput && this.onStreamOutput([[">>No Matching Nodes", "", "", ""]])
           }
@@ -53,7 +54,10 @@ const plugin : ActionGroupSpec = {
                 service.name, cluster.name, service.namespace, service.clusterIP
               ]])
             })
-            continue
+            countIPToFind -= matchingServices.length
+            if(countIPToFind === 0) {
+              return
+            }
           } else {
             this.onStreamOutput && this.onStreamOutput([[">>No Matching Services", "", "", ""]])
           }
@@ -64,10 +68,13 @@ const plugin : ActionGroupSpec = {
             this.onStreamOutput && this.onStreamOutput([[">>Pods", "", "", ""]])
             matchingPods.forEach(pod => {
               this.onStreamOutput && this.onStreamOutput([[
-                pod.name, cluster.name, pod.namespace, {podIP: pod.podIP, hostIP: pod.hostIP}
+                pod.name, cluster.name, pod.namespace, {podIP: pod.podIP, hostIP: pod.hostIP, nodeName: pod.nodeName}
               ]])
             })
-            continue
+            countIPToFind -= matchingPods.length
+            if(countIPToFind === 0) {
+              return
+            }
           } else {
             this.onStreamOutput && this.onStreamOutput([[">>No Matching Pods", "", "", ""]])
           }

@@ -123,11 +123,15 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     borderLeft: '1px solid red',
     //backgroundColor: palette.type ==='dark' ? "#6c6313" : "#FFFDE7",
   },
+  tableCellFiltered: {
+    border: '1px solid blue',
+    //backgroundColor: palette.type ==='dark' ? "#6c6313" : "#FFFDE7",
+  },
   tableCellHealthGood: {
     backgroundColor: palette.type ==='dark' ? '#2E7D32' : '#DCEDC8',
   },
   tableCellHealthBad: {
-    backgroundColor: palette.type ==='dark' ? '#805500' : '#ff8000',
+    backgroundColor: palette.type ==='dark' ? '#805500' : '#ffcc99',
   },
   tableCellHidden: {
     padding: 0, 

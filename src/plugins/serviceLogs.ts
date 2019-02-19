@@ -1,6 +1,6 @@
 import k8sFunctions from '../k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionSpec, } from '../actions/actionSpec'
-import K8sPluginHelper from '../k8s/k8sPluginHelper'
+import ChoiceManager from '../actions/choiceManager'
 import ActionContext from '../actions/actionContext';
 import { ServiceDetails } from '../k8s/k8sObjectTypes';
 
@@ -23,7 +23,7 @@ const plugin : ActionGroupSpec = {
   },
 
   storeSelectedServices(actionContext: ActionContext, action: ActionSpec) {
-    const selections = K8sPluginHelper.getSelections(actionContext)
+    const selections = ChoiceManager.getSelections(actionContext)
     if(selections.length < 1) {
       action.onOutput && action.onOutput([["No service selected"]], ActionOutputStyle.Text)
       return
@@ -64,7 +64,7 @@ const plugin : ActionGroupSpec = {
     }
   },
   async performAction(actionContext: ActionContext, action: ActionSpec, tail: boolean) {
-    const selections = K8sPluginHelper.getSelections(actionContext)
+    const selections = ChoiceManager.getSelections(actionContext)
     if(selections.length < 1) {
       action.onOutput && action.onOutput([["No service selected"]], ActionOutputStyle.Text)
       return
@@ -106,7 +106,7 @@ const plugin : ActionGroupSpec = {
     this.podsAndContainers = undefined
     action.stop && action.stop(actionContext)
     action.stopped = false
-    await K8sPluginHelper.prepareCachedChoices(actionContext, k8sFunctions.getServices, 
+    await ChoiceManager.prepareCachedChoices(actionContext, k8sFunctions.getServices, 
                                           "Services", 1, 3, true, "name")
   },
 
@@ -114,7 +114,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "Check Service Logs",
       order: 10,
-      autoRefreshDelay: 15,
+      autoRefreshDelay: 60,
       loadingMessage: "Loading Services...",
 
       async choose(actionContext) {
@@ -123,14 +123,11 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         await plugin.performAction(actionContext, this, false)
       },
-      async react(actionContext) {
-        if(actionContext.inputText && actionContext.inputText.includes("clear")) {
-          this.onOutput && this.onOutput([["Pod", 
-              "Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)
-        }
-      },
       refresh(actionContext) {
         this.act(actionContext)
+      },
+      clear() {
+        this.onOutput && this.onOutput([["Pod", "Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)
       }
     },
     {
@@ -144,17 +141,14 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         await plugin.performAction(actionContext, this, true)
       },
-      async react(actionContext) {
-        if(actionContext.inputText && actionContext.inputText.includes("clear")) {
-          this.onOutput && this.onOutput([["Pod", 
-              "Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)
-        }
-      },
       stop(actionContext) {
         if(plugin.logStreams.length > 0) {
           plugin.logStreams.forEach(stream => stream.stop())
           plugin.logStreams = []
         }
+      },
+      clear() {
+        this.onOutput && this.onOutput([["Pod", "Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)
       }
     }
   ]

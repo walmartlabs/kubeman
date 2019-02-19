@@ -1,5 +1,5 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput} from '../actions/actionSpec'
-import K8sPluginHelper from '../k8s/k8sPluginHelper'
+import ChoiceManager from '../actions/choiceManager'
 import { PodDetails } from '../k8s/k8sObjectTypes';
 
 const plugin : ActionGroupSpec = {
@@ -11,10 +11,10 @@ const plugin : ActionGroupSpec = {
       order: 4,
       loadingMessage: "Loading Pods...",
 
-      choose: K8sPluginHelper.choosePod.bind(K8sPluginHelper, 1, 10, false, true),
+      choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 10, false, true),
 
       async act(actionContext) {
-        const selections = await K8sPluginHelper.getPodSelections(actionContext, true, false)
+        const selections = await ChoiceManager.getPodSelections(actionContext, true, false)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
           return

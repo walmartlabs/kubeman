@@ -32,8 +32,8 @@ export interface Choice {
   displayItem: any[]
   data: any
 }
-export type ActionChoiceMaker = (act: BoundActionAct, title: string, choices: Choice[], minChoices: number, maxChoices: number, showChoiceSubItems: boolean) => void
-export type ActionOnChoice = (title: string, choices: Choice[], minChoices: number, maxChoices: number, showChoiceSubItems: boolean) => void
+export type ActionChoiceMaker = (act: BoundActionAct, title: string, choices: Choice[], minChoices: number, maxChoices: number, showChoiceSubItems: boolean, previousSelections: Choice[]) => void
+export type ActionOnChoice = (title: string, choices: Choice[], minChoices: number, maxChoices: number, showChoiceSubItems: boolean, previousSelections: Choice[]) => void
 
 
 export type ActionOutput = any[][]
@@ -55,6 +55,7 @@ export interface ActionSpec {
   react?: ActionAct
   refresh?: ActionAct
   stop?: ActionAct
+  clear?: ActionAct
   onOutput?: ActionOutputCollector
   onStreamOutput?: ActionStreamOutputCollector
   showChoices?: ActionOnChoice

@@ -2,6 +2,12 @@ import { Theme, createStyles } from '@material-ui/core/styles'
 
 const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   dialog: {
+    height: '60vh',
+    width: '50vh',
+    minHeight: '40vh',
+    minWidth: '40vh',
+    maxHeight: '60vh',
+    maxWidth: '60vh !important',
   },
   dialogTitle: {
     height: 70,
@@ -18,11 +24,12 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   dialogActions: {
     margin: 10,
     padding: 10,
-    height: 30,
+    height: 40,
     backgroundColor: '#4b6082',
   },
   dialogButton: {
-    color: 'white !important'
+    color: 'white !important',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   dialogButtonDisabled: {
     color: '#c2c2d6 !important'
@@ -38,7 +45,30 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     padding: spacing.unit * 0.7,
   },
   table: {
-    minWidth: 400,
+  },
+  tableContainer: {
+    width: '100%',
+    height: '100%',
+    padding: 0,
+    margin: 0,
+    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
+    overflowY: 'scroll',
+    overflowX: 'hidden',
+  },
+  expansion: {
+    width: '100%',
+  },
+  expansionHead: {
+    backgroundColor: '#4b6082',
+  },
+  expansionHeadText: {
+    color: '#ffffff',
+    fontSize: typography.pxToRem(15),
+    fontWeight: typography.fontWeightRegular,
+  },
+  expansionDetails: {
+    display: 'block',
+    padding: 5,
   },
   tableCell: {
     margin: 0,

@@ -1,7 +1,7 @@
 import {ActionGroupSpec, ActionContextType, ActionContextOrder,
         ActionOutput, ActionOutputStyle } from '../actions/actionSpec'
 import ActionContext from '../actions/actionContext'
-import K8sPluginHelper from '../k8s/k8sPluginHelper';
+import ChoiceManager from '../actions/choiceManager';
 import K8sFunctions from '../k8s/k8sFunctions';
 import IstioPluginHelper from '../k8s/istioPluginHelper';
 
@@ -36,10 +36,10 @@ const plugin : ActionGroupSpec = {
       order: 2,
       name: "Compare All CRDs",
       
-      choose: K8sPluginHelper.chooseClusters,
+      choose: ChoiceManager.chooseClusters,
 
       async act(actionContext) {
-        const clusters = K8sPluginHelper.getSelectedClusters(actionContext)
+        const clusters = ChoiceManager.getSelectedClusters(actionContext)
         const headers = ["CRD"]
         clusters.forEach(cluster => {
           headers.push("Cluster: " + cluster.name)
@@ -74,10 +74,10 @@ const plugin : ActionGroupSpec = {
       name: "CRD Details",
       loadingMessage: "Loading CRDs...",
       
-      choose: K8sPluginHelper.chooseCRDs.bind(K8sPluginHelper, 1, 10),
+      choose: ChoiceManager.chooseCRDs.bind(ChoiceManager, 1, 10),
 
       async act(actionContext) {
-        const selections = await K8sPluginHelper.getSelections(actionContext)
+        const selections = await ChoiceManager.getSelections(actionContext)
         this.onOutput && this.onOutput([["CRD Details"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
         for(const selection of selections) {
@@ -94,10 +94,10 @@ const plugin : ActionGroupSpec = {
       name: "CRD Resource Instances",
       loadingMessage: "Loading CRDs...",
       
-      choose: K8sPluginHelper.chooseCRDs.bind(K8sPluginHelper, 1, 10),
+      choose: ChoiceManager.chooseCRDs.bind(ChoiceManager, 1, 10),
 
       async act(actionContext) {
-        const selections = await K8sPluginHelper.getSelections(actionContext)
+        const selections = await ChoiceManager.getSelections(actionContext)
         this.onOutput && this.onOutput([["CRD Resource Instances"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
         const clusters = actionContext.getClusters()
@@ -107,8 +107,10 @@ const plugin : ActionGroupSpec = {
           const output : ActionOutput  = []
           output.push([">" + crd + " @ Cluster: " + cluster.name])
           const result = await cluster.k8sClient.crds[crd].get()
-          if(result && result.body) {
+          if(result && result.body && result.body.items && result.body.items.length > 0) {
             result.body.items.forEach(r => output.push([">>"+r.metadata.name], [r]))
+          } else {
+            output.push(["No Resources"])
           }
           this.onStreamOutput && this.onStreamOutput(output)
         }

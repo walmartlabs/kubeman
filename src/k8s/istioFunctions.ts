@@ -371,6 +371,21 @@ export default class IstioFunctions {
                                   ["curl", "-s", "http://127.0.0.1:15000/stats"])
   }
 
+  static async getIngressListenerPorts(k8sClient: K8sClient) {
+    const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
+    if(!ingressPods || ingressPods.length === 0) {
+      console.log("IngressGateway not found")
+      return []
+    }
+    const ingressPodListenersMap = {}
+    for(const ingressPod of ingressPods) {
+      const listeners = JSON.parse(await K8sFunctions.podExec("istio-system", ingressPod.name, "istio-proxy", k8sClient, 
+                                  ["curl", "-s", "http://127.0.0.1:15000/listeners"]))
+      ingressPodListenersMap[ingressPod.name] = listeners.map(l => l.split(":")[1])
+    }
+    return ingressPodListenersMap
+  }
+
   static async getIngressConfigDump(k8sClient: K8sClient, configType?: string) {
     const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
     if(!ingressPods || ingressPods.length === 0) {

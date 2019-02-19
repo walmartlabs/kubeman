@@ -1,8 +1,9 @@
-import React from "react";
+import React, { ChangeEvent } from "react";
+import _ from 'lodash'
 import { withStyles, WithStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import {ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails} from '@material-ui/core';
-import {Typography, List, ListItem, ListItemText, InputBase,
+import {ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails,
+        Typography, List, ListItem, ListItemText, InputBase, Input, Paper,
         FormGroup, FormControlLabel, Checkbox} from '@material-ui/core';
 
 import Context from "../context/contextStore";
@@ -13,10 +14,12 @@ import {ActionGroupSpecs, ActionSpec, BoundAction, ActionGroupSpec, ActionContex
 
 import styles from './actions.styles'
 import {actionsTheme} from '../theme/theme'
+import {filter} from '../util/filterUtil'
 
 
 interface IState {
   actionGroupSpecs: ActionGroupSpecs
+  filteredActions: ActionSpec[],
   autoRefresh: boolean
   invalidAutoRefreshDelay: boolean
 }
@@ -37,6 +40,7 @@ interface IProps extends WithStyles<typeof styles> {
 export class Actions extends React.Component<IProps, IState> {
   state: IState = {
     actionGroupSpecs: [],
+    filteredActions: [],
     autoRefresh: false,
     invalidAutoRefreshDelay: false,
   }
@@ -44,6 +48,7 @@ export class Actions extends React.Component<IProps, IState> {
   refreshTimer: any
   refreshChangeTimer: any
   lastRefreshed: any
+  filterText: string = ''
 
   componentDidMount() {
     this.componentWillReceiveProps(this.props)
@@ -139,13 +144,37 @@ export class Actions extends React.Component<IProps, IState> {
     }
   }
 
-  renderExpansionPanel(actionGroupSpec: ActionGroupSpec) {
+  onFilterChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const {actionGroupSpecs} = this.state
+    let text = event.target.value
+    if(text && text.length > 0) {
+      this.filterText = text
+      if(text.length > 1) {
+        const actions = _.flatten(actionGroupSpecs.map(group => group.actions))
+        const filteredActions = filter(text, actions, "name")
+        this.setState({filteredActions})
+      }
+    } else {
+      this.clearFilter()
+    }
+    this.forceUpdate()
+  }
+
+  clearFilter() {
+    this.filterText = ''
+    this.setState({filteredActions: []})
+  }
+
+  onKeyDown = (event) => {
+    if(event.which === 27 /*Esc*/) {
+      this.clearFilter()
+    }
+  }
+
+  renderExpansionPanel(title: string, actions: ActionSpec[], expanded: boolean = false) {
     const { classes } = this.props;
-    const {title, actions} = actionGroupSpec
-
-
     return (
-      <ExpansionPanel key={title} className={classes.expansion}>
+      <ExpansionPanel key={title} className={classes.expansion} defaultExpanded={expanded}>
         <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />} className={classes.expansionHead}>
           <Typography>{title}</Typography>
         </ExpansionPanelSummary>
@@ -169,7 +198,7 @@ export class Actions extends React.Component<IProps, IState> {
 
   render() {
     const { context, classes } = this.props;
-    const {actionGroupSpecs, invalidAutoRefreshDelay} = this.state
+    const {actionGroupSpecs, invalidAutoRefreshDelay, filteredActions} = this.state
     const useDarkTheme = global['useDarkTheme']
     const theme = createMuiTheme(actionsTheme.getTheme(useDarkTheme));
 
@@ -181,9 +210,21 @@ export class Actions extends React.Component<IProps, IState> {
 
     return (
       <MuiThemeProvider theme={theme}>
+        <Paper  className={classes.filterContainer}>
+          <Input fullWidth autoFocus
+              placeholder="Type here to find plugins" 
+              value={this.filterText}
+              onChange={this.onFilterChange}
+              onKeyDown={this.onKeyDown}
+              className={classes.filterInput}
+          />
+        </Paper>
+        {filteredActions.length > 0 && 
+          this.renderExpansionPanel("Matching Actions", filteredActions, true)
+        }
         {actionGroupSpecs.map(actionGroupSpec => 
           actionShowNoShow.get(actionGroupSpec.context || ActionContextType.Other) &&
-            this.renderExpansionPanel(actionGroupSpec)
+            this.renderExpansionPanel(actionGroupSpec.title||"", actionGroupSpec.actions)
         )}
         {this.currentAction && this.currentAction.refresh &&
           <div>

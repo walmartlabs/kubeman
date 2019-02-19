@@ -435,7 +435,7 @@ export default class K8sFunctions {
       hostIPC: podTemplate.spec.hostIPC,
       hostNetwork: podTemplate.spec.hostNetwork,
       hostPID: podTemplate.spec.hostPID,
-      hostname: podTemplate.spec.hostname,
+      hostName: podTemplate.spec.hostname,
       nodeName: podTemplate.spec.nodeName,
       nodeSelector: podTemplate.spec.nodeSelector,
       priority: podTemplate.spec.priority,

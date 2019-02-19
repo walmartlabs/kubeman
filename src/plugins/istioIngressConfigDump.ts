@@ -4,7 +4,7 @@ import JsonUtil from '../util/jsonUtil';
 import IstioFunctions from '../k8s/istioFunctions';
 
 async function outputConfig(action: ActionSpec, actionContext: ActionContext, type: string, 
-                            titleField: string, dataField?: string) {
+                            titleField: string, dataField?: string, dataTitleField?: string) {
   action.onOutput &&
     action.onOutput([["", "Istio IngressGateway " + type]], ActionOutputStyle.Table)
   action.showOutputLoading && action.showOutputLoading(true)
@@ -21,14 +21,23 @@ async function outputConfig(action: ActionSpec, actionContext: ActionContext, ty
 
     const configs = await IstioFunctions.getIngressConfigDump(k8sClient, type)
     configs.forEach(c => {
-      let data = dataField ? JsonUtil.extract(c, dataField) : c
+      const configTitle = JsonUtil.extract(c, titleField)
+      const data = dataField ? JsonUtil.extract(c, dataField) : c
+      let dataTitle = dataTitleField && JsonUtil.extract(data, dataTitleField)
+      dataTitle && (dataTitle = dataTitle.length > 0 ? dataTitle : undefined)
       if(data instanceof Array) {
         data.forEach(item => {
-          output.push([">>"+JsonUtil.extract(item, titleField)])
+          const itemTitle = dataTitleField && JsonUtil.extract(item, dataTitleField)
+          let title = configTitle || ""
+          dataTitle && (title += (title.length > 0 ? " > " : "") + dataTitle)
+          itemTitle && (title += (title.length > 0 ? " > " : "") + itemTitle)
+          output.push([">>"+title])
           output.push([item])
         })
       } else {
-        output.push([">>"+JsonUtil.extract(data, titleField)])
+        let title = configTitle || ""
+        dataTitle && (title += (title.length > 0 ? " > " : "") + dataTitle)
+        output.push([">>"+title])
         output.push([data])
       }
     })
@@ -68,7 +77,8 @@ const plugin : ActionGroupSpec = {
       order: 27,
       
       async act(actionContext) {
-        await outputConfig(this, actionContext, "RoutesConfigDump", "name", "route_config.virtual_hosts")
+        await outputConfig(this, actionContext, "RoutesConfigDump", "route_config.name", 
+                                      "route_config.virtual_hosts", "name")
       },
       refresh(actionContext) {
         this.act(actionContext)
@@ -80,7 +90,7 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 60,
       
       async act(actionContext) {
-        this.onOutput && this.onOutput([["", "IngressGateway Stats"]], ActionOutputStyle.Log)
+        this.clear && this.clear(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const clusters = actionContext.getClusters()
@@ -97,6 +107,9 @@ const plugin : ActionGroupSpec = {
       },
       refresh(actionContext) {
         this.act(actionContext)
+      },
+      clear() {
+        this.onOutput && this.onOutput([["", "IngressGateway Stats"]], ActionOutputStyle.Log)
       },
     }
   ]

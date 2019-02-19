@@ -1,6 +1,6 @@
 import k8sFunctions from '../k8s/k8sFunctions'
 import {K8sClient} from '../k8s/k8sClient'
-import K8sPluginHelper from '../k8s/k8sPluginHelper'
+import ChoiceManager from '../actions/choiceManager'
 import {ActionGroupSpec, ActionContextType, ActionContextOrder,
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
 
@@ -13,10 +13,10 @@ const plugin : ActionGroupSpec = {
       name: "Compare Cluster Namespaces",
       order: 11,
       
-      choose: K8sPluginHelper.chooseClusters,
+      choose: ChoiceManager.chooseClusters,
 
       async act(actionContext) {
-        const clusters = K8sPluginHelper.getSelectedClusters(actionContext)
+        const clusters = ChoiceManager.getSelectedClusters(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
         const allNamespaces = {}
         for(const ci in clusters) {

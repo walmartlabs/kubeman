@@ -1,7 +1,7 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder, ActionSpec} from '../actions/actionSpec'
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioFunctions from '../k8s/istioFunctions';
-import K8sPluginHelper from '../k8s/k8sPluginHelper';
+import ChoiceManager from '../actions/choiceManager';
 import { ServiceDetails } from '../k8s/k8sObjectTypes';
 
 const plugin : ActionGroupSpec = {
@@ -20,10 +20,8 @@ const plugin : ActionGroupSpec = {
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
           const result = await IstioFunctions.getPilotMetrics(cluster.k8sClient)
-          this.onStreamOutput && this.onStreamOutput([
-            [">Cluster: " + cluster.name],
-            [result]
-          ])
+          this.onStreamOutput && this.onStreamOutput([[">Cluster: " + cluster.name]])
+          this.onStreamOutput && this.onStreamOutput(result ? result.split("\n").map(line => [line]) : [[""]])
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
@@ -37,14 +35,14 @@ const plugin : ActionGroupSpec = {
       loadingMessage: "Loading Services...",
       
       async choose(actionContext) {
-        await K8sPluginHelper.prepareChoices(actionContext, K8sFunctions.getServices, 
+        await ChoiceManager.prepareChoices(actionContext, K8sFunctions.getServices, 
                                                   "Services", 1, 10, true, "name")
       },
       
       async act(actionContext) {
         this.onOutput && this.onOutput([["Service Endpoints Known to Pilot"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
-        const selections = await K8sPluginHelper.getSelections(actionContext)
+        const selections = await ChoiceManager.getSelections(actionContext)
         for(const selection of selections) {
           const cluster = actionContext.getClusters().filter(c => c.name === selection.cluster)[0]
           const service = selection.item as ServiceDetails

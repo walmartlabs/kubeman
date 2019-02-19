@@ -3,7 +3,7 @@ import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput} fro
 import IstioFunctions from '../k8s/istioFunctions'
 import K8sFunctions from '../k8s/k8sFunctions';
 import IstioPluginHelper from '../k8s/istioPluginHelper';
-import K8sPluginHelper from '../k8s/k8sPluginHelper';
+import ChoiceManager from '../actions/choiceManager';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
@@ -14,10 +14,10 @@ const plugin : ActionGroupSpec = {
       order: 106,
       loadingMessage: "Loading Namespaces...",
 
-      choose: K8sPluginHelper.chooseNamespaces.bind(K8sPluginHelper, false, 1, 5),
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 5),
       
       async act(actionContext) {
-        const selections = await K8sPluginHelper.getSelections(actionContext)
+        const selections = await ChoiceManager.getSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No namespace selected"]], ActionOutputStyle.Text)
           return
