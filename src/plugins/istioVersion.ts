@@ -40,16 +40,10 @@ const plugin : ActionGroupSpec = {
           }
           const output: ActionOutput = []
           const k8sClient = cluster.k8sClient
-          await showIstioComponentVersion(cluster.name, "istio-citadel", k8sClient, output)
-          await showIstioComponentVersion(cluster.name, "istio-egressgateway", k8sClient, output)
-          await showIstioComponentVersion(cluster.name, "istio-galley", k8sClient, output)
-          await showIstioComponentVersion(cluster.name, "istio-ingressgateway", k8sClient, output)
-          await showIstioComponentVersion(cluster.name, "istio-pilot", k8sClient, output)
-          await showIstioComponentVersion(cluster.name, "istio-policy", k8sClient, output)
-          await showIstioComponentVersion(cluster.name, "istio-sidecar-injector", k8sClient, output)
-          await showIstioComponentVersion(cluster.name, "istio-telemetry", k8sClient, output)
-          await showIstioComponentVersion(cluster.name, "istio-tracing", k8sClient, output)
-
+          const deployments = await K8sFunctions.getDeploymentListForNamespace("istio-system", k8sClient)
+          for(const deployment of deployments) {
+            await showIstioComponentVersion(cluster.name, deployment, k8sClient, output)
+          }
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)

@@ -94,7 +94,7 @@ class ContextPanel extends React.Component<IProps, IState> {
             value={activeTab}
             onChange={this.onTabChange}
             classes={{ root: classes.tabsRoot, indicator: classes.tabsIndicator }}
-            scrollable={true}
+            variant="scrollable"
             scrollButtons="auto"
           >
           {
