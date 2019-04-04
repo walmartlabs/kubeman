@@ -51,7 +51,7 @@ const plugin : ActionGroupSpec = {
             this.onStreamOutput && this.onStreamOutput([[">>Services", "", "", ""]])
             matchingServices.forEach(service => {
               this.onStreamOutput && this.onStreamOutput([[
-                service.name, cluster.name, service.namespace, service.clusterIP
+                service.name, cluster.name, service.namespace, {clusterIP: service.clusterIP}
               ]])
             })
             countIPToFind -= matchingServices.length

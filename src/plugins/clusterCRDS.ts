@@ -20,13 +20,14 @@ const plugin : ActionGroupSpec = {
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
           const output : ActionOutput  = []
-          output.push([">Cluster: " + cluster.name, "", "", ""])
+          output.push([">Cluster: " + cluster.name])
           const crds = await K8sFunctions.getClusterCRDs(cluster.k8sClient)
           crds.forEach(crd => output.push([
             crd.name + "<br/>(created: "+crd.creationTimestamp+")", 
-            crd.labels, crd.storedVersions, 
+            crd.labels, crd.spec.version, 
             crd.conditions.map(c => c.type+"="+c.status)
           ]))
+          crds.length === 0 && output.push(["CRDs not visible"])
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
@@ -50,11 +51,15 @@ const plugin : ActionGroupSpec = {
         const crdsMap = {}
         for(const cluster of clusters) {
           const crds = await K8sFunctions.getClusterCRDs(cluster.k8sClient)
+          if(crds.length === 0) {
+            this.onStreamOutput && this.onStreamOutput([[">>CRDs not visible for cluster " + cluster.name]])
+            continue
+          }
           for(const crd of crds) {
             if(!crdsMap[crd.name]) {
               crdsMap[crd.name] = {}
             }
-            crdsMap[crd.name][cluster.name] = crd.storedVersions
+            crdsMap[crd.name][cluster.name] = crd.spec.version
           }
         }
         const output : ActionOutput  = []

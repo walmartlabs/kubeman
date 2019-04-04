@@ -23,29 +23,23 @@ const plugin : ActionGroupSpec = {
         const selections = await ChoiceManager.getSelections(actionContext)
         for(const cluster of clusters) {
           this.onStreamOutput && this.onStreamOutput([[">Cluster: "+cluster.name, ""]])
-      
-          if(cluster.hasIstio) {
-            let clusterNamespaces = selections.filter(s => s.cluster === cluster.name).map(s => s.item) as Namespace[]
-
-            for(const namespace of clusterNamespaces) {
-              const output: ActionOutput = []
-              output.push([">>Namespace: "+namespace.name, ""])
-              const services = await K8sFunctions.getServices(cluster.name, namespace.name, cluster.k8sClient)
-              services.length === 0 && output.push(["", "No services found"])
-              services.forEach(service => {
-                output.push([service.name, {
-                  type: service.type,
-                  clusterIP: service.clusterIP,
-                  labels: service.labels,
-                  annotations: service.annotations,
-                  ports: service.ports,
-                  selector: service.selector
-                }])
-              })
-              this.onStreamOutput && this.onStreamOutput(output)
-            }
-          } else {
-            this.onStreamOutput && this.onStreamOutput([["", "Istio not installed"]])
+          let clusterNamespaces = selections.filter(s => s.cluster === cluster.name).map(s => s.item) as Namespace[]
+          for(const namespace of clusterNamespaces) {
+            const output: ActionOutput = []
+            output.push([">>Namespace: "+namespace.name, ""])
+            const services = await K8sFunctions.getServices(cluster.name, namespace.name, cluster.k8sClient)
+            services.length === 0 && output.push(["", "No services found"])
+            services.forEach(service => {
+              output.push([service.name, {
+                type: service.type,
+                clusterIP: service.clusterIP,
+                labels: service.labels,
+                annotations: service.annotations,
+                ports: service.ports,
+                selector: service.selector
+              }])
+            })
+            this.onStreamOutput && this.onStreamOutput(output)
           }
         }
         this.showOutputLoading && this.showOutputLoading(false)

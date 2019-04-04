@@ -1,7 +1,8 @@
+import K8sFunctions from '../k8s/k8sFunctions'
 import ChoiceManager from '../actions/choiceManager'
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
-import { PodDetails } from '../k8s/k8sObjectTypes';
+import { PodDetails, Namespace } from '../k8s/k8sObjectTypes';
 
 type ClusterNamespacePodsMap = {[cluster: string]: {[namespace: string]: PodDetails[]}}
 
@@ -15,46 +16,31 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 15,
       loadingMessage: "Loading Pods...",
 
-      choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 10, false, false),
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 10),
 
       async act(actionContext) {
         this.clear && this.clear(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
 
-        const selections = await ChoiceManager.getPodSelections(actionContext, true, false)
-        const podsMap : ClusterNamespacePodsMap = {}
-        for(const i in selections) {
-          const selection = selections[i]
-          const pod = selection.pod
-          const namespace = selection.namespace
-          const cluster = selection.cluster
-          const podDetails = selection.podContainerDetails as PodDetails
-        
-          !podsMap[cluster] && (podsMap[cluster] = {})
-          !podsMap[cluster][namespace] && (podsMap[cluster][namespace] = [])
-          podsMap[cluster][namespace].push(podDetails)
+
+        const clusters = actionContext.getClusters()
+        const selections = await ChoiceManager.getSelections(actionContext)
+        for(const cluster of clusters) {
+          this.onStreamOutput && this.onStreamOutput([[">Cluster: "+cluster.name, ""]])
+      
+          let clusterNamespaces = selections.filter(s => s.cluster === cluster.name).map(s => s.item) as Namespace[]
+          for(const namespace of clusterNamespaces) {
+            const output: ActionOutput = []
+            output.push([">>Namespace: "+namespace.name, ""])
+            const pods = await K8sFunctions.getAllPodsForNamespace(namespace.name, cluster.k8sClient)
+            pods.length === 0 && output.push(["No pods found"])
+            pods.forEach(pod => {
+              output.push([pod.name, ["Created: "+pod.creationTimestamp, 
+                            pod.conditions, pod.containerStatuses]])
+            })
+            this.onStreamOutput && this.onStreamOutput(output)
+          }
         }
-        const output: ActionOutput = []
-      
-        Object.keys(podsMap).forEach(cluster => {
-          output.push([">Cluster: "+cluster, ""])
-      
-          const namespaces = Object.keys(podsMap[cluster])
-          namespaces.forEach(namespace => {
-            output.push([">>Namespace: "+namespace, ""])
-      
-            const pods = podsMap[cluster][namespace]
-            if(pods.length === 0) {
-              output.push(["No pods selected", ])
-            } else {
-              pods.forEach(pod => {
-                output.push([pod.name, ["Created: "+pod.creationTimestamp, 
-                                        pod.conditions, pod.containerStatuses]])
-              })
-            }
-          })
-        })
-        this.onStreamOutput && this.onStreamOutput(output)
         this.showOutputLoading && this.showOutputLoading(false)
       },
       refresh(actionContext) {

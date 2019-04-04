@@ -137,6 +137,10 @@ export class Actions extends React.Component<IProps, IState> {
     return this.currentAction && this.currentAction.react ? true : false
   }
 
+  allowRefresh() : boolean {
+    return this.currentAction && this.currentAction.refresh ? true : false
+  }
+
   onActionTextInput = (text: string) => {
     if(this.currentAction && this.currentAction.react) {
       ActionLoader.actionContext.inputText = text
@@ -219,39 +223,41 @@ export class Actions extends React.Component<IProps, IState> {
               className={classes.filterInput}
           />
         </Paper>
-        {filteredActions.length > 0 && 
-          this.renderExpansionPanel("Matching Actions", filteredActions, true)
-        }
-        {actionGroupSpecs.map(actionGroupSpec => 
-          actionShowNoShow.get(actionGroupSpec.context || ActionContextType.Other) &&
-            this.renderExpansionPanel(actionGroupSpec.title||"", actionGroupSpec.actions)
-        )}
-        {this.currentAction && this.currentAction.refresh &&
-          <div>
-            <FormGroup row>
-              <FormControlLabel control={
-                  <Checkbox
-                    checked={this.state.autoRefresh}
-                    onChange={this.onAutoRefresh}
-                  />
-                }
-                label={"Auto Refresh: "}
-              />
-              <InputBase 
-                defaultValue={this.currentAction.autoRefreshDelay}
-                inputProps={{size: 2, maxLength: 2,}}
-                classes={{
-                  root: classes.refreshRoot,
-                  input: classes.refreshInput + " " + (invalidAutoRefreshDelay ? classes.invalidRefreshInput: "")
-                }}
-                onChange={this.onAutoRefreshChange}
-              />
-            </FormGroup>
-            <Typography style={{paddingTop: 0, paddingLeft: 35}}>
-              Last Refreshed: {this.lastRefreshed ? this.lastRefreshed.toISOString() : 'None'}
-            </Typography>
-          </div>
-        }
+        <div className={classes.root}>
+          {filteredActions.length > 0 && 
+            this.renderExpansionPanel("Matching Actions", filteredActions, true)
+          }
+          {actionGroupSpecs.map(actionGroupSpec => 
+            actionShowNoShow.get(actionGroupSpec.context || ActionContextType.Other) &&
+              this.renderExpansionPanel(actionGroupSpec.title||"", actionGroupSpec.actions)
+          )}
+          {this.currentAction && this.currentAction.refresh &&
+            <div>
+              <FormGroup row>
+                <FormControlLabel control={
+                    <Checkbox
+                      checked={this.state.autoRefresh}
+                      onChange={this.onAutoRefresh}
+                    />
+                  }
+                  label={"Auto Refresh: "}
+                />
+                <InputBase 
+                  defaultValue={this.currentAction.autoRefreshDelay}
+                  inputProps={{size: 2, maxLength: 2,}}
+                  classes={{
+                    root: classes.refreshRoot,
+                    input: classes.refreshInput + " " + (invalidAutoRefreshDelay ? classes.invalidRefreshInput: "")
+                  }}
+                  onChange={this.onAutoRefreshChange}
+                />
+              </FormGroup>
+              <Typography style={{paddingTop: 0, paddingLeft: 35}}>
+                Last Refreshed: {this.lastRefreshed ? this.lastRefreshed.toISOString() : 'None'}
+              </Typography>
+            </div>
+          }
+        </div>
       </MuiThemeProvider>  
     )
   }

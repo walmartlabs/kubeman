@@ -63,11 +63,8 @@ const plugin : ActionGroupSpec = {
                 continue
               }
               const sourceIngressPod = ingressPods[0]
-              const sourceIngressContainer = sourceIngressPod.podDetails && sourceIngressPod.podDetails.containers 
-                                              && sourceIngressPod.podDetails.containers.length > 0 ? 
-                                              sourceIngressPod.podDetails.containers[0].name : "istio-proxy"
-              const result = await K8sFunctions.podExec("istio-system", sourceIngressPod.name, 
-                              sourceIngressContainer, cluster.k8sClient, ["ping", "-c 2", destination])
+              const result = await K8sFunctions.podExec("istio-system", sourceIngressPod.name, "istio-proxy",
+                                                      cluster.k8sClient, ["ping", "-c 2", destination])
           
               const pingSuccess = result.includes("2 received")
               this.onStreamOutput && this.onStreamOutput([[

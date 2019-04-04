@@ -83,7 +83,7 @@ export default class ContextSelector extends React.Component<IProps, IState> {
     })
   }
 
-  selectClusters() {
+  showContextDialog() {
     this.setState({showClusters: true})
   }
 
@@ -103,20 +103,6 @@ export default class ContextSelector extends React.Component<IProps, IState> {
       this.selectNamespaces()
     } else {
       this.setState({showPods: true})
-    }
-  }
-
-  onKeyPress(event: KeyboardEvent) {
-    switch(event.which) {
-      case 99:
-        this.selectClusters()
-        break
-      case 110:
-        this.selectNamespaces()
-        break
-      case 112:
-        this.selectPods()
-        break
     }
   }
 

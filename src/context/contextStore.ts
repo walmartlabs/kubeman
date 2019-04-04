@@ -112,6 +112,7 @@ export default class Context {
   hasNamespaces: boolean = false
   hasPods: boolean = false
   selections: any[] = []
+  errorMessage: string = ''
 
   updateFlags() {
     this.hasClusters = this._clusters.size > 0

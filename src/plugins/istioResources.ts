@@ -16,7 +16,14 @@ export async function listResources(type: string, getResources: (k8sClient) => P
     output.push([">"+type+" @ Cluster: " + cluster.name, ""])
 
     if(cluster.hasIstio) {
-      const resources = await getResources(cluster.k8sClient)
+      const resources = (await getResources(cluster.k8sClient)).map(r => {
+        return {
+          name: r.name,
+          namespace: r.namespace,
+          creationTimestamp: r.creationTimestamp,
+          yaml: r.yaml
+        }
+      })
       resources.length === 0 && output.push(["", "No resource found"])
       resources.forEach(resource => {
         output.push([">>" + (resource.name || ""), ""])
@@ -51,24 +58,32 @@ const plugin : ActionGroupSpec = {
       }
     },
     {
-      name: "List DestinationRules",
-      order: 13,
-      act(actionContext) {
-        this.onOutput && this.onOutput([["", "Istio VirtualServices List"]], ActionOutputStyle.Table)
-        listResources("VirtualServices", IstioFunctions.listAllDestinationRules, this.onStreamOutput, actionContext)
-      }
-    },
-    {
       name: "List ServiceEntries",
-      order: 14,
+      order: 13,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Istio ServiceEntries List"]], ActionOutputStyle.Table)
         listResources("ServiceEntries", IstioFunctions.listAllServiceEntries, this.onStreamOutput, actionContext)
       }
     },
     {
-      name: "List Policies",
+      name: "List Sidecar Resources",
+      order: 14,
+      act(actionContext) {
+        this.onOutput && this.onOutput([["", "Istio Sidecar Resource List"]], ActionOutputStyle.Table)
+        listResources("Sidecars", IstioFunctions.listAllSidecarResources, this.onStreamOutput, actionContext)
+      }
+    },
+    {
+      name: "List DestinationRules",
       order: 15,
+      act(actionContext) {
+        this.onOutput && this.onOutput([["", "Istio VirtualServices List"]], ActionOutputStyle.Table)
+        listResources("VirtualServices", IstioFunctions.listAllDestinationRules, this.onStreamOutput, actionContext)
+      }
+    },
+    {
+      name: "List Policies",
+      order: 16,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Istio Policies List"]], ActionOutputStyle.Table)
         listResources("Policies", IstioFunctions.listAllPolicies, this.onStreamOutput, actionContext)
@@ -76,7 +91,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "List MeshPolicies",
-      order: 16,
+      order: 17,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Istio MeshPolicies List"]], ActionOutputStyle.Table)
         listResources("MeshPolicies", IstioFunctions.listAllMeshPolicies, this.onStreamOutput, actionContext)
@@ -84,29 +99,12 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "List Rules",
-      order: 17,
+      order: 18,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Istio Rules List"]], ActionOutputStyle.Table)
         listResources("Rules", IstioFunctions.listAllRules, this.onStreamOutput, actionContext)
       }
     },
-    {
-      name: "Istio CRD Resource Instances",
-      order: 20,
-      loadingMessage: "Loading CRDs...",
-
-      choose: IstioPluginHelper.chooseIstioCRDs.bind(IstioPluginHelper, 1, 10),
-
-      async act(actionContext) {
-        const selections = await ChoiceManager.getSelections(actionContext)
-        const resources = selections.map(s =>  s.name.split(".")[0])
-        this.onOutput && this.onOutput([["Istio Resources:", resources.join(", ")]], ActionOutputStyle.Table)
-        for(const i in selections) {
-          await listResources(resources[i], IstioFunctions.listAnyResource.bind(IstioFunctions, resources[i]), 
-                            this.onStreamOutput, actionContext, selections[i].cluster)
-        }
-      }
-    }
   ]
 }
 

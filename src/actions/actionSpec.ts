@@ -25,7 +25,8 @@ export enum ActionOutputStyle {
   Table = "Table",
   TableWithHealth = "TableWithHealth",
   Compare = "Compare",
-  Log = "Log"
+  Log = "Log",
+  LogWithHealth = "LogWithHealth",
 }
 
 export interface Choice {

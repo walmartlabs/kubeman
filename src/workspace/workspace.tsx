@@ -177,18 +177,13 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     this.setState({loading: true, loadingMessage, outputStyle: ActionOutputStyle.None})
   }
 
+  showContextDialog = () => {
+    this.refs.contextSelector && this.refs.contextSelector.showContextDialog()
+  }
+
   onUpdateContext = (context: Context) => {
-    this.setState({context: context})
-  }
-
-  onKeyPress = (event: KeyboardEvent) => {
-    const { contextSelector } = this.refs
-    contextSelector && contextSelector.onKeyPress(event)
-  }
-
-  onSelectCluster = () => {
-    const { contextSelector } = this.refs
-    contextSelector && contextSelector.selectClusters()
+    this.streamOutput = []
+    this.setState({context: context, output: []})
   }
 
   render() {
@@ -199,24 +194,23 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
           showInfo, infoTitle, info } = this.state;
 
     const showBlackBox = outputStyle === ActionOutputStyle.Text
-    const log = outputStyle === ActionOutputStyle.Log
-    const health = outputStyle === ActionOutputStyle.TableWithHealth
+    const log = outputStyle === ActionOutputStyle.Log || outputStyle === ActionOutputStyle.LogWithHealth
+    const health = outputStyle === ActionOutputStyle.TableWithHealth || outputStyle === ActionOutputStyle.LogWithHealth
     const compare = outputStyle === ActionOutputStyle.Compare
-    const acceptInput = this.actions && this.actions.acceptInput() ? true : false
+    const acceptInput = this.actions ? this.actions.acceptInput() : false
+    const allowRefresh = this.actions ? this.actions.allowRefresh() : false
     const accumulatedOutput = (output as any[]).concat(this.streamOutput)
         
     return (
-      <div className={classes.root} 
-            tabIndex={0}
-            //onKeyPress={this.onKeyPress.bind(this)}
-      >
+      <div className={classes.root} tabIndex={0}>
         <Table className={classes.table}>
           <TableBody>
             <TableRow className={classes.upperRow}>
               <TableCell colSpan={2} className={classes.contextCell}>
                 <ContextPanel context={context} 
                     onUpdateContext={this.onUpdateContext}
-                    onSelectContext={this.onSelectCluster} />
+                    onSelectContext={this.showContextDialog} 
+                    />
               </TableCell>
             </TableRow>
             <TableRow className={classes.lowerRow}>
@@ -254,6 +248,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                                   log={log}
                                   health={health}
                                   acceptInput={acceptInput}
+                                  allowRefresh={allowRefresh}
                                   scrollMode={scrollMode}
                                   onActionTextInput={this.onActionTextInput}
                     />
@@ -272,6 +267,9 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                   }
                   label="Dark Theme"
                 />
+                <div className={classes.statusMessage}>
+                  {context.errorMessage}
+                </div>
               </TableCell>
             </TableRow>
           </TableBody>

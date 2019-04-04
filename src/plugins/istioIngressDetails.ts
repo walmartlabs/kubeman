@@ -38,9 +38,9 @@ const plugin : ActionGroupSpec = {
                                       || c.name === 'ingressgateway')[0]
           output.push(["Labels", podTemplate.labels])
           output.push(["Istio-Proxy Container", istioProxyContainer])
-          const istioSDSContainer = podTemplate.containers.filter(c => c.name === "ingress-sds")
+          const istioSDSContainer = podTemplate.containers.filter(c => c.name === "ingress-sds")[0]
 
-          if(istioSDSContainer.length > 0) {
+          if(istioSDSContainer) {
             output.push(["SDS Container", istioSDSContainer])
           }
           const ingressService = (await IstioFunctions.getIstioServiceDetails("istio=ingressgateway", k8sClient))[0]

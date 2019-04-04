@@ -103,6 +103,7 @@ export class ActionLoader {
   static bindActions(actionGroupSpec: ActionGroupSpec) {
     actionGroupSpec.actions.forEach(action => {
       action.context = actionGroupSpec.context
+      action.actionContext = this.actionContext
       if(!isActionSpec(action)) {
         console.log("Not ActionSpec: " + JSON.stringify(action))
       } else {
@@ -136,13 +137,17 @@ export class ActionLoader {
           action.stopped = true
           stop && stop()
         }
-        if(action.react || action.clear) {
-          const actionReact = action.react && action.react.bind(action)
-          const commands: string[] = [
-            "/c(lear): clears output",
-            "/h(elp): shows help"
-          ]
-          action.refresh && commands.push("/r(efresh): refresh output now")
+        const actionClear = action.clear && action.clear.bind(action)
+        actionClear && (action.clear = () => actionClear(this.actionContext))
+        const actionReact = action.react && action.react.bind(action)
+
+        const commands: string[] = [
+          "/h(elp): shows help"
+        ]
+        actionClear && commands.push("/c(lear): clears output")
+        actionRefresh && commands.push("/r(efresh): refresh output now")
+        
+        if(actionReact || actionRefresh || actionClear) {
           const boundReact = action.react = () => {
             switch(this.actionContext.inputText) {
               case "help":
@@ -151,7 +156,7 @@ export class ActionLoader {
                 break
               case "clear":
               case "c":
-                action.clear && action.clear(this.actionContext)
+                actionClear && actionClear(this.actionContext)
                 break
               case "refresh":
               case "r":

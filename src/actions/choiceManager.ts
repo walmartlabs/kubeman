@@ -24,6 +24,7 @@ export interface PodSelection {
 }
 
 export default class ChoiceManager {
+  static clearSelectionsDelay = 600000
   static items: StringStringArrayMap = {}
   static useNamespace: boolean = true
   static showChoiceSubItems: boolean = true
@@ -39,7 +40,7 @@ export default class ChoiceManager {
       this.useNamespace = true
       this.cacheKey = undefined
       this.clearItemsTimer = undefined
-    }, 300000)
+    }, this.clearSelectionsDelay)
   }
 
   static createChoices(items, namespace, cluster, ...fields) {
@@ -196,13 +197,13 @@ export default class ChoiceManager {
     return actionContext.getSelections().map(selection => selection.data)
   }
 
-  static async chooseClusters(actionContext: ActionContext) {
+  static async chooseClusters(actionContext: ActionContext, min: number = 2, max: number = 3) {
     const clusters = actionContext.getClusters()
     const context = actionContext.context
     const getCluster = async (cluster) => [context && context.cluster(cluster)]
-    if(clusters.length > 3) {
+    if(clusters.length > max) {
       ChoiceManager.showChoiceSubItems = false
-      await ChoiceManager.prepareChoices(actionContext, getCluster, "Clusters", 2, 3, false, "name")
+      await ChoiceManager.prepareChoices(actionContext, getCluster, "Clusters", min, max, false, "name")
       ChoiceManager.showChoiceSubItems = true
     } else {
       const selections = await ChoiceManager.storeItems(actionContext, getCluster, false, "name")
@@ -221,11 +222,11 @@ export default class ChoiceManager {
       async (cluster, namespace,k8sClient) => {
         return K8sFunctions.getClusterCRDs(k8sClient)
       }, "CRDs", min, max, false, "name")
-}
+  }
 
-  static async chooseNamespaces(unique: boolean = false, min: number = 1, max: number = 5, actionContext: ActionContext) {
-    const clusters = actionContext.getClusters()
-    let namespaces = actionContext.getNamespaces()
+  static async _chooseNamespaces(clusters: Cluster[], unique: boolean, min: number, max: number, actionContext: ActionContext) {
+    const clusterNames = clusters.map(c => c.name)
+    let namespaces = actionContext.getNamespaces().filter(ns => clusterNames.includes(ns.cluster.name))
     let namespaceNames: string[] = []
     const uniqueFilter = ns => {
       if(namespaceNames.includes(ns.name)) {
@@ -264,6 +265,15 @@ export default class ChoiceManager {
       actionContext.context && (actionContext.context.selections = selections)
       actionContext.onSkipChoices && actionContext.onSkipChoices()
     }
+  }
+  
+  static async chooseNamespaces(unique: boolean, min: number, max: number, actionContext: ActionContext) {
+    return ChoiceManager._chooseNamespaces(actionContext.getClusters(), unique, min, max, actionContext)
+  }
+
+  static async chooseNamespacesWithIstio(unique: boolean = false, min: number = 1, max: number = 5, actionContext: ActionContext) {
+    const clusters = actionContext.getClusters().filter(c => c.hasIstio)
+    return ChoiceManager._chooseNamespaces(clusters, unique, min, max, actionContext)
   }
 
   static async choosePod(min: number = 1, max: number = 1, chooseContainers: boolean = false, 

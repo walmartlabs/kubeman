@@ -93,6 +93,7 @@ export class Cell {
   isLog: boolean = false
   isGroup: boolean = false
   isSubGroup: boolean = false  
+  isSection: boolean = false
   isHealthStatusField: boolean = false
   isMatched: boolean = false
   isFiltered: boolean = false
@@ -104,7 +105,7 @@ export class Cell {
   
   constructor(content: CellContent, index:number, formattedContent?: CellContent, 
               appliedFilters?: string[],
-              isGroup?: boolean, isSubGroup?: boolean, 
+              isGroup?: boolean, isSubGroup?: boolean, isSection?: boolean,
               isHealthStatusField?: boolean, isLog?: boolean) {
     this.index = index
     this.isText = jsonUtil.isText(content)
@@ -146,6 +147,7 @@ export class Cell {
     }
     this.isGroup = isGroup || false
     this.isSubGroup = isSubGroup || false
+    this.isSection = isSection || false
     this.isHealthStatusField = isHealthStatusField || false
   }
 
@@ -221,19 +223,21 @@ export class Cell {
                               jsonUtil.isObject(this.content[i]) || jsonUtil.isArray(this.content[i])), i)
         })
     } else {
-      return renderer(this.isGroup || this.isSubGroup ? this.groupText 
-            : this.formatText(this.formattedContent, this.isJSON), 0)
+      return renderer((this.isGroup || this.isSubGroup || this.isSection) ? this.groupText 
+                      : this.formatText(this.formattedContent, this.isJSON), 0)
     }
   }
 
   get groupText() {
-    let groupTitle = this.isText ? this.formattedContent as string : ""
-    if(this.isGroup && groupTitle.charAt(0) === '>') {
-      groupTitle = groupTitle.slice(1)
-    } else if(this.isSubGroup && groupTitle.substring(0,2) === '>>') {
-      groupTitle = groupTitle.slice(2)
+    let text = this.isText ? this.formattedContent as string : ""
+    if(this.isGroup && text.charAt(0) === '>') {
+      text = text.slice(1)
+    } else if(this.isSubGroup && text.substring(0,2) === '>>') {
+      text = text.slice(2)
+    } else if(this.isSection && text.substring(0,3) === '>>>') {
+      text = text.slice(3)
     }
-    return groupTitle
+    return text
   }
 
   matches(otherCell: Cell) {
@@ -270,9 +274,15 @@ export class Row {
   isLog: boolean = false
   isFirstAppendedRow: boolean = false
   groupIndex: number = 0
+  subGroupIndex: number = 0
+  sectionIndex: number = 0
+  children: Row[] = []
+  isEmpty: boolean = false
   isHidden: boolean = false
+  isMatched: boolean = false
   matchedColumns: Set<number> = new Set
   columnsDiffer: boolean = false
+  headersCount: number = 0
 
   private content: CellContent[]
   private healthColumnIndex?: number
@@ -280,27 +290,42 @@ export class Row {
   private appliedFilters: string[] = []
   private _isGroup: boolean = false
   private _isSubgroup: boolean = false
+  private _isSection: boolean = false
 
-  constructor(index: number, content: CellContent[], groupIndex: number, 
-              healthColumnIndex?: number, isLog?: boolean, 
+  constructor(index: number, content: CellContent[], 
+              groupIndex: number, subGroupIndex: number, sectionIndex: number,
+              headersCount: number, healthColumnIndex?: number, isLog?: boolean, 
               formattedContent?: CellContent[], appliedFilters?: string[]) {
     this.index = index
     this.content = content
     this.groupIndex = groupIndex
+    this.subGroupIndex = subGroupIndex
+    this.sectionIndex = sectionIndex
+    this.headersCount = headersCount
     this.isLog = isLog || false 
     this.appliedFilters = appliedFilters || []
-    if(content) {
-      this._isSubgroup = content.length > 0 && content[0].toString().startsWith(">>") || false
-      this._isGroup = !this._isSubgroup && content[0].toString().startsWith(">") || false
-
+    if(!(content instanceof Array)) {
+      content = [content]
+    }
+    this.isEmpty = !content || content.length === 0 || content.filter(c => c && c.toString().length > 0).length === 0
+    if(!this.isEmpty) {
+      this._isSection = content[0].toString().startsWith(">>>") || false
+      this._isSubgroup = !this._isSection && content[0].toString().startsWith(">>") || false
+      this._isGroup = !this._isSection && !this._isSubgroup && content[0].toString().startsWith(">") || false
+      if(this.isGroupOrSubgroupOrSection && content.length < headersCount) {
+        for(let i = content.length; i < headersCount; i++) {
+          content.push("")
+        }
+      }
       this.cells = content.map((cellContent, cellIndex) => 
-          new Cell(cellContent, cellIndex,  
-            formattedContent ? formattedContent[cellIndex] : undefined,
-            this.appliedFilters,
-            this.isGroup, this.isSubGroup,
-            healthColumnIndex ? healthColumnIndex === cellIndex : false,
-            isLog || false
-            ))
+        new Cell(cellContent, cellIndex,  
+          formattedContent ? formattedContent[cellIndex] : undefined,
+          this.appliedFilters,
+          this.isGroup, this.isSubGroup, this._isSection,
+          healthColumnIndex ? healthColumnIndex === cellIndex : false,
+          isLog || false
+          ))
+          
       this.healthColumnIndex = healthColumnIndex
       this.firstColumn = this.cells.length > 0 ? this.cells[0] : undefined
       this.checkColumnsDiffer()
@@ -319,8 +344,8 @@ export class Row {
     }
   }
 
-  get isGroupOrSubgroup() : boolean {
-    return this._isGroup || this._isSubgroup
+  get isGroupOrSubgroupOrSection() : boolean {
+    return this._isGroup || this._isSubgroup || this._isSection
   }
 
   get isGroup() : boolean {
@@ -329,6 +354,10 @@ export class Row {
 
   get isSubGroup() : boolean {
     return this._isSubgroup && !this._isGroup
+  }
+
+  get isSection() : boolean {
+    return this._isSection
   }
 
   get groupText() : string {
@@ -340,30 +369,40 @@ export class Row {
   }
 
   clearFilter() {
+    this.isHidden = false
+    this.isMatched = false
     this.appliedFilters = []
     this.matchedColumns.clear()
     this.cells.forEach(cell => cell.clearFilter())
   }
 
   filter(filterGroups: string[][]) : boolean {
-    if(this.isGroup || this.isSubGroup) {
+    const matchedFilters : Set<String> = new Set
+    this.appliedFilters = []
+    this.isMatched = false
+    if(this.isGroupOrSubgroupOrSection) {
+      filterGroups.forEach(filters => {
+        this.cells[0].match(filters).forEach(filter => matchedFilters.add(filter))
+        const rowMatched = matchedFilters.size === filters.length
+        if(rowMatched) {
+          this.appliedFilters = this.appliedFilters.concat(filters).filter(filter => filter.length > 0)
+          this.isMatched = true
+        }
+      })
       return true
     } else {
-      this.appliedFilters = []
       this.matchedColumns.clear()
-      let anyMatched = false, allMatched = false
       filterGroups.forEach(filters => {
-        const matchedFilters : Set<String> = new Set
         this.cells.map(cell => cell.match(filters)).forEach(matchingFilters => 
                         matchingFilters.forEach(filter => matchedFilters.add(filter)))
         const rowMatched = matchedFilters.size === filters.length
         if(rowMatched) {
           this.appliedFilters = this.appliedFilters.concat(filters).filter(filter => filter.length > 0)
           this.cells.forEach((cell, index) => cell.isMatched && this.matchedColumns.add(index))
+          this.isMatched = true
         }
-        anyMatched = anyMatched || rowMatched
       })
-      return anyMatched
+      return this.isMatched
     }
   }
 
@@ -376,7 +415,8 @@ export class Row {
       rowChanged = rowChanged || newCellData[1]
     })
     if(rowChanged) {
-      return [new Row(this.index, this.content, this.groupIndex, this.healthColumnIndex, 
+      return [new Row(this.index, this.content, this.groupIndex, this.subGroupIndex, 
+                      this.sectionIndex, this.headersCount, this.healthColumnIndex,
                       this.isLog, formattedCellContent, this.appliedFilters), true]
     } else {
       return [this, false]
@@ -388,23 +428,49 @@ export default class OutputManager {
   headers: any[] = []
   rows: Row[] = []
   filteredRows: Row[] = []
-  healthColumnIndex: number = -1
-  appliedFilters: string[][] = []
   matchedColumns: Set<number> = new Set
-  isLog: boolean = false
-  groupCount: number = 0
+
+  private healthColumnIndex: number = -1
+  private appliedFilters: string[][] = []
+  private isLog: boolean = false
+  private groupCount: number = 0
+  private subGroupCount: number = 0
+  private sectionCount: number = 0
+
+  private lastGroupRow?: Row
+  private lastSubGroupRow?: Row
+  private lastSectionRow?: Row
+  private lastGroupVisibleCount: number = 0
+  private lastSubGroupVisibleCount: number = 0
+  private lastSectionVisibleCount: number = 0
 
   setOutput(output: ActionOutput, isLog: boolean) {
+    this.clearContent()
     this.isLog = isLog || false
     this.headers = output && output.length > 0 ? output.slice(0, 1)[0] : []
     this.identifyHealthColumn()
     this.groupCount = 0
+    this.subGroupCount = 0
+    this.sectionCount = 0
+    let currentGroup, currentSubGroup, currentSection
     this.rows = 
       output && output.length > 0 ? 
         output.slice(1).map((content, rowIndex) => {
-          const row = new Row(rowIndex, content, this.groupCount, this.healthColumnIndex, this.isLog)
+          const row = new Row(rowIndex, content, this.groupCount, this.subGroupCount, this.sectionCount, 
+                                  this.headers.length, this.healthColumnIndex, this.isLog)
           if(row.isGroup) {
+            currentGroup = row
             row.groupIndex = ++this.groupCount
+          } else if(row.isSubGroup) {
+            currentSubGroup = row
+            row.subGroupIndex = ++this.subGroupCount
+          } else if(row.isSection) {
+            currentSection = row
+            row.sectionIndex = ++this.sectionCount
+          } else {
+            currentGroup && currentGroup.children.push(row)
+            currentSubGroup && currentSubGroup.children.push(row)
+            currentSection && currentSection.children.push(row)
           }
           return row
         }) : []
@@ -415,11 +481,24 @@ export default class OutputManager {
     let lastRowIndex = this.rows.length-1
     this.rows.forEach(row => row.isFirstAppendedRow = false)
     let isFirstAppendedRow = false
+    let currentGroup, currentSubGroup, currentSection
     rows.forEach(rowContent => {
       lastRowIndex++
-      const row = new Row(lastRowIndex, rowContent, this.groupCount, this.healthColumnIndex, this.isLog)
+      const row = new Row(lastRowIndex, rowContent, this.groupCount, this.subGroupCount, this.sectionCount,
+                                this.headers.length, this.healthColumnIndex, this.isLog)
       if(row.isGroup) {
+        currentGroup = row
         row.groupIndex = ++this.groupCount
+      } else if(row.isSubGroup) {
+        currentSubGroup = row
+        row.subGroupIndex = ++this.subGroupCount
+      } else if(row.isSection) {
+        currentSection = row
+        row.sectionIndex = ++this.sectionCount
+      } else {
+        currentGroup && currentGroup.children.push(row)
+        currentSubGroup && currentSubGroup.children.push(row)
+        currentSection && currentSection.children.push(row)
       }
       this.rows.push(row)
       if(!isFirstAppendedRow) {
@@ -428,9 +507,15 @@ export default class OutputManager {
       if(this.appliedFilters.length === 0) {
         this.filteredRows.push(row)
       } else if(row.filter(this.appliedFilters)) {
-        const [highlightedRow, rowChanged] = row.highlightFilters()
-        this.filteredRows.push(highlightedRow)
-        row.matchedColumns.forEach(index  => this.matchedColumns.add(index))
+        this.reprocessFilteredRow(row)
+        this.lastGroupRow && this.showeHideParentRow(this.lastGroupRow, this.lastGroupVisibleCount)
+        this.lastSubGroupRow && this.showeHideParentRow(this.lastSubGroupRow, this.lastSubGroupVisibleCount)
+        this.lastSectionRow && this.showeHideParentRow(this.lastSectionRow, this.lastSectionVisibleCount)
+        if(row.isMatched) {
+          row.matchedColumns.forEach(index  => this.matchedColumns.add(index))
+          this.filteredRows = this.rows.filter(row => row.isMatched)
+          this.highlightFilter()
+        }
       }
     })
   }
@@ -438,9 +523,13 @@ export default class OutputManager {
   clearContent() {
     this.appliedFilters = this.headers = this.rows = this.filteredRows = []
     this.healthColumnIndex = -1
-    this.matchedColumns = new Set
+    this.matchedColumns.clear()
     this.isLog = false
-    this.groupCount = 0
+    this.groupCount = this.subGroupCount = this.sectionCount = 0
+    this.lastGroupRow = undefined
+    this.lastSubGroupRow = undefined
+    this.lastSectionRow = undefined
+    this.lastGroupVisibleCount = this.lastSubGroupVisibleCount = this.lastSectionVisibleCount = 0
   }
 
   private identifyHealthColumn() {
@@ -461,6 +550,11 @@ export default class OutputManager {
     this.rows.forEach(row => row.clearFilter())
     this.filteredRows = this.rows.concat()
     this.matchedColumns.clear()
+    this.groupCount = this.subGroupCount = this.sectionCount = 0
+    this.lastGroupRow = undefined
+    this.lastSubGroupRow = undefined
+    this.lastSectionRow = undefined
+    this.lastGroupVisibleCount = this.lastSubGroupVisibleCount = this.lastSectionVisibleCount = 0
   }
 
   get hasContent() {
@@ -480,14 +574,48 @@ export default class OutputManager {
                   .map(group => group.trim().split(" ").filter(word => word.trim().length > 0))
                   .filter(word => word.length > 0)
 
-    if(filters.length === 0) {
-      this.clearFilter()
-    } else {
+    this.clearFilter()
+    if(filters.length > 0) {
       this.appliedFilters = filters
-      this.filteredRows = this.rows.filter((row,i) => row.filter(filters))
-      this.matchedColumns.clear()
-      this.filteredRows.forEach(row => row.matchedColumns.forEach(index  => this.matchedColumns.add(index)))
+      const filteredRows = this.rows.filter(row => row.filter(filters))
+      filteredRows.forEach(row => this.reprocessFilteredRow(row))
+      this.lastGroupRow && this.showeHideParentRow(this.lastGroupRow, this.lastGroupVisibleCount)
+      this.lastSubGroupRow && this.showeHideParentRow(this.lastSubGroupRow, this.lastSubGroupVisibleCount)
+      this.lastSectionRow && this.showeHideParentRow(this.lastSectionRow, this.lastSectionVisibleCount)
+      this.filteredRows = this.rows.filter(row => row.isMatched)
       this.highlightFilter()
+    }
+  }
+
+  private reprocessFilteredRow(row: Row) {
+    row.matchedColumns.forEach(index  => this.matchedColumns.add(index))
+    if(row.isGroup) {
+      this.lastGroupRow && this.showeHideParentRow(this.lastGroupRow, this.lastGroupVisibleCount)
+      this.lastGroupRow = row
+      this.lastGroupVisibleCount = 0
+    } else if(row.isSubGroup) {
+      this.lastSubGroupRow && this.showeHideParentRow(this.lastSubGroupRow, this.lastSubGroupVisibleCount)
+      this.lastSubGroupRow = row
+      this.lastSubGroupVisibleCount = 0
+    } else if(row.isSection) {
+      this.lastSectionRow && this.showeHideParentRow(this.lastSectionRow, this.lastSectionVisibleCount)
+      this.lastSectionRow = row
+      this.lastSectionVisibleCount = 0
+    } else if(row.isMatched) {
+      this.lastGroupRow && this.lastGroupVisibleCount++
+      this.lastSubGroupRow && this.lastSubGroupVisibleCount++
+      this.lastSectionRow && this.lastSectionVisibleCount++
+    }
+  }
+
+  private showeHideParentRow(parentRow, visibleCount) {
+    if(visibleCount > 0) {
+      parentRow.isMatched = true
+    } else if(parentRow.isMatched) {
+      parentRow.children.forEach(c => {
+        c.isMatched = true
+        c.isHidden = true
+      })
     }
   }
 
@@ -504,8 +632,27 @@ export default class OutputManager {
     return this.rows.filter(row => row.groupIndex === groupIndex)
   }
 
+  getRowsForSubGroup(subGroupIndex: number) {
+    return this.rows.filter(row => row.subGroupIndex === subGroupIndex)
+  }
+
   showeHideGroup(groupIndex: number) {
-    this.rows.filter(row => row.groupIndex === groupIndex)
+    let anyHidden: boolean = false
+    let anyVisible: boolean = false
+    this.filteredRows.filter(row => row.groupIndex === groupIndex)
+      .filter((row,index) => index > 0 && !row.isSubGroup)
+      .map(row => {
+        anyHidden = anyHidden || row.isHidden
+        anyVisible = anyVisible || !row.isHidden
+        return row
+      })
+      .forEach(row => {
+        row.isHidden = (anyVisible && anyHidden) ? false : !row.isHidden
+      })
+  }
+
+  showeHideSubGroup(subGroupIndex: number) {
+    this.filteredRows.filter(row => row.subGroupIndex === subGroupIndex)
       .filter((row,index) => index > 0)
       .forEach(row => row.isHidden = !row.isHidden)
   }

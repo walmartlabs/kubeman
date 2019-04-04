@@ -106,14 +106,13 @@ export const selectionDialogTheme = new SelectionDialogTheme
 
 class ActionsTheme {
   getTheme(useDarkTheme: boolean): ThemeOptions {
-    const panelColor = useDarkTheme ? 'linear-gradient(45deg, #0039b3 30%, #0049e6 99%)' :
-                            'linear-gradient(45deg, #003099 50%, #2e0099 99%)'
+    const panelColor = 'linear-gradient(45deg, #003099 50%, #2e0099 99%)'
 
     return Object.assign({}, appTheme.activeTheme, {
       overrides: {
         MuiExpansionPanelSummary: {
           root: {
-            background: panelColor,
+            backgroundColor: '#003099',
             color: 'white !important',
             margin: 0,
             minHeight: '40px !important',

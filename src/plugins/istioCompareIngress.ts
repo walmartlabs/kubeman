@@ -10,7 +10,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Compare Ingress",
-      order: 11,
+      order: 12,
       comparisonMap: {},
       
       choose: ChoiceManager.chooseClusters,

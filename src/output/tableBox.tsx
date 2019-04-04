@@ -20,7 +20,9 @@ interface ITableCellProps extends WithStyles<typeof styles> {
 function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, compare: boolean, 
                           health: boolean, log: boolean, classes: any) : string {
   let className = classes.tableCell
-  if(!cell.isGroup && !cell.isSubGroup ) {
+  if(cell.isGroup || cell.isSubGroup || cell.isSection) {
+    className += " " + classes.tableGroupCell
+  } else {
     if(isKeyColumn) {
       className = className + " " + classes.tableKeyCell
     }
@@ -30,7 +32,7 @@ function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, 
     if(!isKeyColumn && compare) {
       className = className + " " + classes.tableCellCompare
     }
-    if(health && !isKeyColumn && !compare && !log && !cell.isMatched && cell.isHealthStatusField) {
+    if(health && !isKeyColumn && !compare && !cell.isMatched && cell.isHealthStatusField) {
       className = className + " " + (cell.isHealthy ? classes.tableCellHealthGood : 
                       cell.isUnhealthy ? classes.tableCellHealthBad : classes.tableCell)
     } 
@@ -81,6 +83,7 @@ interface IProps extends WithStyles<typeof styles> {
   log: boolean
   health: boolean
   acceptInput: boolean
+  allowRefresh: boolean
   scrollMode: boolean
   onActionTextInput: (text: string) => void
 }
@@ -131,7 +134,7 @@ export class TableBox extends React.Component<IProps, IState> {
   }
 
   isFilterInput(text: string) : boolean {
-    return !this.props.acceptInput || !text.startsWith("/")
+    return !((this.props.acceptInput || this.props.allowRefresh) && text.startsWith("/"))
   }
 
   filter = () => {
@@ -194,6 +197,13 @@ export class TableBox extends React.Component<IProps, IState> {
     }
   }
 
+  onSubGroupClick = (subGroupIndex?: number) => {
+    if(subGroupIndex) {
+      this.outputManager.showeHideSubGroup(subGroupIndex)
+      this.forceUpdate()
+    }
+  }
+
   renderGroupRow(row: Row, rowIndex: number) {
     const {classes} = this.props
     const components : any[] = []
@@ -202,14 +212,21 @@ export class TableBox extends React.Component<IProps, IState> {
       cell.hasContent ? colspans.push(1) : colspans[colspans.length-1]++
     })
 
-    rowIndex > 0 && components.push(
-      <TableRow key={rowIndex+".pre"} className={classes.tableGroupRow}>
-      </TableRow>
-    )
+    if(!row.isSection) {
+      rowIndex > 0 && components.push(
+        <TableRow key={rowIndex+".pre"} className={classes.tableGroupRowSpacer}>
+        </TableRow>
+      )
+    }
     components.push(
       <TableRow key={rowIndex+".group"} 
-                className={row.isGroup ? classes.tableGroupRow : classes.tableSubgroupRow}
-                onClick={this.onGroupClick.bind(this, row.isGroup ? row.groupIndex : undefined)}
+                className={row.isGroup ? classes.tableGroupRow : 
+                           row.isSubGroup ? classes.tableSubgroupRow : classes.tableSectionRow }
+                onClick={
+                  row.isGroup ? this.onGroupClick.bind(this, row.groupIndex) :
+                  row.isSubGroup ? this.onSubGroupClick.bind(this, row.subGroupIndex)
+                  : undefined
+                }
       >
         {row.cells.filter(cell => cell.hasContent)
           .map((cell,i) => {
@@ -226,10 +243,12 @@ export class TableBox extends React.Component<IProps, IState> {
         }
       </TableRow>
     )
-    components.push(
-      <TableRow key={rowIndex+".space"} className={classes.tableRowSpacer}>
-      </TableRow>
-    )
+    if(!row.isSection) {
+      components.push(
+        <TableRow key={rowIndex+".space"} className={classes.tableRowSpacer}>
+        </TableRow>
+      )
+    }
     return components
   }
 
@@ -239,8 +258,8 @@ export class TableBox extends React.Component<IProps, IState> {
     const components : any[] = []
     components.push(
       <TableRow key={rowIndex} 
-                className={classes.tableRow + " " + 
-                (isAppendedRow && this.props.scrollMode ? classes.tableAppendedRow : "")} >
+        className={row.isEmpty ? classes.tableEmptyRow : 
+                    classes.tableRow + " " + (isAppendedRow && this.props.scrollMode ? classes.tableAppendedRow : "")} >
       {row.cells.map((cell, ci) => {
         const isKeyColumn = cell.isFirstColumn && row.columnCount > 1
         const cellClass = computeCellClass(cell, isKeyColumn, highlight, compare, health, log, classes)
@@ -313,7 +332,7 @@ export class TableBox extends React.Component<IProps, IState> {
   }
 
   render() {
-    const {classes, acceptInput} = this.props
+    const {classes, acceptInput, allowRefresh} = this.props
 
     if(!this.outputManager.hasContent) {
       return <div/>
@@ -321,10 +340,17 @@ export class TableBox extends React.Component<IProps, IState> {
 
     const rows = this.outputManager.filteredRows
     const columnCount = this.outputManager.headers.length
-    const inputMessage = "Type to filter results" + 
-                        (acceptInput ? ", or enter /<command> (enter /help to see commands)" : "")
+    let inputMessage = "Type to filter results"
+    if(acceptInput || allowRefresh) {
+      inputMessage += ", or enter"
+      acceptInput && (inputMessage += " /<input>")
+      acceptInput && allowRefresh && (inputMessage += " or")
+      allowRefresh && (inputMessage += " /r")
+      inputMessage += " (enter /help to see available commands)"
+    }
     let hiddenIndicatorShown = false
     let parentIsGroup = false
+    let parentIsSubGroup = false
     let isAppendedRow = false
 
     return (
@@ -350,10 +376,15 @@ export class TableBox extends React.Component<IProps, IState> {
                   <Table className={classes.table}>
                     <TableBody>
                       {rows.map((row, index) => {
-                        if(row.isGroupOrSubgroup) {
+                        if(row.isGroupOrSubgroupOrSection) {
                           hiddenIndicatorShown = false
-                          parentIsGroup = row.isGroup && !row.isSubGroup
-                          return this.renderGroupRow(row, index)
+                          parentIsGroup = parentIsGroup || row.isGroup
+                          parentIsSubGroup = parentIsSubGroup || row.isSubGroup
+                          if(!row.isHidden || row.isGroup) {
+                            return this.renderGroupRow(row, index)
+                          } else {
+                            return <tr key={index}/>
+                          }
                         } else {
                           const tableRows : any[] = []
                           if(row.isFirstAppendedRow) {
@@ -372,9 +403,12 @@ export class TableBox extends React.Component<IProps, IState> {
                               tableRows.push(
                                 <TableRow key={index+"hidden"} style={{height: 30}}>
                                   <TableCell className={classes.tableCellHidden}
-                                            style={{cursor: parentIsGroup ? 'pointer' : 'inherit'}}
+                                            style={{cursor: parentIsGroup || parentIsSubGroup ? 'pointer' : 'inherit'}}
                                             colSpan={columnCount}
-                                            onClick={() => parentIsGroup && this.onGroupClick(row.groupIndex)}
+                                            onClick={() => 
+                                              parentIsSubGroup ? this.onSubGroupClick(row.subGroupIndex) : 
+                                              parentIsGroup ? this.onGroupClick(row.groupIndex) :
+                                              undefined}
                                   >
                                   ...
                                   </TableCell>

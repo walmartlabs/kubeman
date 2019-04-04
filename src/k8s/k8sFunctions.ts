@@ -11,9 +11,6 @@ export default class K8sFunctions {
 
   static extractMetadata = (data : any) : Metadata|Metadata[] => {
     const prettifyLabels = meta => {
-      if(meta.labels) {
-        meta.labels = jsonUtil.convertObjectToArray(meta.labels)
-      } 
       if(meta.annotations) {
         delete meta.annotations["kubectl.kubernetes.io/last-applied-configuration"]
         meta.annotations = jsonUtil.convertObjectToArray(meta.annotations)
@@ -64,17 +61,21 @@ export default class K8sFunctions {
   
   static getClusterCRDs = async (k8sClient: K8sClient) => {
     const crds : any[] = []
-    const result = await k8sClient.extensions.customresourcedefinitions.get()
-    if(result && result.body) {
-      const items = result.body.items
-      items.forEach(item => {
-        crds.push({
-          ...K8sFunctions.extractMetadata(item),
-          spec: item.spec,
-          conditions: item.status.conditions,
-          storedVersions: item.status.storedVersions
+    try {
+      const result = await k8sClient.extensions.customresourcedefinitions.get()
+      if(result && result.body) {
+        const items = result.body.items
+        items.forEach(item => {
+          crds.push({
+            ...K8sFunctions.extractMetadata(item),
+            spec: item.spec,
+            conditions: item.status.conditions,
+            storedVersions: item.status.storedVersions
+          })
         })
-      })
+      }
+    } catch(error) {
+      console.log(error)
     }
     return crds
   }
@@ -124,7 +125,7 @@ export default class K8sFunctions {
       loadBalancerSourceRanges: spec.loadBalancerSourceRanges,
       ports: spec.ports,
       publishNotReadyAddresses: spec.publishNotReadyAddresses,
-      selector: jsonUtil.convertObjectToArray(spec.selector),
+      selector: spec.selector,
       sessionAffinity: spec.sessionAffinity,
       sessionAffinityConfig: spec.sessionAffinityConfig,
       type: spec.type,
@@ -186,6 +187,13 @@ export default class K8sFunctions {
     }
     return services
   }
+
+  static getServicesByPorts = async (ports: number[], k8sClient: K8sClient) => {
+    const services = await K8sFunctions.getServices('', '', k8sClient)
+    return services.filter(s => s.ports && s.ports.filter(p => 
+      ports.includes(p.port) || ports.includes(p.targetPort)
+    ).length > 0)
+  }
   
   static getDeploymentListForNamespace = async (namespace: string, k8sClient: K8sClient) => {
     const deployments : any[] = []
@@ -227,15 +235,19 @@ export default class K8sFunctions {
 
   static getNamespaceDeployments: GetItemsFunction = async (cluster, namespace, k8sClient) => {
     const deployments : any[] = []
-    const result = namespace ? await k8sClient.apps.namespaces(namespace).deployments.get() : undefined
+    if(!namespace) return deployments
+    const result = await k8sClient.apps.namespaces(namespace).deployments.get()
     if(result && result.body) {
       const items = result.body.items
       const metas = K8sFunctions.extractMetadata(items) as Metadata[]
       const specs = jsonUtil.extract(items, "$[*].spec")
       const statuses = jsonUtil.extract(items, "$[*].status")
-      specs.forEach((spec, index) => {
+      for(const i in specs) {
+        const spec = specs[i]
+        const meta = metas[i]
         deployments.push({
-          ...metas[index],
+          ...meta,
+          status: statuses[i],
           minReadySeconds: spec.minReadySeconds,
           paused: spec.paused,
           progressDeadlineSeconds: spec.progressDeadlineSeconds,
@@ -244,35 +256,36 @@ export default class K8sFunctions {
           selector: spec.selector,
           strategy: spec.strategy,
           template: K8sFunctions.extractPodTemplate(spec.template),
-          status: statuses[index],
-          yaml: items[index]
+          yaml: items[i]
         })
-      })
+      }
     }
     return deployments
   }
 
   static getDeploymentDetails = async (cluster: string, namespace: string, 
                                                       deployment: string, k8sClient: K8sClient) => {
-    const result = await k8sClient.apps.namespaces(namespace).deployments(deployment).get()
-    if(result && result.body) {
-      const meta = K8sFunctions.extractMetadata(result.body) as Metadata
-      const spec = result.body.spec
-      const status = result.body.status
-      return {
-          ...meta,
-          minReadySeconds: spec.minReadySeconds,
-          paused: spec.paused,
-          progressDeadlineSeconds: spec.progressDeadlineSeconds,
-          replicas: spec.replicas,
-          revisionHistoryLimit: spec.revisionHistoryLimit,
-          selector: spec.selector,
-          strategy: spec.strategy,
-          template: K8sFunctions.extractPodTemplate(spec.template),
-          status,
-          yaml: result.body,
+    try {
+      const result = await k8sClient.apps.namespaces(namespace).deployments(deployment).get()
+      if(result && result.body) {
+        const meta = K8sFunctions.extractMetadata(result.body) as Metadata
+        const spec = result.body.spec
+        const status = result.body.status
+        return {
+            ...meta,
+            minReadySeconds: spec.minReadySeconds,
+            paused: spec.paused,
+            progressDeadlineSeconds: spec.progressDeadlineSeconds,
+            replicas: spec.replicas,
+            revisionHistoryLimit: spec.revisionHistoryLimit,
+            selector: spec.selector,
+            strategy: spec.strategy,
+            template: K8sFunctions.extractPodTemplate(spec.template),
+            status,
+            yaml: result.body,
+        }
       }
-    }
+    } catch(error) {}
     return undefined
   }
 
@@ -288,6 +301,7 @@ export default class K8sFunctions {
           type: item.type,
           kind: item.kind,
           stringData: item.stringData,
+          yaml: item
         }
         secrets.push(secret)
       })
@@ -306,6 +320,7 @@ export default class K8sFunctions {
           ...metas[index],
           kind: item.kind,
           data: item.data,
+          yaml: item
         })
       })
     }
@@ -381,13 +396,12 @@ export default class K8sFunctions {
     return pods
   }
 
-  static async getPodsAndContainersForService(namespace: string, service: ServiceDetails, 
-                                            k8sClient: K8sClient, loadDetails: boolean = false) {
-    if(!service || !service.selector || service.selector.length === 0) {
+  static async getPodsAndContainersForService(service: ServiceDetails, k8sClient: K8sClient, loadDetails: boolean = false) {
+    if(!service || !service.selector) {
       return {}
     }
-    const servicePods = await K8sFunctions.getPodsByLabels(namespace, 
-                            service.selector.map(selector => selector.replace(": ","="))
+    const servicePods = await K8sFunctions.getPodsByLabels(service.namespace, 
+              Object.keys(service.selector).map(s => s+"="+(service.selector ? service.selector[s]:""))
                               .join(","), k8sClient)
     if(!servicePods || servicePods.length === 0) {
       return {}

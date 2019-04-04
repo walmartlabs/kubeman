@@ -54,8 +54,42 @@ const plugin : ActionGroupSpec = {
   order: ActionContextOrder.Deployment,
   actions: [
     {
-      name: "List/Compare Deployments",
+      name: "List Deployments for Namespaces",
       order: 1,
+      loadingMessage: "Loading Namespaces...",
+
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 10),
+
+      async act(actionContext: ActionContext) {
+        this.onOutput && this.onOutput([["Deployments List", ""]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
+        const clusters = actionContext.getClusters()
+        const selections = await ChoiceManager.getSelections(actionContext)
+        for(const selection of selections) {
+          const output: ActionOutput = []
+          const cluster = clusters.filter(c => c.name === selection.cluster)[0]
+          const namespace = selection.item as Namespace
+          const deployments = await K8sFunctions.getNamespaceDeployments(cluster.name, namespace.name, cluster.k8sClient)
+
+          output.push([">Namespace " + namespace.name + ", Cluster: " + cluster.name, ""])
+          for(const deployment of deployments) {
+            output.push([">>"+deployment.name, ""])
+            output.push(["status", deployment.status])
+            output.push(["creationTimestamp", deployment.creationTimestamp])
+            output.push(["labels", deployment.labels])
+            output.push(["annotations", deployment.annotations])
+            output.push(["replicas", deployment.replicas])
+            output.push(["strategy", deployment.strategy])
+          }
+          deployments.length === 0 && output.push([">>>No Deployments", ""])
+          this.onStreamOutput && this.onStreamOutput(output)
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
+      },
+    },
+    {
+      name: "Compare Namespace Deployments",
+      order: 2,
       loadingMessage: "Loading Namespaces...",
 
       choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, true, 1, 10),

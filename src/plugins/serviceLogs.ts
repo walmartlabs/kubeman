@@ -73,8 +73,7 @@ const plugin : ActionGroupSpec = {
     this.storeSelectedServices(actionContext, action)
     this.selectedPodAndContainers = []
     for(const s of this.selectedServices) {
-      const podsAndContainers = await k8sFunctions.getPodsAndContainersForService(
-                                    s.namespace, s.service, s.k8sClient)
+      const podsAndContainers = await k8sFunctions.getPodsAndContainersForService(s.service, s.k8sClient)
       const pods = podsAndContainers.pods ? podsAndContainers.pods as string[] : []
       const containers = podsAndContainers.containers ? podsAndContainers.containers as string[] : []
       pods.forEach(pod => {
@@ -113,7 +112,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Check Service Logs",
-      order: 10,
+      order: 20,
       autoRefreshDelay: 60,
       loadingMessage: "Loading Services...",
 
@@ -132,7 +131,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Tail Service Logs",
-      order: 11,
+      order: 21,
       loadingMessage: "Loading Services...",
 
       async choose(actionContext) {

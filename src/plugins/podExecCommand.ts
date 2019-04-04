@@ -26,28 +26,41 @@ const plugin : ActionGroupSpec = {
       
       async react(actionContext) {
         const inputText = actionContext.inputText ? actionContext.inputText : ''
-        if(inputText.includes("ping") && !inputText.includes("-c")) {
+        const separator = inputText.includes("&&") ? "&&" : "&"
+        const commands = inputText.split(separator).map(c => c.trim())
+                            .map(c => c.startsWith("/") ? c.slice(1) : c)
+        for(const command of commands) {
+          await this.executeCommand(command, actionContext)
+        }
+      },      
+      async executeCommand(commandText, actionContext) {
+        if(commandText.includes("ping") && !commandText.includes("-c")) {
             this.onStreamOutput && this.onStreamOutput([["Can't execute ping command without -c option since this will run indefinitely."]])
             this.showOutputLoading && this.showOutputLoading(false)
             return
         }
-        if(inputText.includes("top")) {
-          this.onStreamOutput && this.onStreamOutput([[inputText + ": can't execute a command that runs indefinitely"]])
+        if(commandText.includes("top")) {
+          this.onStreamOutput && this.onStreamOutput([[commandText + ": can't execute a command that runs indefinitely"]])
           this.showOutputLoading && this.showOutputLoading(false)
           return
         }
-        if(inputText.includes("rm") || inputText.includes("rmdir")) {
-          this.onStreamOutput && this.onStreamOutput([[inputText + ": prohibited command"]])
+        if(commandText.includes("rm") || commandText.includes("rmdir")) {
+          this.onStreamOutput && this.onStreamOutput([[commandText + ": prohibited command"]])
           this.showOutputLoading && this.showOutputLoading(false)
           return
-      }
-      this.showOutputLoading && this.showOutputLoading(true)
-        const command = inputText.split(" ")
+        }
+        if(commandText === "clear" || commandText === "c") {
+          this.clear && this.clear(actionContext)
+          return
+        }
+        this.showOutputLoading && this.showOutputLoading(true)
+        const command = commandText.split(" ")
         for(const selection of this.selections) {
           try {
             const result = await k8sFunctions.podExec(selection.namespace, selection.pod, 
                                   selection.container, selection.k8sClient, command)
-            this.onStreamOutput && this.onStreamOutput([[">Pod: "+ selection.title + ", Command: " + actionContext.inputText]])
+            this.onStreamOutput && this.onStreamOutput([[">Pod: "+ selection.title+"."+selection.namespace 
+                                  + ", Command: " + commandText]])
             const output = result.length > 0 ? [[result]] : [["No Results"]]
             this.onStreamOutput && this.onStreamOutput(output)
           } catch(error) {
@@ -63,7 +76,7 @@ const plugin : ActionGroupSpec = {
       },
       clear() {
         this.onOutput && this.onOutput([[
-          "Send Command To: " + this.selections.map(s => s.title).join(", ")
+          "Send Command To: " + this.selections.map(s => s.title+"."+s.namespace).join(", ")
         ]], ActionOutputStyle.Log)
       },
     }

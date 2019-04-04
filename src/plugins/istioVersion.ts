@@ -8,7 +8,10 @@ async function showIstioComponentVersion(cluster: string, deploymentName: string
                                           k8sClient: K8sClient, output: ActionOutput) {
   try {
     const deployment = await K8sFunctions.getDeploymentDetails(cluster, "istio-system", deploymentName, k8sClient)
-    let versionLabel = deployment ? deployment.template.labels.filter(l => l.includes("version")) : undefined
+    let versionLabel = deployment && deployment.template && deployment.template.labels ? 
+                      Object.keys(deployment.template.labels)
+                      .filter(l => l.includes("version"))
+                      .map(l => l + ":" + deployment.template.labels[l]) : undefined
     if(deployment && (!versionLabel || versionLabel.length === 0)) {
       versionLabel = deployment.template.containers.map(c => c.name + ": " + c.image)
     }

@@ -2,6 +2,7 @@ import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, Act
 import IstioFunctions from '../k8s/istioFunctions';
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import JsonUtil from '../util/jsonUtil';
+import {outputConfig} from './istioSidecarConfigDump'
 
 function compareConfigs(onStreamOutput, pilotConfigs: any[], sidecarConfigs: any[], 
                         type: string, itemKey: string, sidecarItemKey: string = itemKey) {
@@ -51,6 +52,30 @@ function compareConfigs(onStreamOutput, pilotConfigs: any[], sidecarConfigs: any
   onStreamOutput(output)
 }
 
+function getConfigItems(configs, configType) {
+  configs = configs.filter(c => c["@type"].includes(configType))[0]
+  const dynamicItems = configs[Object.keys(configs).filter(key => key.includes("dynamic"))[0]]
+  const staticItems = configs[Object.keys(configs).filter(key => key.includes("static"))[0]]
+  const items: any[] = []
+  staticItems && staticItems.forEach(item => item && items.push(item))
+  dynamicItems && dynamicItems.forEach(item => item && items.push(item))
+  return items
+}
+
+async function outputSidecarConfig(action, actionContext, configType, titleField: string, 
+                                    dataField?: string, dataTitleField?: string) {
+  const sidecar = IstioPluginHelper.getSelectedSidecars(actionContext)[0]
+  action.showOutputLoading && action.showOutputLoading(true)
+  const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
+  action.onOutput && action.onOutput([["Sidecar Config from Pilot"]], ActionOutputStyle.Log)
+
+  const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, sidecar.title)
+  action.onStreamOutput && action.onStreamOutput([[">" + configType + " for " + sidecar.title]])
+  outputConfig(action.onStreamOutput, getConfigItems(pilotConfigs, configType), 
+                      titleField, dataField, dataTitleField)
+  action.showOutputLoading && action.showOutputLoading(false)
+}
+
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
   title: "Istio Pilot Recipes",
@@ -58,6 +83,40 @@ const plugin : ActionGroupSpec = {
   loadingMessage: "Loading Envoy Sidecars...",
 
   actions: [
+    {
+      name: "View Sidecar Clusters Config from Pilot",
+      order: 50,
+      loadingMessage: "Loading Envoy Sidecars...",
+      
+      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
+
+      async act(actionContext) {
+        outputSidecarConfig(this, actionContext, "ClustersConfigDump", "cluster.name")
+      },
+    },
+    {
+      name: "View Sidecar Listeners Config from Pilot",
+      order: 50,
+      loadingMessage: "Loading Envoy Sidecars...",
+      
+      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
+
+      async act(actionContext) {
+        outputSidecarConfig(this, actionContext, "ListenersConfigDump", "listener.address.socketAddress.portValue")
+      },
+    },
+    {
+      name: "View Sidecar Routes Config from Pilot",
+      order: 50,
+      loadingMessage: "Loading Envoy Sidecars...",
+      
+      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
+
+      async act(actionContext) {
+        outputSidecarConfig(this, actionContext, "RoutesConfigDump", 
+                            "routeConfig.name", "routeConfig.virtualHosts", "name")
+      },
+    },
     {
       name: "Compare Pilot-Sidecar Config",
       order: 50,
@@ -102,11 +161,13 @@ const plugin : ActionGroupSpec = {
         this.showOutputLoading && this.showOutputLoading(true)
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
-          const result = await IstioFunctions.getPilotSidecarSyncStatus(cluster.k8sClient)
-          this.onStreamOutput && this.onStreamOutput([
-            [">Cluster: " + cluster.name],
-            [result]
-          ])
+          this.onStreamOutput && this.onStreamOutput([[">Cluster: " + cluster.name]])
+        if(cluster.hasIstio) {
+            const result = await IstioFunctions.getPilotSidecarSyncStatus(cluster.k8sClient)
+            this.onStreamOutput && this.onStreamOutput([[result]])
+          } else {
+            this.onStreamOutput && this.onStreamOutput([["Istio not installed"]])
+          }
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },

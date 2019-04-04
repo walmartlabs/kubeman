@@ -8,7 +8,7 @@ const plugin : ActionGroupSpec = {
   title: "Istio Sidecars Recipes",
   actions: [
     {
-      name: "List Sidecars",
+      name: "List Sidecar Proxies",
       order: 45,
       act(actionContext) {
         this.onOutput && this.onOutput([["", "Sidecars List"]], ActionOutputStyle.Table)
@@ -39,9 +39,9 @@ const plugin : ActionGroupSpec = {
           const namespaces = await K8sFunctions.getClusterNamespaces(cluster.k8sClient)
           namespaces.length === 0 && output.push(["", "No namespaces found"])
           namespaces.forEach(namespace => {
-            const isSidecarInjectionEnabled = namespace.labels && 
-                                              namespace.labels.filter(l => l.includes("istio-injection"))
-                                                              .filter(l => l.includes("enabled")).length > 0
+            const isSidecarInjectionEnabled = namespace.labels && Object.keys(namespace.labels)
+                                              .filter(l => l.includes("istio-injection"))
+                                              .filter(l => namespace.labels[l].includes("enabled")).length > 0
             output.push([namespace.name, isSidecarInjectionEnabled ? "Enabled" : "Disabled"])
           })
           this.onStreamOutput && this.onStreamOutput(output)
@@ -54,7 +54,7 @@ const plugin : ActionGroupSpec = {
                                     .length > 0
                                   )
             if(deployments.length > 0) {
-              output.push([">Sidecar Injection status for deployments of Namespace: " + namespace.name, ""])
+              output.push([">Sidecar Injection overrides for Namespace: " + namespace.name, ""])
               deployments.forEach(d => {
                 const sidecarInjectionAnnotation = d.template.annotations && 
                                 d.template.annotations.filter(a => a.includes("sidecar.istio.io/inject"))

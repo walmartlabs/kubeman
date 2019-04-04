@@ -35,8 +35,7 @@ const plugin : ActionGroupSpec = {
           if(service) {
             Object.keys(service).forEach((key, index) => output.push([key, service[key] ||'']))
           }
-          const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(
-                                          selection.namespace, service, cluster.k8sClient, true)
+          const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(service, cluster.k8sClient, true)
           if(podsAndContainers && podsAndContainers.pods) {
             const pods = (podsAndContainers.pods as any[]).map(pod => {
               return {

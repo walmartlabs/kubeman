@@ -2,11 +2,8 @@ import { Theme, createStyles } from '@material-ui/core/styles'
 
 const styles = ({ palette, spacing, typography, transitions }: Theme) => createStyles({
   root: {
-    display: 'flex',
-    flexDirection: 'row',
-    padding: spacing.unit,
-    backgroundColor: palette.background.default,
-    color: palette.primary.main,
+    overflowY: 'scroll', 
+    height: '97%'
   },
   button: {
     margin: spacing.unit,

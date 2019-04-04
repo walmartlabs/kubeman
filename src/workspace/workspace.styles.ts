@@ -83,6 +83,11 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
     marginLeft: 'auto',
     marginRight: 'auto',
   },
+  statusMessage: {
+    display: 'inline-block',
+    verticalAlign: 'middle',
+    color: 'red',
+  }
 })
 
 export default styles

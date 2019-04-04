@@ -54,16 +54,12 @@ class extends Component<IProps, IState> {
     this.setState({useDarkTheme})
   }
 
-  onKeyPress = (event: KeyboardEvent) => {
-    this.workspace && this.workspace.onKeyPress(event)
-  }
-
   render() {
     const {useDarkTheme} = this.state
     return (
       <MuiThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
         <CssBaseline />
-        <div style={{width: '100%'}}> {/* onKeyPress={this.onKeyPress} */}
+        <div style={{width: '100%'}}>
           <StyledWorkspace 
               innerRef={ref => this.workspace=ref} 
               onChangeTheme={this.onChangeTheme}

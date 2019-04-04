@@ -15,7 +15,7 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         this.onOutput &&
-          this.onOutput([["Ingress Cert Secret", "Usage"]], ActionOutputStyle.Table)
+          this.onOutput([["", "Ingress Gateway Certs Usage"]], ActionOutputStyle.Table)
 
         this.showOutputLoading && this.showOutputLoading(true)
         for(const cluster of clusters) {
@@ -24,78 +24,150 @@ const plugin : ActionGroupSpec = {
             this.onStreamOutput  && this.onStreamOutput([["", "Istio not installed"]])
             continue
           }
-          const output: ActionOutput = []
           const k8sClient = cluster.k8sClient
           const ingressDeployment = await K8sFunctions.getDeploymentDetails(cluster.name, 
                                       "istio-system", "istio-ingressgateway", k8sClient)
           if(!ingressDeployment) {
-            this.onStreamOutput && this.onStreamOutput(["istio-ingressgateway not found", ""])
+            this.onStreamOutput && this.onStreamOutput(["", "istio-ingressgateway not found"])
             continue
           } 
           const podTemplate = ingressDeployment.template
           const istioProxyContainer = podTemplate.containers.filter(c => c.name === "istio-proxy" 
                                       || c.name === 'ingressgateway')[0]
+          const istioSDSContainer = podTemplate.containers.filter(c => c.name === "ingress-sds")[0]
+
+          const certsLoadedOnIngress = _.flatten((await IstioFunctions.getIngressCerts(k8sClient))
+                                        .filter(c => c.cert_chain)
+                                        .map(c => c.cert_chain)
+                                        .map(certChain => certChain instanceof Array ? certChain : [certChain]))
 
           if(!istioProxyContainer) {
-            this.onStreamOutput && this.onStreamOutput(["proxy container not found in ingressgateway", ""])
+            this.onStreamOutput && this.onStreamOutput(["", "proxy container not found in ingressgateway"])
             continue
           }
 
+          const output: ActionOutput = []
           const gateways = await IstioPluginHelper.getIstioIngressGateways(k8sClient)
-          const virtualServices = await IstioFunctions.listAllIngressVirtualServices(k8sClient)
-          podTemplate.volumes && podTemplate.volumes.forEach(volume => {
-            const mountPaths = istioProxyContainer.volumeMounts ? 
-                                istioProxyContainer.volumeMounts.filter(mount => mount.name === volume.name)
-                                .map(mount => mount.mountPath) : []
+          const virtualServices = (await IstioFunctions.listAllIngressVirtualServices(k8sClient))
+                                  .map(vs => {
+                                    return {
+                                      virtualService: vs,
+                                      routes: (vs.http || []).concat(vs.tls || []).concat(vs.tcp || [])
+                                              .map(r => {
+                                                return {
+                                                  ports: r.match.map(m => m.port),
+                                                  destinations: r.route.map(route => route.destination)
+                                                }
+                                              }),
+                                      hasPorts: _.flatten((vs.http || []).concat(vs.tls || []).concat(vs.tcp || []).map(r => r.match))
+                                              .map(m => m.port).filter(p => p).length > 0
+                                    }
+                                  })
 
-            
-            const serverFilter = (server) =>  server.tls && server.tls.privateKey && mountPaths.length > 0 
-                                          && server.tls.privateKey.includes(mountPaths[0])
+          const gatewaysUsingMountedCerts = gateways.map(g => {
+            const relevantServers = g.servers.filter(server =>  server.tls && server.tls.privateKey && server.tls.privateKey.length > 0)
+            return {
+              gateway: g,
+              servers: relevantServers,
+              privateKeys: relevantServers.map(server =>  server.tls.privateKey)
+            }
+          })
+          .filter(g => g.servers.length > 0)
 
-            const certGateways = gateways.filter(gateway => 
-                    gateway.servers.filter(serverFilter).length > 0)
-                    .map(gateway => {
-                      const servers = gateway.servers.filter(serverFilter)
-                      return {
-                        name: gateway.name,
-                        namespace: gateway.namespace,
-                        hosts: _.flatten(servers.map(server => server.hosts)),
-                        ports: servers.map(server => server.port),
-                        tls: servers.map(server => server.tls)
-                      }
-                    })
+          const gatewaysUsingSDSCerts = gateways.map(g => {
+            const relevantServers = g.servers.filter(server =>  server.tls && server.tls.credentialName && server.tls.credentialName.length > 0)
+            return {
+              gateway: g,
+              servers: relevantServers,
+              secrets: relevantServers.map(server =>  server.tls.credentialName)
+            }
+          })
+          .filter(g => g.servers.length > 0)
 
-            const certVirtualServices = virtualServices.filter(vs => 
-              certGateways.filter(g => 
-                vs.gateways.filter(vsg => vsg.includes(g.name)).length > 0
-                && vs.hosts.filter(vsh => g.hosts.filter(gh => gh.includes(vsh)).length > 0).length > 0
-              ).length > 0)
-              .map(vs => {
-                return {
-                  name: vs.name,
-                  namespace: vs.namespace,
-                  gateways: vs.gateways,
-                  hosts: vs.hosts,
-                  http: vs.http,
-                  tls: vs.tls,
-                  tcp: vs.tcp
-                }
-              })
-            const isAnyVSUsingCert = certVirtualServices.filter(vs => vs.tls).length > 0
+          const outputRelatedVirtualServices = g => {
+            const gatewayHosts = _.flatten(g.servers.map(server => server.hosts))
+                                  .map(host => host.replace("*.", ""))
+            const gatewayPorts = g.servers.map(server => server.port)
 
-            output.push([
-              (volume.secret ? volume.secret.secretName : "--- No Cert Name ---") +
-                (isAnyVSUsingCert ? "" 
-                : certVirtualServices.length === 0 ? " <span style='color:red'>(not used by any VirtualService)</span>"
-                : " <span style='color:red'>(not in use by any of the "+certVirtualServices.length+" VirtualServices)</span>"
-                ),
-              [{"Mount Path": mountPaths.length > 0 ? mountPaths[0] : ""},
-                {"Gateways Usage": certGateways},
-                {"Related VirtualServices": certVirtualServices}]
-              
-            ])
+            const relatedVirtualServices = virtualServices
+            .filter(vs => vs.virtualService.gateways.includes(g.gateway.name))
+            .filter(vs => vs.virtualService.hosts.filter(vsh => vsh === "*" || 
+                          gatewayHosts.filter(gh => gh === "*" || vsh.includes(gh)).length > 0).length > 0)
+            .map(vs => {
+              return {
+                name: vs.virtualService.name,
+                hosts: vs.virtualService.hosts,
+                routes: vs.hasPorts ? 
+                          vs.routes.filter(r => 
+                            r.ports.filter(vsp => 
+                              gatewayPorts.filter(gp => gp.includes(vsp)).length > 0
+                            ).length > 0)
+                          : vs.routes
+              }
+            })
+            .filter(vs => vs.routes.length > 0)
+            output.push([">>>Related VirtualService Routes",""])
+            relatedVirtualServices.length === 0 && output.push(["No Related VirtualServices",""])
+            relatedVirtualServices.forEach(vs => 
+              output.push([vs.name, {hosts: vs.hosts, routes: vs.routes}]))
+          }
+
+          if(gatewaysUsingSDSCerts.length > 0 && !istioSDSContainer) {
+            output.push([">>Gateways using SDS certs but no SDS container",""])
+          } else {
+            output.push([">>Gateways using SDS certs",""])
+          }
+          gatewaysUsingSDSCerts.length === 0 && output.push(["No Gateways",""])
+          gatewaysUsingSDSCerts.forEach(g => {
+            output.push([">>>Gateway: "+g.gateway.name + " (Namespace: "+g.gateway.namespace+")",""])
+            g.servers.forEach(server => {
+              output.push(
+                [server.tls.credentialName, 
+                  {
+                    hosts: server.hosts,
+                    port: server.port,
+                    mode: server.tls.mode,
+                    credentialName: server.tls.credentialName
+                  }
+                ],
+                []
+              )
+            })
+            outputRelatedVirtualServices(g)
           })
 
+          output.push([])
+          output.push([">>Gateways using mounted certs",""])
+          gatewaysUsingMountedCerts.length === 0 && output.push(["No Gateways",""])
+
+          gatewaysUsingMountedCerts.forEach(g => {
+            output.push([">>>Gateway: "+g.gateway.name + " (Namespace: "+g.gateway.namespace+")",""])
+            g.servers.forEach(server => {
+              const pieces = server.tls.serverCertificate.split("/")
+              const dir = pieces.slice(0, pieces.length-1).join("/")
+              pieces[pieces.length-1] = pieces[pieces.length-1].split(".")[0]
+              const certId = pieces.slice(-2).join("/")
+              const ingressVolumeMount = istioProxyContainer.volumeMounts ? 
+                          istioProxyContainer.volumeMounts.filter(mount => mount.mountPath.includes(dir))[0] : ""
+              const certInfoFromIngress = certsLoadedOnIngress.filter(c => (c.path || c).includes(certId))
+              output.push(
+                [certId, 
+                  {
+                    hosts: server.hosts,
+                    port: server.port,
+                    mode: server.tls.mode,
+                    serverCertificate: server.tls.serverCertificate,
+                    privateKey: server.tls.privateKey,
+                    ingressGatewayVolume: ingressVolumeMount ? ingressVolumeMount.name : "Cert Not Mounted",
+                    certInfoFromIngress: certInfoFromIngress || "N/A"
+                  }
+                ],
+                []
+              )
+            })
+            outputRelatedVirtualServices(g)
+
+          })
           this.onStreamOutput  && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)

@@ -3,7 +3,6 @@ import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionSpec, } fro
 import ChoiceManager from '../actions/choiceManager'
 import ActionContext from '../actions/actionContext';
 
-
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
   title: "Pod Recipes",
@@ -20,10 +19,10 @@ const plugin : ActionGroupSpec = {
   async getPodLogs(actionContext: ActionContext, action: ActionSpec, tail: boolean) {
     this.selections = await ChoiceManager.getPodSelections(actionContext)
     action.clear && action.clear(actionContext)
-    action.showOutputLoading && action.showOutputLoading(true)
     action.setScrollMode && action.setScrollMode(true)
     const lineCount = (50/this.selections.length) < 20 ? 20 : (50/this.selections.length)
     for(const selection of this.selections) {
+      action.showOutputLoading && action.showOutputLoading(true)
       const logStream = await k8sFunctions.getPodLog(selection.namespace, selection.pod, 
                                 selection.container, selection.k8sClient, tail, lineCount)
       logStream.onLog(lines => {
@@ -46,7 +45,7 @@ const plugin : ActionGroupSpec = {
 
   actions: [
     {
-      name: "Check Pod Logs",
+      name: "Check Container Logs",
       order: 10,
       autoRefreshDelay: 30,
       loadingMessage: "Loading Containers@Pods...",
@@ -63,7 +62,7 @@ const plugin : ActionGroupSpec = {
       }
     },
     {
-      name: "Tail Pod Logs",
+      name: "Tail Container Logs",
       order: 11,
       loadingMessage: "Loading Containers@Pods...",
 

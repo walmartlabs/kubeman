@@ -20,22 +20,32 @@ const plugin : ActionGroupSpec = {
 
       async act(actionContext) {
         const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
-        if(selections.length < 1) {
-          this.onOutput && this.onOutput([["No deployment selected"]], ActionOutputStyle.Text)
-          return
-        }
         this.onOutput && this.onOutput([["Keys", "Data"]], ActionOutputStyle.Table)
-
-        selections.forEach(selection => {
+        this.showOutputLoading && this.showOutputLoading(true)
+        const clusters = actionContext.getClusters()
+        for(const selection of selections) {
           const output: ActionOutput = []
           output.push([">" + selection.title, ""])
-          output.push(["cluster", selection.cluster])
-          const item = selection.item
-          if(item) {
-            Object.keys(item).forEach((key, index) => output.push([key, item[key] ||'']))
+          const deployment = selection.item
+          const cluster = clusters.filter(c => c.name === selection.cluster)[0]
+          if(deployment) {
+            const scale = (await cluster.k8sClient.apps.namespaces(selection.namespace)
+                                .deployments(deployment.name).scale.get()).body
+            output.push(["name", deployment.name])
+            output.push(["namespace", deployment.namespace])
+            output.push(["cluster", selection.cluster])
+            output.push(["scale", {desired: scale.spec.replicas, current: scale.status.replicas}])
+            output.push(["status", deployment.status])
+            output.push(["creationTimestamp", deployment.creationTimestamp])
+            output.push(["labels", deployment.labels])
+            output.push(["annotations", deployment.annotations])
+            output.push(["replicas", deployment.replicas])
+            output.push(["strategy", deployment.strategy])
+            output.push(["yaml", deployment.yaml])
           }
           this.onStreamOutput && this.onStreamOutput(output)
-        })
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
     },
     {

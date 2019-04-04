@@ -1,5 +1,8 @@
+import _ from 'lodash'
 import {K8sClient} from './k8sClient'
-import K8sFunctions, { GetItemsFunction } from '../k8s/k8sFunctions';
+import K8sFunctions, { GetItemsFunction } from '../k8s/k8sFunctions'
+import { ServiceDetails } from './k8sObjectTypes'
+import {matchObjects} from '../util/matchUtil'
 
 export default class IstioFunctions {
 
@@ -56,6 +59,16 @@ export default class IstioFunctions {
     )
   }
 
+  static getGatewaysForPorts = async (ports: number[], k8sClient: K8sClient) => {
+    const allGateways = await IstioFunctions.listAllGateways(k8sClient, false)
+    return allGateways.filter(g => g.servers.filter(s => ports.includes(s.port.number)).length > 0)
+  }
+
+  static getNamespaceGateways = async (namespace: string, k8sClient: K8sClient) => {
+    const allGateways = await IstioFunctions.listAllGateways(k8sClient, true)
+    return allGateways.filter(g => g.namespace === namespace)
+  }
+
   static listAllVirtualServices = async (k8sClient: K8sClient, yaml: boolean = true) => {
     const keys = ["gateways", "hosts", "http", "tls", "tcp"]
     yaml && keys.push("yaml")
@@ -78,11 +91,15 @@ export default class IstioFunctions {
   }
 
   static getVirtualServices = async (cluster, namespace, k8sClient) => {
-    const virtualServices = (namespace && namespace.length > 0) ?
-                              await k8sClient.istio.namespaces(namespace).virtualservices.get()
-                              : await k8sClient.istio.virtualservices.get()
-    return IstioFunctions.extractResource(virtualServices,
-                            "gateways", "hosts", "http", "tls", "tcp") as any[]
+    if(k8sClient.istio) {
+      const virtualServices = (namespace && namespace.length > 0) ?
+                                await k8sClient.istio.namespaces(namespace).virtualservices.get()
+                                : await k8sClient.istio.virtualservices.get()
+      return IstioFunctions.extractResource(virtualServices,
+                              "gateways", "hosts", "http", "tls", "tcp") as any[]
+    } else {
+      return []
+    }
   }
 
   static filterVirtualServicesByRouteForService(virtualServices: any[], 
@@ -117,26 +134,98 @@ export default class IstioFunctions {
     return Object.values(virtualServices)
   }
 
+  static getVirtualServicesForPorts = async (ports: number[], k8sClient: K8sClient) => {
+    const allVirtualServices = await IstioFunctions.listAllVirtualServices(k8sClient, false)
+    return allVirtualServices.filter(vs => {
+      const routeConfigs: any[] = []
+      vs.http && vs.http.forEach(r => routeConfigs.push(r))
+      vs.tls && vs.tls.forEach(r => routeConfigs.push(r))
+      vs.tcp && vs.tcp.forEach(r => routeConfigs.push(r))
+      return routeConfigs.filter(rc => rc.match && rc.match.filter(m => ports.includes(m.port)).length > 0).length > 0
+      ||
+      routeConfigs.filter(rc => rc.route && rc.route.filter(r => 
+        r.destination && r.destination.port && ports.includes(r.destination.port.number)).length > 0).length > 0
+    })
+  }
+
+  static getNamespaceVirtualServices = async (namespace: string, k8sClient: K8sClient) => {
+    const allVirtualServices = await IstioFunctions.listAllVirtualServices(k8sClient, true)
+    return allVirtualServices.filter(vs => vs.namespace === namespace)
+  }
+
+  static listAllSidecarResources = async (k8sClient: K8sClient) => {
+    if(k8sClient.istio.sidecars) {
+      return IstioFunctions.extractResource(await k8sClient.istio.sidecars.get(), 
+                      "workloadSelector", "ingress", "egress", "yaml") as any[]
+    } else {
+      return []
+    }
+  }
+
+  static getServiceEgressSidecarResources = async (service: ServiceDetails, k8sClient: K8sClient) => {
+    const allSidecarResources = await IstioFunctions.listAllSidecarResources(k8sClient)
+    const nsSidecarResources = allSidecarResources.filter(sc => sc.namespace === service.namespace)
+    const serviceSidecarResources = nsSidecarResources.filter(sc => 
+      sc.workloadSelector && sc.workloadSelector.labels 
+      && matchObjects(sc.workloadSelector.labels, service.selector))
+    if(serviceSidecarResources.length > 0) {
+      return serviceSidecarResources
+    } else {
+      return nsSidecarResources.filter(sc => !sc.workloadSelector)
+    }
+  }
+
+  static getServiceIncomingSidecarResources = async (service: ServiceDetails, k8sClient: K8sClient) => {
+    const allSidecarResources = await IstioFunctions.listAllSidecarResources(k8sClient)
+    return allSidecarResources.filter(sc => 
+      sc.egress && sc.egress.filter(e => e.hosts && e.hosts.filter(host => 
+        host === "*/*" 
+        || host === service.namespace+"/*"
+        || host === service.name+"."+service.namespace+".svc.cluster.local").length > 0).length > 0)
+  }
+
   static listAllDestinationRules = async (k8sClient: K8sClient) => {
     return IstioFunctions.extractResource(await k8sClient.istio.destinationrules.get(), "yaml") as any[]
   }
 
-  static getServiceDestinationRules = async (service: string, namespace: string, k8sClient: K8sClient) => {
-    const allDestinationRules = IstioFunctions.extractResource(
-          await k8sClient.istio.destinationrules.get(), "host", "trafficPolicy", "subsets") as any[]
-    let applicableDestinationRules: any[] = []
-    applicableDestinationRules = applicableDestinationRules.concat(
-          allDestinationRules.filter(r => r.host.includes(service)))
-    applicableDestinationRules = applicableDestinationRules.concat(
-      allDestinationRules.filter(r => 
-        (r.host === "*."+namespace || r.host.includes("*."+namespace+"."))
-        || r.host.includes("*.local")))
+  static extractDestinationRules(result) {
+    return IstioFunctions.extractResource(result, "host", "trafficPolicy", "subsets", "exportTo") as any[]
+  }
+
+  static getServiceDestinationRules = async (service: ServiceDetails, k8sClient: K8sClient) => {
+    const allDestinationRules = IstioFunctions.extractDestinationRules(await k8sClient.istio.destinationrules.get())
+    const applicableDestinationRules = allDestinationRules.filter(r => 
+            r.host === service.name
+            || r.host.includes(service.name+"."+service.namespace)
+            || r.host === "*."+service.namespace
+            || r.host.includes("*."+service.namespace+".")
+            || r.host.includes("*.local")
+          )
     return applicableDestinationRules
   }
 
-  static listAllServiceEntries = async (k8sClient: K8sClient) => {
-    return IstioFunctions.extractResource(await k8sClient.istio.serviceentries.get(),
-                      "hosts", "addresses", "ports", "location", "resolution", "endpoints", "yaml") as any[]
+  static getClientNamespaceDestinationRules = async (namespace: string, k8sClient: K8sClient) => {
+    const allDestinationRules = IstioFunctions.extractDestinationRules(await k8sClient.istio.destinationrules.get())
+    return allDestinationRules.filter(r => r.namespace === namespace)
+  }
+
+  static getNamespaceDestinationRules = async (namespace: string, k8sClient: K8sClient) => {
+    const allDestinationRules = await IstioFunctions.listAllDestinationRules(k8sClient)
+    return allDestinationRules.filter(r => r.namespace === namespace)
+  }
+
+  static listAllServiceEntries = async (k8sClient: K8sClient, yaml: boolean = true) => {
+    const fields = ["hosts", "addresses", "ports", "location", "resolution", "endpoints"]
+    yaml && fields.push("yaml")
+    return IstioFunctions.extractResource(await k8sClient.istio.serviceentries.get(), ...fields) as any[]
+  }
+
+  static getServiceServiceEntries = async (service: ServiceDetails, k8sClient: K8sClient) => {
+    const allServiceEntries = await IstioFunctions.listAllServiceEntries(k8sClient, false)
+    return allServiceEntries.filter(se => 
+      se.hosts && se.hosts.filter(host => host.includes(service.name+"."+service.namespace)).length > 0
+      || se.endpoints && se.endpoints.filter(e => e.address.includes(service.name+"."+service.namespace)).length > 0
+    )
   }
 
   static listAllEnvoyFilters = async (k8sClient: K8sClient) => {
@@ -144,16 +233,26 @@ export default class IstioFunctions {
                                 "workloadLabels", "filters", "yaml") as any[]
   }
 
-  static listAllPolicies = async (k8sClient: K8sClient) => {
-    return IstioFunctions.extractResource(await k8sClient.istio.policies.get(),
-            "targets", "peers", "peerIsOptional", "origins", 
-            "originIsOptional", "principalBinding", "yaml") as any[]
+  static listAllPolicies = async (k8sClient: K8sClient, yaml: boolean = true) => {
+    const fields = ["targets", "peers", "peerIsOptional", "origins", 
+                    "originIsOptional", "principalBinding"]
+    yaml && fields.push("yaml")
+    return IstioFunctions.extractResource(await k8sClient.istio.policies.get(), ...fields) as any[]
   }
 
-  static getServicePolicies = async (service: string, k8sClient: K8sClient) => {
-    const allPolicies = await IstioFunctions.listAllPolicies(k8sClient)
-    return allPolicies.filter(p => p.targets && p.targets.filter(target => 
-      target.name === service || target.name.includes(service+".")).length > 0)
+  static getServicePolicies = async (service: ServiceDetails, k8sClient: K8sClient) => {
+    const allPolicies = await IstioFunctions.listAllPolicies(k8sClient, false)
+    return allPolicies.filter(p => 
+      (p.name === "default" && p.namespace === service.namespace && !p.targets)
+      || 
+      (p.targets && p.targets.filter(target => 
+          target.name === service.name || target.name.includes(service+".")).length > 0)
+    )
+  }
+
+  static getNamespacePolicies = async (namespace: string, k8sClient: K8sClient) => {
+    const allPolicies = await IstioFunctions.listAllPolicies(k8sClient, true)
+    return allPolicies.filter(p => p.namespace === namespace)
   }
 
   static listAllMeshPolicies = async (k8sClient: K8sClient) => {
@@ -167,115 +266,16 @@ export default class IstioFunctions {
                                 "match", "actions", "yaml") as any[]
   }
 
+  static getNamespaceRules = async (namespace: string, k8sClient: K8sClient) => {
+    const allRules = await IstioFunctions.listAllRules(k8sClient)
+    return allRules.filter(r => r.namespace === namespace)
+  }
+
   static listAnyResource = async (resource: string, k8sClient: K8sClient) => {
-    if(k8sClient.istio[resource]) {
-      return IstioFunctions.extractResource(await k8sClient.istio[resource].get(), "yaml") as any[]
+    if(k8sClient.crds[resource]) {
+      return IstioFunctions.extractResource(await k8sClient.crds[resource].get(), "yaml") as any[]
     }
     return []
-  }
-
-  static getMtlsStatus = async (k8sClient: K8sClient) => {
-    let isGlobalMtlsEnabled: boolean = false
-    const namespacesWithDefaultMtls: string[] = []
-    const servicesWithMtlsPolicies: any[] = []
-
-    const defaultMeshPolicy = (await IstioFunctions.listAllMeshPolicies(k8sClient))
-            .filter(policy => policy.name === 'default')
-    if(defaultMeshPolicy && defaultMeshPolicy.length > 0) {
-      isGlobalMtlsEnabled = true
-    }
-
-    const policies = await IstioFunctions.listAllPolicies(k8sClient)
-    const namespaceDefaultPolicies = policies && policies.length ? 
-                policies.filter(policy => /*policy.name === 'default' && */
-                      policy.peers && policy.peers.filter(peer => peer.mtls).length > 0
-                      && !policy.targets) : []
-    namespaceDefaultPolicies.forEach(policy => namespacesWithDefaultMtls.push(
-                            policy.namespace + ": " + 
-                            policy.peers.filter(peer => peer.mtls)[0].mtls.mode))
-    const serviceMtlsPolicies = policies && policies.length ? 
-                policies.filter(policy => /*policy.name !== 'default' && */
-                      policy.peers && policy.peers.filter(peer => peer.mtls).length > 0
-                      && policy.targets) : []
-    serviceMtlsPolicies.forEach(policy => policy.targets.forEach(target => 
-      servicesWithMtlsPolicies.push({
-            name: target.name,
-            namespace: policy.namespace,
-            mode: policy.peers.filter(peer => peer.mtls)[0].mtls.mode
-          })))
-
-    return {
-      isGlobalMtlsEnabled,
-      namespacesWithDefaultMtls,
-      servicesWithMtlsPolicies
-    }
-  }
-
-  static getServiceMtlsStatuses = async (k8sClient: K8sClient, service?: string, namespace?: string) => {
-    const policies = await IstioFunctions.listAllPolicies(k8sClient)
-    const serviceMtlsPolicies = policies && policies.length ? 
-                policies.filter(policy => /*policy.name !== 'default' && */
-                      policy.peers && policy.peers.filter(peer => peer.mtls).length > 0
-                      && ((policy.targets && policy.targets.length > 0) 
-                          || policy.name === 'default')) : []
-    const pilotPods = await K8sFunctions.getPodsByLabels("istio-system", "istio=pilot", k8sClient)
-    let serviceMtlsStatuses: any
-    try {
-      let serviceFqdn = service
-      serviceFqdn && namespace && (serviceFqdn += "."+namespace)
-      serviceFqdn && (serviceFqdn += ".svc.cluster.local")
-
-      serviceMtlsStatuses = await K8sFunctions.podExec("istio-system", pilotPods[0].name, "discovery", k8sClient, 
-                         ["curl", "-s", "localhost:8080/debug/authenticationz"
-                            + (serviceFqdn ? "?proxyID="+serviceFqdn : "")])
-      if(serviceMtlsStatuses && serviceMtlsStatuses.length > 0) {
-        serviceMtlsStatuses = JSON.parse(serviceMtlsStatuses)
-        serviceMtlsStatuses = serviceMtlsStatuses
-          .filter(status => status.host)
-          .map(status => {
-            const pieces = status.host.split(".")
-            const serviceName = pieces.length > 0 ? pieces[0] : ""
-            const namespace = pieces.length > 1 ? pieces[1] : ""
-            let serviceMtlsMode = undefined
-            const servicePolicies = serviceMtlsPolicies.filter(policy => {
-              const isDefaultPolicy = policy.name === 'default' && policy.namespace === namespace
-              const isPolicyForService = 
-              policy.targets && policy.targets.filter(target => 
-                target.name === serviceName && 
-                  (!target.ports || target.ports.length === 0 
-                    || target.ports.filter(port => port.number === status.port).length > 0)).length > 0
-              return isDefaultPolicy || isPolicyForService
-            })
-            if(servicePolicies && servicePolicies.length > 0) {
-              const peers = servicePolicies[0].peers.filter(peer => peer.mtls)
-              serviceMtlsMode = peers.length > 0 ? peers[0].mtls.mode : ""
-            }
-            if(status.TLS_conflict_status === 'CONFLICT' && serviceMtlsMode === 'PERMISSIVE') {
-              status.TLS_conflict_status = 'Permitted'
-            } else if(status.TLS_conflict_status === 'OK') {
-              status.TLS_conflict_status = 'Good'
-            }
-            return {
-              serviceName,
-              namespace,
-              port: status.port,
-              policy: status.authentication_policy_name.split("/")[0],
-              destinationRule: status.destination_rule_name.split("/")[0],
-              serverProtocol: status.server_protocol,
-              clientProtocol: status.client_protocol,
-              serviceMtlsMode,
-              status: status.TLS_conflict_status,
-            }
-          })
-      } else {
-        serviceMtlsStatuses = []
-      }
-    } 
-    catch(err){
-      console.log(err)
-      serviceMtlsStatuses = []
-    }
-    return serviceMtlsStatuses
   }
 
   static async getIstioServiceDetails(labelSelector: string, k8sClient: K8sClient) {
@@ -324,10 +324,22 @@ export default class IstioFunctions {
   }
 
   static getIngressCertsFromPod = async (pod: string, k8sClient: K8sClient) => {
-    let commandOutput = (await K8sFunctions.podExec("istio-system", pod, "istio-proxy", k8sClient, 
+    let commandOutput: any = (await K8sFunctions.podExec("istio-system", pod, "istio-proxy", k8sClient, 
                                   ["curl", "-s", "127.0.0.1:15000/certs"])).trim()
-    commandOutput = commandOutput.replace("}", "},")
-    return JSON.parse("[" + commandOutput + "]").map(cert => cert.cert_chain)
+    try {
+      commandOutput = JSON.parse(commandOutput)
+    } catch(error) {
+      commandOutput = commandOutput.replace(/}/g, "},")
+      commandOutput = commandOutput.slice(0, commandOutput.lastIndexOf(","))
+      commandOutput = "[" + commandOutput + "]"
+      commandOutput = JSON.parse(commandOutput)
+    }
+    if(commandOutput.map) {
+      return commandOutput
+    } else if(commandOutput.certificates) {
+      return commandOutput.certificates
+    }
+    return []
   }
 
   static getIngressCerts = async (k8sClient: K8sClient) => {
@@ -382,6 +394,7 @@ export default class IstioFunctions {
       const listeners = JSON.parse(await K8sFunctions.podExec("istio-system", ingressPod.name, "istio-proxy", k8sClient, 
                                   ["curl", "-s", "http://127.0.0.1:15000/listeners"]))
       ingressPodListenersMap[ingressPod.name] = listeners.map(l => l.split(":")[1])
+                        .filter(p => p).map(p => parseInt(p))
     }
     return ingressPodListenersMap
   }

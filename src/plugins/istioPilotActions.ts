@@ -3,6 +3,7 @@ import K8sFunctions from '../k8s/k8sFunctions'
 import IstioFunctions from '../k8s/istioFunctions';
 import ChoiceManager from '../actions/choiceManager';
 import { ServiceDetails } from '../k8s/k8sObjectTypes';
+import IstioPluginHelper from '../k8s/istioPluginHelper';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
@@ -19,9 +20,13 @@ const plugin : ActionGroupSpec = {
         this.showOutputLoading && this.showOutputLoading(true)
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
-          const result = await IstioFunctions.getPilotMetrics(cluster.k8sClient)
-          this.onStreamOutput && this.onStreamOutput([[">Cluster: " + cluster.name]])
-          this.onStreamOutput && this.onStreamOutput(result ? result.split("\n").map(line => [line]) : [[""]])
+          if(cluster.hasIstio) {
+            const result = await IstioFunctions.getPilotMetrics(cluster.k8sClient)
+            this.onStreamOutput && this.onStreamOutput([[">Cluster: " + cluster.name]])
+            this.onStreamOutput && this.onStreamOutput(result ? result.split("\n").map(line => [line]) : [[""]])
+          } else {
+            this.onStreamOutput && this.onStreamOutput([["Istio not installed"]])
+          }
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
@@ -35,7 +40,7 @@ const plugin : ActionGroupSpec = {
       loadingMessage: "Loading Services...",
       
       async choose(actionContext) {
-        await ChoiceManager.prepareChoices(actionContext, K8sFunctions.getServices, 
+        await ChoiceManager.prepareChoices(actionContext, IstioPluginHelper.getServicesFromIstioEnabledClusters, 
                                                   "Services", 1, 10, true, "name")
       },
       
@@ -45,13 +50,17 @@ const plugin : ActionGroupSpec = {
         const selections = await ChoiceManager.getSelections(actionContext)
         for(const selection of selections) {
           const cluster = actionContext.getClusters().filter(c => c.name === selection.cluster)[0]
-          const service = selection.item as ServiceDetails
-          const namespace = selection.namespace
-          const endpoints = await IstioFunctions.getPilotEndpoints(cluster.k8sClient, service.name, namespace)
-          this.onStreamOutput && this.onStreamOutput([
-            [">Service: " + service.name + ", Namespace: " + namespace + ", Cluster: " + cluster.name],
-            [endpoints]
-          ])
+          if(cluster.hasIstio) {
+            const service = selection.item as ServiceDetails
+            const namespace = selection.namespace
+            const endpoints = await IstioFunctions.getPilotEndpoints(cluster.k8sClient, service.name, namespace)
+            this.onStreamOutput && this.onStreamOutput([
+              [">Service: " + service.name + ", Namespace: " + namespace + ", Cluster: " + cluster.name],
+              [endpoints]
+            ])
+          } else {
+            this.onStreamOutput && this.onStreamOutput([["Istio not installed"]])
+          }
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },

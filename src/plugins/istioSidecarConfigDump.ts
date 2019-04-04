@@ -4,7 +4,35 @@ import ActionContext from '../actions/actionContext';
 import JsonUtil from '../util/jsonUtil';
 import IstioFunctions from '../k8s/istioFunctions';
 
-async function outputConfig(action: ActionSpec, actionContext: ActionContext, 
+
+export function outputConfig(onStreamOutput, configs: any[], titleField: string, 
+                              dataField?: string, dataTitleField?: string) {
+  const output: ActionOutput = []
+  configs.forEach(c => {
+    const configTitle = JsonUtil.extract(c, titleField)
+    const data = dataField ? JsonUtil.extract(c, dataField) : c
+    let dataTitle = dataTitleField && JsonUtil.extract(data, dataTitleField)
+    dataTitle && (dataTitle = dataTitle.length > 0 ? dataTitle : undefined)
+    if(data instanceof Array) {
+      data.forEach(item => {
+        const itemTitle = dataTitleField && JsonUtil.extract(item, dataTitleField)
+        let title = configTitle || ""
+        dataTitle && (title += (title.length > 0 ? " > " : "") + dataTitle)
+        itemTitle && (title += (title.length > 0 ? " > " : "") + itemTitle)
+        output.push([">>"+title])
+        output.push([item])
+      })
+    } else {
+      let title = configTitle || ""
+      dataTitle && (title += (title.length > 0 ? " > " : "") + dataTitle)
+      output.push([">>"+title])
+      output.push([data])
+    }
+  })
+  onStreamOutput(output)
+}
+
+async function outputSidecarConfig(action: ActionSpec, actionContext: ActionContext, 
                               sidecars: any[], type: string, titleField: string, 
                               dataField?: string, dataTitleField?: string) {
   action.onOutput &&
@@ -17,28 +45,7 @@ async function outputConfig(action: ActionSpec, actionContext: ActionContext,
     const output: ActionOutput = []
 
     const configs = await IstioFunctions.getIstioProxyConfigDump(cluster.k8sClient, sidecar.namespace, sidecar.pod, type)
-    configs.forEach(c => {
-      const configTitle = JsonUtil.extract(c, titleField)
-      const data = dataField ? JsonUtil.extract(c, dataField) : c
-      let dataTitle = dataTitleField && JsonUtil.extract(data, dataTitleField)
-      dataTitle && (dataTitle = dataTitle.length > 0 ? dataTitle : undefined)
-      if(data instanceof Array) {
-        data.forEach(item => {
-          const itemTitle = dataTitleField && JsonUtil.extract(item, dataTitleField)
-          let title = configTitle || ""
-          dataTitle && (title += (title.length > 0 ? " > " : "") + dataTitle)
-          itemTitle && (title += (title.length > 0 ? " > " : "") + itemTitle)
-          output.push([">>"+title])
-          output.push([item])
-        })
-      } else {
-        let title = configTitle || ""
-        dataTitle && (title += (title.length > 0 ? " > " : "") + dataTitle)
-        output.push([">>"+title])
-        output.push([data])
-      }
-    })
-    action.onStreamOutput  && action.onStreamOutput(output)
+    outputConfig(action.onStreamOutput, configs, titleField, dataField, dataTitleField)
   }
   action.showOutputLoading && action.showOutputLoading(false)
 }
@@ -61,7 +68,7 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
           return
         }
-        await outputConfig(this, actionContext, sidecars, "ClustersConfigDump", "cluster.name")
+        await outputSidecarConfig(this, actionContext, sidecars, "ClustersConfigDump", "cluster.name")
       },
       refresh(actionContext) {
         this.act(actionContext)
@@ -80,7 +87,7 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
           return
         }
-        await outputConfig(this, actionContext, sidecars, "ListenersConfigDump", "listener.address.socket_address.port_value")
+        await outputSidecarConfig(this, actionContext, sidecars, "ListenersConfigDump", "listener.address.socket_address.port_value")
       },
       refresh(actionContext) {
         this.act(actionContext)
@@ -99,7 +106,7 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
           return
         }
-        await outputConfig(this, actionContext, sidecars, "RoutesConfigDump", "route_config.name", "route_config.virtual_hosts", "name")
+        await outputSidecarConfig(this, actionContext, sidecars, "RoutesConfigDump", "route_config.name", "route_config.virtual_hosts", "name")
       },
       refresh(actionContext) {
         this.act(actionContext)

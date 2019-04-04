@@ -1,4 +1,7 @@
-# kubeman
+# Kubeman Rocks! 
+
+##Slack Channel: #kubeman
+
 ## To build and run the app
 PreRequisite: Node.js and npm
 

@@ -68,7 +68,7 @@ const plugin : ActionGroupSpec = {
         this.act(actionContext)
       },
       clear() {
-        this.onOutput && this.onOutput([["Pod Reachability Test", "", ""]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Pod Reachability Test", "", ""]], ActionOutputStyle.LogWithHealth)
       }
     }
   ]
