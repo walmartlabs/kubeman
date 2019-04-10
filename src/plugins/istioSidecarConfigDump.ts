@@ -57,7 +57,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Sidecar Clusters Config",
-      order: 47,
+      order: 21,
       loadingMessage: "Loading Envoy Sidecars...",
 
       choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
@@ -76,7 +76,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Sidecar Listeners Config",
-      order: 48,
+      order: 22,
       loadingMessage: "Loading Envoy Sidecars...",
 
       choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
@@ -95,7 +95,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Sidecar Routes Config",
-      order: 49,
+      order: 23,
       loadingMessage: "Loading Envoy Sidecars...",
 
       choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
@@ -114,7 +114,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Sidecar Stats",
-      order: 50,
+      order: 30,
       autoRefreshDelay: 30,
       loadingMessage: "Loading Envoy Sidecars...",
 

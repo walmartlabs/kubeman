@@ -33,7 +33,7 @@ export async function getClientForCluster(cluster: Cluster) {
   const config = k8s.config.fromKubeconfig(kubeConfig)
   const client = new k8s.Client1_10({config})
   const k8sV1Client = client.api.v1
-  const k8sAppsClient = client.api.apps.v1
+  const k8sAppsClient = client.apis.apps.v1
   const extensions = client.apis["apiextensions.k8s.io"].v1beta1
 
   const k8sClient: K8sClient = {

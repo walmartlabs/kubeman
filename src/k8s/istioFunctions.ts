@@ -54,7 +54,7 @@ export default class IstioFunctions {
     return allGateways.filter(g => 
       virtualServices.filter(vs => vs.gateways)
       .filter(vs => 
-        vs.gateways.filter(vsg => vsg.includes(g.name)).length > 0
+        vs.gateways.filter(vsg => vsg === g.name || vsg.includes(g.name+".")).length > 0
       ).length > 0
     )
   }
@@ -80,7 +80,7 @@ export default class IstioFunctions {
                             .map(g => g.name)
     return (await IstioFunctions.listAllVirtualServices(k8sClient, yaml))
             .filter(v => v.gateways && v.gateways.filter(g => 
-              ingressGateways.filter(ig => g.includes(ig)).length > 0).length > 0)
+              ingressGateways.filter(ig => g === ig || g.includes(ig+".")).length > 0).length > 0)
   }
 
   static listAllEgressVirtualServices = async (k8sClient: K8sClient, yaml: boolean = true) => {
@@ -162,6 +162,16 @@ export default class IstioFunctions {
     }
   }
 
+  static getNamespaceSidecarResources = async (namespace: string, k8sClient: K8sClient) => {
+    if(k8sClient.istio.sidecars) {
+      return (IstioFunctions.extractResource(await k8sClient.istio.sidecars.get(), 
+                      "workloadSelector", "ingress", "egress", "yaml") as any[])
+            .filter(sc => sc.namespace === namespace)
+    } else {
+      return []
+    }
+  }
+
   static getServiceEgressSidecarResources = async (service: ServiceDetails, k8sClient: K8sClient) => {
     const allSidecarResources = await IstioFunctions.listAllSidecarResources(k8sClient)
     const nsSidecarResources = allSidecarResources.filter(sc => sc.namespace === service.namespace)
@@ -218,6 +228,11 @@ export default class IstioFunctions {
     const fields = ["hosts", "addresses", "ports", "location", "resolution", "endpoints"]
     yaml && fields.push("yaml")
     return IstioFunctions.extractResource(await k8sClient.istio.serviceentries.get(), ...fields) as any[]
+  }
+
+  static getNamespaceServiceEntries = async (namespace: string, k8sClient: K8sClient) => {
+    return (await IstioFunctions.listAllServiceEntries(k8sClient))
+            .filter(se => se.namespace === namespace)
   }
 
   static getServiceServiceEntries = async (service: ServiceDetails, k8sClient: K8sClient) => {

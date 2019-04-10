@@ -9,10 +9,27 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "List Sidecar Proxies",
-      order: 45,
-      act(actionContext) {
+      order: 1,
+      async act(actionContext) {
         this.onOutput && this.onOutput([["", "Sidecars List"]], ActionOutputStyle.Table)
-        listResources("Sidecars", IstioFunctions.getAllSidecars, this.onStreamOutput, actionContext)
+
+        const clusters = actionContext.getClusters()
+        for(const cluster of clusters) {
+          const output: ActionOutput = []
+          output.push([">Sidecars @ Cluster: " + cluster.name, ""])
+      
+          if(cluster.hasIstio) {
+            const sidecars = await IstioFunctions.getAllSidecars(cluster.k8sClient)
+            sidecars.length === 0 && output.push(["", "No sidecars found"])
+            sidecars.forEach(sc => {
+              output.push([">>" + sc.pod+"."+sc.namespace, ""])
+              output.push(["IP", sc.ip])
+            })
+          } else {
+            output.push(["", "Istio not installed"])
+          }
+          this.onStreamOutput && this.onStreamOutput(output)
+        }
       },
       refresh(actionContext) {
         this.act(actionContext)
@@ -20,7 +37,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Sidecar Injection Report",
-      order: 46,
+      order: 2,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         this.onOutput && this.onOutput([["", "Sidecar Injection Report"]], ActionOutputStyle.Table)

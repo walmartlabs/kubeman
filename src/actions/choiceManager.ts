@@ -168,7 +168,7 @@ export default class ChoiceManager {
 
   static async _prepareChoices(cache: boolean, cacheKey: string|undefined, actionContext: ActionContext, k8sFunction: GetItemsFunction, 
                               name: string, min: number, max: number, useNamespace: boolean = true, ...fields) {
-    const previousSelections = this.cacheKey === cacheKey ? actionContext.getSelections() : []
+    const previousSelections = cache && this.cacheKey === cacheKey ? actionContext.getSelections() : []
     const choices: any[] = await ChoiceManager._storeItems(cache, cacheKey, actionContext, k8sFunction, useNamespace, ...fields)
     let howMany = ""
     if(min === max && max > 0) {
@@ -241,7 +241,7 @@ export default class ChoiceManager {
     }
     if(namespaces.length < min) {
       namespaces = []
-      namespaceNames = []
+      namespaceNames = [] //reset for use by uniqueFilter
       for(const cluster of clusters) {
         let clusterNamespaces = await K8sFunctions.getClusterNamespaces(cluster.k8sClient)
         if(unique) {
@@ -255,12 +255,12 @@ export default class ChoiceManager {
     }
     if(namespaces.length < min || namespaces.length > max) {
       ChoiceManager.showChoiceSubItems = !unique
-      await ChoiceManager.prepareChoices(actionContext, 
+      await ChoiceManager.prepareCachedChoices(actionContext,
         async (clusterName, namespace, k8sClient) => namespaces.filter(ns => ns.cluster.name === clusterName),
         "Namespaces", min, max, false, "name")
         ChoiceManager.showChoiceSubItems = true
     } else {
-      const selections = await ChoiceManager.storeItems(actionContext, 
+      const selections = await ChoiceManager.storeCachedItems("namespaces", actionContext, 
         async (cluster, namespace, k8sClient) => namespaces.filter(ns => ns.cluster.name === cluster), false, "name")
       actionContext.context && (actionContext.context.selections = selections)
       actionContext.onSkipChoices && actionContext.onSkipChoices()
