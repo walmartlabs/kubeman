@@ -15,13 +15,13 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         this.onOutput &&
-          this.onOutput([["", "Istio IngressGateway Details"]], ActionOutputStyle.Table)
+          this.onOutput([["Istio IngressGateway Details"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
 
         for(const cluster of clusters) {
-          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name, ""]])
+          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name]])
           if(!cluster.hasIstio) {
-            this.onStreamOutput  && this.onStreamOutput([["", "Istio not installed"]])
+            this.onStreamOutput  && this.onStreamOutput([["Istio not installed"]])
             continue
           }
           const output: ActionOutput = []
@@ -29,29 +29,62 @@ const plugin : ActionGroupSpec = {
           const ingressDeployment = await K8sFunctions.getDeploymentDetails(cluster.name, 
                                       "istio-system", "istio-ingressgateway", k8sClient)
           if(!ingressDeployment) {
-            this.onStreamOutput && this.onStreamOutput(["istio-ingressgateway not found", ""])
+            this.onStreamOutput && this.onStreamOutput(["istio-ingressgateway not found"])
             continue
           } 
-          output.push(["Replicas", ingressDeployment.replicas])
-          const podTemplate = ingressDeployment.template
-          const istioProxyContainer = podTemplate.containers.filter(c => c.name === "istio-proxy" 
-                                      || c.name === 'ingressgateway')[0]
-          output.push(["Labels", podTemplate.labels])
-          output.push(["Istio-Proxy Container", istioProxyContainer])
-          const istioSDSContainer = podTemplate.containers.filter(c => c.name === "ingress-sds")[0]
+          output.push(["Replicas: " + ingressDeployment.replicas])
 
-          if(istioSDSContainer) {
-            output.push(["SDS Container", istioSDSContainer])
-          }
           const ingressService = (await IstioFunctions.getIstioServiceDetails("istio=ingressgateway", k8sClient))[0]
           const ingressServiceYaml = ingressService.yaml
           delete ingressService.yaml
-          output.push(["Ingress Service", ingressService])
-          output.push(["Ingress Pods", await IstioFunctions.getIngressGatewayPods(k8sClient)])
-          output.push(["Ingress Gateways", await IstioFunctions.listAllIngressGateways(k8sClient, false)])
-          output.push(["Ingress VirtualServices", await IstioFunctions.listAllIngressVirtualServices(k8sClient, false)])
-          output.push(["Ingress Service Yaml", ingressServiceYaml])
-          output.push(["Ingress Deployment Yaml", ingressDeployment.yaml])
+          output.push([">>IngressGateway Service Details"])
+          output.push([ingressService])
+
+          const podTemplate = ingressDeployment.template
+          const istioProxyContainer = podTemplate.containers.filter(c => c.name === "istio-proxy" 
+                                      || c.name === 'ingressgateway')[0]
+
+          output.push([">>Containers"])
+          output.push([">>>Istio-Proxy Container"])
+          output.push([istioProxyContainer])
+
+          const istioSDSContainer = podTemplate.containers.filter(c => c.name === "ingress-sds")[0]
+          if(istioSDSContainer) {
+            output.push([">>>SDS Container"])
+            output.push([istioSDSContainer])
+          }
+
+          const pods = await IstioFunctions.getIngressGatewayPods(k8sClient)
+          output.push([">>Pods"])
+          pods.length === 0 && output.push(["No Pods"])
+          pods.forEach(pod => {
+            output.push([">>>"+pod.name])
+            output.push([pod])
+          })
+
+          const gateways = await IstioFunctions.listAllIngressGateways(k8sClient, false)
+          output.push([">>Gateways"])
+          gateways.length === 0 && output.push(["No Gateways"])
+          gateways.forEach(g => {
+            output.push([">>>"+g.name])
+            output.push([g])
+          })
+
+          const virtualServices = await IstioFunctions.listAllIngressVirtualServices(k8sClient, false)
+          output.push([">>VirtualServices"])
+          virtualServices.length === 0 && output.push(["No VirtualServices"])
+          virtualServices.forEach(vs => {
+            output.push([">>>"+vs.name])
+            output.push([vs])
+          })
+
+          output.push([">>Service and Deployment YAMLs"])
+          output.push([">>>Ingress Service Yaml"])
+          output.push([ingressServiceYaml])
+
+          output.push([">>>Ingress Deployment Yaml"])
+          output.push([ingressDeployment.yaml])
+
           this.onStreamOutput  && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)

@@ -204,6 +204,13 @@ export class TableBox extends React.Component<IProps, IState> {
     }
   }
 
+  onSectionClick = (sectionIndex?: number) => {
+    if(sectionIndex) {
+      this.outputManager.showeHideSection(sectionIndex)
+      this.forceUpdate()
+    }
+  }
+
   renderGroupRow(row: Row, rowIndex: number) {
     const {classes} = this.props
     const components : any[] = []
@@ -224,7 +231,8 @@ export class TableBox extends React.Component<IProps, IState> {
                            row.isSubGroup ? classes.tableSubgroupRow : classes.tableSectionRow }
                 onClick={
                   row.isGroup ? this.onGroupClick.bind(this, row.groupIndex) :
-                  row.isSubGroup ? this.onSubGroupClick.bind(this, row.subGroupIndex)
+                  row.isSubGroup ? this.onSubGroupClick.bind(this, row.subGroupIndex) :
+                  row.isSection ? this.onSectionClick.bind(this, row.sectionIndex)
                   : undefined
                 }
       >
@@ -351,6 +359,7 @@ export class TableBox extends React.Component<IProps, IState> {
     let hiddenIndicatorShown = false
     let parentIsGroup = false
     let parentIsSubGroup = false
+    let parentIsSection = false
     let isAppendedRow = false
 
     return (
@@ -379,8 +388,9 @@ export class TableBox extends React.Component<IProps, IState> {
                         if(row.isGroupOrSubgroupOrSection) {
                           hiddenIndicatorShown = false
                           parentIsGroup = parentIsGroup || row.isGroup
-                          parentIsSubGroup = parentIsSubGroup || row.isSubGroup
-                          if(!row.isHidden || row.isGroup) {
+                          parentIsSubGroup = row.isGroup ? false : (parentIsSubGroup || row.isSubGroup)
+                          parentIsSection = (row.isGroup || row.isSubGroup) ? false : (parentIsSection || row.isSection)
+                          if(!row.isHidden) {
                             return this.renderGroupRow(row, index)
                           } else {
                             return <tr key={index}/>
@@ -401,11 +411,12 @@ export class TableBox extends React.Component<IProps, IState> {
                             if(!hiddenIndicatorShown) {
                               hiddenIndicatorShown = true
                               tableRows.push(
-                                <TableRow key={index+"hidden"} style={{height: 30}}>
+                                <TableRow key={index+"hidden"} style={{height: 20}}>
                                   <TableCell className={classes.tableCellHidden}
-                                            style={{cursor: parentIsGroup || parentIsSubGroup ? 'pointer' : 'inherit'}}
+                                            style={{cursor: parentIsGroup || parentIsSubGroup || parentIsSection ? 'pointer' : 'inherit'}}
                                             colSpan={columnCount}
                                             onClick={() => 
+                                              parentIsSection ? this.onSectionClick(row.sectionIndex) :
                                               parentIsSubGroup ? this.onSubGroupClick(row.subGroupIndex) : 
                                               parentIsGroup ? this.onGroupClick(row.groupIndex) :
                                               undefined}
@@ -413,6 +424,9 @@ export class TableBox extends React.Component<IProps, IState> {
                                   ...
                                   </TableCell>
                                 </TableRow>
+                              )
+                              tableRows.push(
+                                <TableRow key={index+".hidden.spacer"} className={classes.tableRowSpacer}/>
                               )
                             }
                           } else {

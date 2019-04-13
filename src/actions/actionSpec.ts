@@ -72,6 +72,8 @@ export interface BoundAction extends ActionSpec {
   stop?: BoundActionAct
   react?: BoundActionAct
   refresh?: BoundActionAct
+  clear?: BoundActionAct
+  canReact: boolean
 }
 
 export interface ActionGroupSpec {

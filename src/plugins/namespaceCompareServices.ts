@@ -56,7 +56,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Compare Namespace Services",
-      order: 2,
+      order: 10,
       loadingMessage: "Loading Namespaces...",
 
       choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, true, 1, 10),

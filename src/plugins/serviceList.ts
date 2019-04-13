@@ -44,6 +44,28 @@ const plugin : ActionGroupSpec = {
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
+    },
+    {
+      name: "List External Services",
+      order: 2,
+
+      async act(actionContext) {
+        this.onOutput && this.onOutput([["External Services"]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
+
+        const clusters = actionContext.getClusters()
+        for(const cluster of clusters) {
+          this.onStreamOutput && this.onStreamOutput([[">Cluster: "+cluster.name]])
+          const externalServices = await K8sFunctions.getClusterExternalServices(cluster.k8sClient)
+          const output: ActionOutput = []
+          externalServices.length === 0 && output.push(["No external services found"])
+          externalServices.forEach(service => {
+            output.push([">>"+service.name+"."+service.namespace], [service.yaml])
+          })
+          this.onStreamOutput && this.onStreamOutput(output)
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
+      },
     }
   ]
 }

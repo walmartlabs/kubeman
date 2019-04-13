@@ -148,6 +148,7 @@ export class ActionLoader {
         actionRefresh && commands.push("/r(efresh): refresh output now")
         
         if(actionReact || actionRefresh || actionClear) {
+          action.canReact = actionReact !== null && actionReact !== undefined
           const boundReact = action.react = () => {
             switch(this.actionContext.inputText) {
               case "help":

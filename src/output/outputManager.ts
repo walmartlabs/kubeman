@@ -452,28 +452,15 @@ export default class OutputManager {
     this.groupCount = 0
     this.subGroupCount = 0
     this.sectionCount = 0
-    let currentGroup, currentSubGroup, currentSection
-    this.rows = 
-      output && output.length > 0 ? 
+    const currentGroupings = {}
+    this.rows = output && output.length > 0 ? 
         output.slice(1).map((content, rowIndex) => {
           const row = new Row(rowIndex, content, this.groupCount, this.subGroupCount, this.sectionCount, 
                                   this.headers.length, this.healthColumnIndex, this.isLog)
-          if(row.isGroup) {
-            currentGroup = row
-            row.groupIndex = ++this.groupCount
-          } else if(row.isSubGroup) {
-            currentSubGroup = row
-            row.subGroupIndex = ++this.subGroupCount
-          } else if(row.isSection) {
-            currentSection = row
-            row.sectionIndex = ++this.sectionCount
-          } else {
-            currentGroup && currentGroup.children.push(row)
-            currentSubGroup && currentSubGroup.children.push(row)
-            currentSection && currentSection.children.push(row)
-          }
+          this.updateRowMetaData(row, currentGroupings)
           return row
-        }) : []
+        }) 
+        : []
     this.filteredRows = this.rows.concat()
   }
 
@@ -481,25 +468,12 @@ export default class OutputManager {
     let lastRowIndex = this.rows.length-1
     this.rows.forEach(row => row.isFirstAppendedRow = false)
     let isFirstAppendedRow = false
-    let currentGroup, currentSubGroup, currentSection
+    const currentGroupings = {}
     rows.forEach(rowContent => {
       lastRowIndex++
       const row = new Row(lastRowIndex, rowContent, this.groupCount, this.subGroupCount, this.sectionCount,
                                 this.headers.length, this.healthColumnIndex, this.isLog)
-      if(row.isGroup) {
-        currentGroup = row
-        row.groupIndex = ++this.groupCount
-      } else if(row.isSubGroup) {
-        currentSubGroup = row
-        row.subGroupIndex = ++this.subGroupCount
-      } else if(row.isSection) {
-        currentSection = row
-        row.sectionIndex = ++this.sectionCount
-      } else {
-        currentGroup && currentGroup.children.push(row)
-        currentSubGroup && currentSubGroup.children.push(row)
-        currentSection && currentSection.children.push(row)
-      }
+      this.updateRowMetaData(row, currentGroupings)
       this.rows.push(row)
       if(!isFirstAppendedRow) {
         row.isFirstAppendedRow = isFirstAppendedRow = true
@@ -526,10 +500,31 @@ export default class OutputManager {
     this.matchedColumns.clear()
     this.isLog = false
     this.groupCount = this.subGroupCount = this.sectionCount = 0
-    this.lastGroupRow = undefined
-    this.lastSubGroupRow = undefined
-    this.lastSectionRow = undefined
+    this.lastGroupRow = this.lastSubGroupRow = this.lastSectionRow = undefined
     this.lastGroupVisibleCount = this.lastSubGroupVisibleCount = this.lastSectionVisibleCount = 0
+  }
+
+  private updateRowMetaData(row: Row, currentGroupings: any) {
+    if(row.isGroup) {
+      currentGroupings.currentGroup = row
+      row.groupIndex = ++this.groupCount
+      row.subGroupIndex = -1
+      row.sectionIndex = -1
+      ++this.subGroupCount
+      ++this.sectionCount
+    } else if(row.isSubGroup) {
+      currentGroupings.currentSubGroup = row
+      row.subGroupIndex = ++this.subGroupCount
+      row.sectionIndex = -1
+      ++this.sectionCount
+    } else if(row.isSection) {
+      currentGroupings.currentSection = row
+      row.sectionIndex = ++this.sectionCount
+    } else {
+      currentGroupings.currentGroup && currentGroupings.currentGroup.children.push(row)
+      currentGroupings.currentSubGroup && currentGroupings.currentSubGroup.children.push(row)
+      currentGroupings.currentSection && currentGroupings.currentSection.children.push(row)
+    }
   }
 
   private identifyHealthColumn() {
@@ -636,11 +631,10 @@ export default class OutputManager {
     return this.rows.filter(row => row.subGroupIndex === subGroupIndex)
   }
 
-  showeHideGroup(groupIndex: number) {
+  private showeHideRows(filterPredicate) {
     let anyHidden: boolean = false
     let anyVisible: boolean = false
-    this.filteredRows.filter(row => row.groupIndex === groupIndex)
-      .filter((row,index) => index > 0 && !row.isSubGroup)
+    this.filteredRows.filter((row,index) => filterPredicate(row, index))
       .map(row => {
         anyHidden = anyHidden || row.isHidden
         anyVisible = anyVisible || !row.isHidden
@@ -651,9 +645,18 @@ export default class OutputManager {
       })
   }
 
+  showeHideGroup(groupIndex: number) {
+    this.showeHideRows((row,index) => row.groupIndex === groupIndex
+                        && index > 0 && !row.isGroup && !row.isSubGroup && !row.isSection)
+  }
+
   showeHideSubGroup(subGroupIndex: number) {
-    this.filteredRows.filter(row => row.subGroupIndex === subGroupIndex)
-      .filter((row,index) => index > 0)
-      .forEach(row => row.isHidden = !row.isHidden)
+    this.showeHideRows((row,index) => row.subGroupIndex === subGroupIndex
+                        && index > 0 && !row.isGroup && !row.isSubGroup && !row.isSection)
+  }
+
+  showeHideSection(sectionIndex: number) {
+    this.showeHideRows((row,index) => row.sectionIndex === sectionIndex 
+                        && index > 0 && !row.isGroup && !row.isSubGroup && !row.isSection)
   }
 }

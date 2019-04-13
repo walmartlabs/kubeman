@@ -112,7 +112,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Check Service Logs",
-      order: 20,
+      order: 40,
       autoRefreshDelay: 60,
       loadingMessage: "Loading Services...",
 
@@ -131,7 +131,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Tail Service Logs",
-      order: 21,
+      order: 41,
       loadingMessage: "Loading Services...",
 
       async choose(actionContext) {

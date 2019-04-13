@@ -86,6 +86,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     backgroundBlendMode: 'multiply',
     backgroundColor: palette.type === 'dark' ? '#455A64' : '#80a8ff',
     boxShadow: 'inset 0.1em 0em 0em 1px rgba(0, 0, 0, .3)',
+    cursor: 'pointer',
   },
   tableEmptyRow: {
     padding: 0,

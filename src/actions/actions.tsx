@@ -4,7 +4,7 @@ import { withStyles, WithStyles, MuiThemeProvider, createMuiTheme } from '@mater
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import {ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails,
         Typography, List, ListItem, ListItemText, InputBase, Input, Paper,
-        FormGroup, FormControlLabel, Checkbox} from '@material-ui/core';
+        FormGroup, FormControlLabel, Checkbox, Button} from '@material-ui/core';
 
 import Context from "../context/contextStore";
 import {ActionLoader} from './actionLoader'
@@ -49,6 +49,7 @@ export class Actions extends React.Component<IProps, IState> {
   refreshChangeTimer: any
   lastRefreshed: any
   filterText: string = ''
+  clickAllowed: boolean = true
 
   componentDidMount() {
     this.componentWillReceiveProps(this.props)
@@ -71,6 +72,8 @@ export class Actions extends React.Component<IProps, IState> {
   }
 
   onAction = (action: BoundAction) => {
+    if(!this.clickAllowed) return
+    this.throttleClick()
     this.props.onAction(action)
     const prevAction = this.currentAction
     prevAction && prevAction.stop && prevAction.stop()
@@ -82,6 +85,11 @@ export class Actions extends React.Component<IProps, IState> {
       action.chooseAndAct()
       this.setAutoRefresh(false)
     }
+  }
+
+  throttleClick() {
+    this.clickAllowed = false
+    setTimeout(() => this.clickAllowed = true, 1000)
   }
 
   cancelRefreshTimers() {
@@ -175,6 +183,23 @@ export class Actions extends React.Component<IProps, IState> {
     }
   }
 
+  onReRun = () => {
+    if(this.currentAction) {
+      if(this.currentAction.canReact) {
+        this.currentAction.react && this.currentAction.react()
+      } else if(this.currentAction.refresh) {
+        this.currentAction.refresh()
+      } else {
+        this.currentAction.chooseAndAct()
+      }
+    }
+  }
+
+  onClearOutput = () => {
+    this.currentAction && this.currentAction.clear && this.currentAction.clear()
+  }
+
+
   renderExpansionPanel(title: string, actions: ActionSpec[], expanded: boolean = false) {
     const { classes } = this.props;
     return (
@@ -256,6 +281,23 @@ export class Actions extends React.Component<IProps, IState> {
                 Last Refreshed: {this.lastRefreshed ? this.lastRefreshed.toISOString() : 'None'}
               </Typography>
             </div>
+          }
+          {this.currentAction && this.currentAction.clear && 
+            <Button color="primary" variant="contained" size="small"
+                  className={classes.actionButton}
+                  onClick={this.onClearOutput}
+              >
+              Clear
+            </Button>
+          }
+          {this.currentAction && 
+            (this.currentAction.canReact || this.currentAction.refresh) &&
+            <Button color="primary" variant="contained" size="small"
+                  className={classes.actionButton}
+                  onClick={this.onReRun}
+              >
+              ReRun
+            </Button>
           }
         </div>
       </MuiThemeProvider>  

@@ -1,8 +1,6 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import K8sFunctions from '../k8s/k8sFunctions';
-import IstioFunctions from '../k8s/istioFunctions';
-import {listResources} from './istioResources'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,

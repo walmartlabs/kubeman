@@ -5,8 +5,9 @@ const styles = ({ palette, spacing, typography, transitions }: Theme) => createS
     overflowY: 'scroll', 
     height: '97%'
   },
-  button: {
+  actionButton: {
     margin: spacing.unit,
+    float: 'right',
   },
   expansion: {
     width: '100%',

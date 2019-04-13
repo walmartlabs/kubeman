@@ -34,6 +34,12 @@ const plugin : ActionGroupSpec = {
         }
       },      
       async executeCommand(commandText, actionContext) {
+        commandText = commandText.trim()
+        if(commandText.length === 0) {
+          this.onStreamOutput && this.onStreamOutput([["No command entered."]])
+          this.showOutputLoading && this.showOutputLoading(false)
+          return
+        }
         if(commandText.includes("ping") && !commandText.includes("-c")) {
             this.onStreamOutput && this.onStreamOutput([["Can't execute ping command without -c option since this will run indefinitely."]])
             this.showOutputLoading && this.showOutputLoading(false)

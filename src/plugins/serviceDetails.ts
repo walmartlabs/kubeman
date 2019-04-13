@@ -10,7 +10,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "View Service Details",
-      order: 10,
+      order: 20,
       loadingMessage: "Loading Services...",
       
       async choose(actionContext) {
@@ -61,7 +61,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Compare Two Services",
-      order: 11,
+      order: 30,
       loadingMessage: "Loading Services...",
       async choose(actionContext) {
         await ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, 

@@ -1,20 +1,14 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import IstioFunctions from '../k8s/istioFunctions';
 import ActionContext from '../actions/actionContext';
-import IstioPluginHelper from '../k8s/istioPluginHelper';
-import ChoiceManager from '../actions/choiceManager';
 
 export async function listResources(type: string, getResources: (k8sClient) => Promise<any[]>, 
-                              onStreamOutput, actionContext: ActionContext, clusterName?: string) {
+                                    actionContext: ActionContext, onStreamOutput, onOutput) {
+  onOutput([[type+" List", ""]], ActionOutputStyle.Table)
   const clusters = actionContext.getClusters()
 
   for(const cluster of clusters) {
-    if(clusterName && cluster.name !== clusterName) {
-      continue
-    }
     const output: ActionOutput = []
-    output.push([">"+type+" @ Cluster: " + cluster.name, ""])
-
     if(cluster.hasIstio) {
       const resources = (await getResources(cluster.k8sClient)).map(r => {
         return {
@@ -24,12 +18,16 @@ export async function listResources(type: string, getResources: (k8sClient) => P
           yaml: r.yaml
         }
       })
+      output.push([">"+type+" @ Cluster: " + cluster.name + " (" + resources.length + " found)", ""])
       resources.length === 0 && output.push(["", "No resource found"])
       resources.forEach(resource => {
-        output.push([">>" + (resource.name || ""), ""])
+        let title = resource.name
+        title && (title += "."+(resource.namespace))
+        output.push([">>" + title, ""])
         Object.keys(resource).forEach(key => resource[key] && output.push([key, resource[key]]))
       })
     } else {
+      output.push([">"+type+" @ Cluster: " + cluster.name, ""])
       output.push(["", "Istio not installed"])
     }
     onStreamOutput(output)
@@ -45,64 +43,56 @@ const plugin : ActionGroupSpec = {
       name: "List Gateways",
       order: 11,
       act(actionContext) {
-        this.onOutput && this.onOutput([["", "Istio Gateways List"]], ActionOutputStyle.Table)
-        listResources("Gateways", IstioFunctions.listAllGateways, this.onStreamOutput, actionContext)
+        listResources("Gateways", IstioFunctions.listAllGateways, actionContext, this.onStreamOutput, this.onOutput)
       }
     },
     {
       name: "List VirtualServices",
       order: 12,
       act(actionContext) {
-        this.onOutput && this.onOutput([["", "Istio VirtualServices List"]], ActionOutputStyle.Table)
-        listResources("VirtualServices", IstioFunctions.listAllVirtualServices, this.onStreamOutput, actionContext)
+        listResources("VirtualServices", IstioFunctions.listAllVirtualServices, actionContext, this.onStreamOutput, this.onOutput)
       }
     },
     {
       name: "List ServiceEntries",
       order: 13,
       act(actionContext) {
-        this.onOutput && this.onOutput([["", "Istio ServiceEntries List"]], ActionOutputStyle.Table)
-        listResources("ServiceEntries", IstioFunctions.listAllServiceEntries, this.onStreamOutput, actionContext)
+        listResources("ServiceEntries", IstioFunctions.listAllServiceEntries, actionContext, this.onStreamOutput, this.onOutput)
       }
     },
     {
       name: "List Sidecar Resources",
       order: 14,
       act(actionContext) {
-        this.onOutput && this.onOutput([["", "Istio Sidecar Resource List"]], ActionOutputStyle.Table)
-        listResources("Sidecars", IstioFunctions.listAllSidecarResources, this.onStreamOutput, actionContext)
+        listResources("Sidecars", IstioFunctions.listAllSidecarResources, actionContext, this.onStreamOutput, this.onOutput)
       }
     },
     {
       name: "List DestinationRules",
       order: 15,
       act(actionContext) {
-        this.onOutput && this.onOutput([["", "Istio VirtualServices List"]], ActionOutputStyle.Table)
-        listResources("VirtualServices", IstioFunctions.listAllDestinationRules, this.onStreamOutput, actionContext)
+        listResources("DestinationRules", IstioFunctions.listAllDestinationRules, actionContext, this.onStreamOutput, this.onOutput)
       }
     },
     {
       name: "List Policies",
       order: 16,
       act(actionContext) {
-        this.onOutput && this.onOutput([["", "Istio Policies List"]], ActionOutputStyle.Table)
-        listResources("Policies", IstioFunctions.listAllPolicies, this.onStreamOutput, actionContext)
+        listResources("Policies", IstioFunctions.listAllPolicies, actionContext, this.onStreamOutput, this.onOutput)
       }
     },
     {
       name: "List MeshPolicies",
       order: 17,
       act(actionContext) {
-        this.onOutput && this.onOutput([["", "Istio MeshPolicies List"]], ActionOutputStyle.Table)
-        listResources("MeshPolicies", IstioFunctions.listAllMeshPolicies, this.onStreamOutput, actionContext)
+        listResources("MeshPolicies", IstioFunctions.listAllMeshPolicies, actionContext, this.onStreamOutput, this.onOutput)
       }
     },
     {
       name: "List Rules",
       order: 18,
       act(actionContext) {
-        this.onOutput && this.onOutput([["", "Istio Rules List"]], ActionOutputStyle.Table)
-        listResources("Rules", IstioFunctions.listAllRules, this.onStreamOutput, actionContext)
+        listResources("Rules", IstioFunctions.listAllRules, actionContext, this.onStreamOutput, this.onOutput)
       }
     },
   ]

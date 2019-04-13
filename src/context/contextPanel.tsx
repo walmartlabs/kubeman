@@ -2,9 +2,9 @@ import React from 'react'
 import _ from 'lodash'
 
 import { withStyles, WithStyles } from '@material-ui/core/styles'
-import { Paper, Tabs, Tab, Grid, Button } from '@material-ui/core';
+import { Paper, Tabs, Tab, Grid, TextField } from '@material-ui/core';
 import {List, ListSubheader, ListItem, ListItemText}  from '@material-ui/core';
-import {Avatar, Chip, Card, CardContent, CardActions, Typography} from '@material-ui/core';
+import {Avatar, Chip, Card, CardContent } from '@material-ui/core';
 
 import {Cluster, Namespace, Pod, Item} from "../k8s/k8sObjectTypes";
 import Context from "./contextStore";
@@ -118,11 +118,18 @@ class ContextPanel extends React.Component<IProps, IState> {
             clusters.length > 0 &&
               clusters.map((cluster, index) => {
                 if(activeTab === index) {
-                  return cluster.namespaces.map(namespace => 
-                      <Grid key={namespace.name+index} item xs={12} md={12} className={classes.gridItem}>
-                        {this.renderNamespace(namespace)}
-                      </Grid>
-                  )
+                  if(cluster.namespaces.length > 0) {
+                    return cluster.namespaces.map(namespace => 
+                        <Grid key={namespace.name+index} item xs={12} md={12} className={classes.gridItem}>
+                          {this.renderNamespace(namespace)}
+                        </Grid>)
+                  } else {
+                    return <TextField key={cluster.name+"nons"} 
+                                      disabled
+                                      variant="outlined"
+                                      style={{width: '100%', border: 0}}
+                                      defaultValue="No namespaces selected" />
+                  }
                 } else {
                   return ""
                 }

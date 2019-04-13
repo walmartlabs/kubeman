@@ -36,11 +36,11 @@ async function outputSidecarConfig(action: ActionSpec, actionContext: ActionCont
                               sidecars: any[], type: string, titleField: string, 
                               dataField?: string, dataTitleField?: string) {
   action.onOutput &&
-    action.onOutput([["", "Sidecar " + type]], ActionOutputStyle.Table)
+    action.onOutput([["Sidecar " + type]], ActionOutputStyle.Table)
   action.showOutputLoading && action.showOutputLoading(true)
 
   for(const sidecar of sidecars) {
-    action.onStreamOutput  && action.onStreamOutput([[">Sidecar: " + sidecar.title, ""]])
+    action.onStreamOutput  && action.onStreamOutput([[">Sidecar: " + sidecar.title]])
     const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
     const output: ActionOutput = []
 
@@ -121,7 +121,7 @@ const plugin : ActionGroupSpec = {
       choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
       
       async act(actionContext) {
-        this.clear && this.clear(actionContext)
+        this.onOutput && this.onOutput([["Sidecar Stats"]], ActionOutputStyle.Log)
         this.showOutputLoading && this.showOutputLoading(true)
         const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
         for(const sidecar of sidecars) {
@@ -134,9 +134,6 @@ const plugin : ActionGroupSpec = {
       },
       refresh(actionContext) {
         this.act(actionContext)
-      },
-      clear() {
-        this.onOutput && this.onOutput([["Sidecar Stats"]], ActionOutputStyle.Log)
       }
     }
   ]

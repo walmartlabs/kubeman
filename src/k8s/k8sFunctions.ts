@@ -148,6 +148,14 @@ export default class K8sFunctions {
     return services
   }
 
+  static getAllClusterServices = async (k8sClient) => {
+    return K8sFunctions.getServices('', '', k8sClient)
+  }
+
+  static getClusterExternalServices = async (k8sClient) => {
+    return (await K8sFunctions.getAllClusterServices(k8sClient)).filter(s => s.type === "ExternalName")
+  }
+
   static getServiceDetails = async (namespace: string, service: string, k8sClient: K8sClient) => {
     let services = await K8sFunctions.getServices("", namespace, k8sClient)
     services = services.filter(s => s.name.includes(service) || service.includes(s.name))

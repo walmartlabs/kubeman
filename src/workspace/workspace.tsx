@@ -83,6 +83,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   onAction = (action: BoundAction) => {
     this.streamOutput = []
+    this.tableBox && this.tableBox.outputManager.clearContent()
     this.setState({scrollMode: false, output: []})
   }
 

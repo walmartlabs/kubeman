@@ -6,14 +6,14 @@ import IstioFunctions from '../k8s/istioFunctions';
 async function outputConfig(action: ActionSpec, actionContext: ActionContext, type: string, 
                             titleField: string, dataField?: string, dataTitleField?: string) {
   action.onOutput &&
-    action.onOutput([["", "Istio IngressGateway " + type]], ActionOutputStyle.Table)
+    action.onOutput([["Istio IngressGateway " + type]], ActionOutputStyle.Table)
   action.showOutputLoading && action.showOutputLoading(true)
 
   const clusters = actionContext.getClusters()
   for(const cluster of clusters) {
-    action.onStreamOutput  && action.onStreamOutput([[">Cluster: " + cluster.name, ""]])
+    action.onStreamOutput  && action.onStreamOutput([[">Cluster: " + cluster.name]])
     if(!cluster.hasIstio) {
-      action.onStreamOutput  && action.onStreamOutput([["", "Istio not installed"]])
+      action.onStreamOutput  && action.onStreamOutput([["Istio not installed"]])
       continue
     }
     const output: ActionOutput = []
@@ -90,14 +90,14 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 60,
       
       async act(actionContext) {
-        this.clear && this.clear(actionContext)
+        this.onOutput && this.onOutput([["IngressGateway Stats"]], ActionOutputStyle.Log)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
-          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name, ""]])
+          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name]])
           if(!cluster.hasIstio) {
-            this.onStreamOutput  && this.onStreamOutput([["", "Istio not installed"]])
+            this.onStreamOutput  && this.onStreamOutput([["Istio not installed"]])
             continue
           }
           const stats = await IstioFunctions.getIngressGatwayStats(cluster.k8sClient)
@@ -107,9 +107,6 @@ const plugin : ActionGroupSpec = {
       },
       refresh(actionContext) {
         this.act(actionContext)
-      },
-      clear() {
-        this.onOutput && this.onOutput([["", "IngressGateway Stats"]], ActionOutputStyle.Log)
       },
     }
   ]
