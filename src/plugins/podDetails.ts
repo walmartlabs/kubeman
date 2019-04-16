@@ -14,7 +14,11 @@ const plugin : ActionGroupSpec = {
       choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 10, false, true),
 
       async act(actionContext) {
-        const selections = await ChoiceManager.getPodSelections(actionContext, true, false)
+        const selections = await ChoiceManager.getPodSelections(actionContext, false)
+        this.directAct && this.directAct(selections)
+      },
+
+      async directAct(selections) {
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
           return
@@ -22,7 +26,7 @@ const plugin : ActionGroupSpec = {
         this.onOutput && this.onOutput([["Keys", "Data"]], ActionOutputStyle.Table)
 
         selections.forEach(selection => {
-          const pod = selection.pod
+          const pod = selection.podName
           const namespace = selection.namespace
           const cluster = selection.cluster
           const podDetails = selection.podContainerDetails as PodDetails

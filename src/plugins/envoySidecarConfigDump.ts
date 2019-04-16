@@ -1,31 +1,30 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder, ActionSpec} from '../actions/actionSpec'
+import EnvoyFunctions from '../k8s/envoyFunctions'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import ActionContext from '../actions/actionContext';
 import JsonUtil from '../util/jsonUtil';
-import IstioFunctions from '../k8s/istioFunctions';
 
 
-export function outputConfig(onStreamOutput, configs: any[], titleField: string, 
-                              dataField?: string, dataTitleField?: string) {
+export function outputConfig(onStreamOutput, configs: any[], dataField?: string, dataTitleField?: string) {
   const output: ActionOutput = []
-  configs.forEach(c => {
-    const configTitle = JsonUtil.extract(c, titleField)
-    const data = dataField ? JsonUtil.extract(c, dataField) : c
+  configs.forEach(config => {
+    const data = dataField ? JsonUtil.extract(config, dataField) : config
     let dataTitle = dataTitleField && JsonUtil.extract(data, dataTitleField)
     dataTitle && (dataTitle = dataTitle.length > 0 ? dataTitle : undefined)
     if(data instanceof Array) {
       data.forEach(item => {
         const itemTitle = dataTitleField && JsonUtil.extract(item, dataTitleField)
-        let title = configTitle || ""
+        let title = config.title || ""
         dataTitle && (title += (title.length > 0 ? " > " : "") + dataTitle)
         itemTitle && (title += (title.length > 0 ? " > " : "") + itemTitle)
         output.push([">>"+title])
         output.push([item])
       })
     } else {
-      let title = configTitle || ""
+      let title = config.title || ""
       dataTitle && (title += (title.length > 0 ? " > " : "") + dataTitle)
       output.push([">>"+title])
+      delete config.title
       output.push([data])
     }
   })
@@ -33,30 +32,28 @@ export function outputConfig(onStreamOutput, configs: any[], titleField: string,
 }
 
 async function outputSidecarConfig(action: ActionSpec, actionContext: ActionContext, 
-                              sidecars: any[], type: string, titleField: string, 
-                              dataField?: string, dataTitleField?: string) {
+                              sidecars: any[], configFn: (...args) => Promise<any[]>,
+                              configType: string, dataField?: string, dataTitleField?: string) {
   action.onOutput &&
-    action.onOutput([["Sidecar " + type]], ActionOutputStyle.Table)
+    action.onOutput([["Envoy " + configType]], ActionOutputStyle.Table)
   action.showOutputLoading && action.showOutputLoading(true)
 
   for(const sidecar of sidecars) {
-    action.onStreamOutput  && action.onStreamOutput([[">Sidecar: " + sidecar.title]])
+    action.onStreamOutput  && action.onStreamOutput([[">Envoy Sidecar: " + sidecar.title]])
     const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
-    const output: ActionOutput = []
-
-    const configs = await IstioFunctions.getIstioProxyConfigDump(cluster.k8sClient, sidecar.namespace, sidecar.pod, type)
-    outputConfig(action.onStreamOutput, configs, titleField, dataField, dataTitleField)
+    const configs = await configFn(cluster.k8sClient, sidecar.namespace, sidecar.pod, "istio-proxy")
+    outputConfig(action.onStreamOutput, configs, dataField, dataTitleField)
   }
   action.showOutputLoading && action.showOutputLoading(false)
 }
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Sidecars Recipes",
+  title: "Envoy Proxy Recipes",
   order: ActionContextOrder.Istio+3,
   actions: [
     {
-      name: "Sidecar Clusters Config",
+      name: "Envoy Bootstrap Config",
       order: 21,
       loadingMessage: "Loading Envoy Sidecars...",
 
@@ -68,14 +65,14 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
           return
         }
-        await outputSidecarConfig(this, actionContext, sidecars, "ClustersConfigDump", "cluster.name")
+        await outputSidecarConfig(this, actionContext, sidecars, EnvoyFunctions.getEnvoyBootstrapConfig, "BootstrapConfig")
       },
       refresh(actionContext) {
         this.act(actionContext)
       }
     },
     {
-      name: "Sidecar Listeners Config",
+      name: "Envoy Clusters Config",
       order: 22,
       loadingMessage: "Loading Envoy Sidecars...",
 
@@ -87,14 +84,14 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
           return
         }
-        await outputSidecarConfig(this, actionContext, sidecars, "ListenersConfigDump", "listener.address.socket_address.port_value")
+        await outputSidecarConfig(this, actionContext, sidecars, EnvoyFunctions.getEnvoyClusters, "ClustersConfig")
       },
       refresh(actionContext) {
         this.act(actionContext)
       }
     },
     {
-      name: "Sidecar Routes Config",
+      name: "Envoy Listeners Config",
       order: 23,
       loadingMessage: "Loading Envoy Sidecars...",
 
@@ -106,29 +103,72 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
           return
         }
-        await outputSidecarConfig(this, actionContext, sidecars, "RoutesConfigDump", "route_config.name", "route_config.virtual_hosts", "name")
+        await outputSidecarConfig(this, actionContext, sidecars, EnvoyFunctions.gettEnvoyListeners, "ListenersConfig")
       },
       refresh(actionContext) {
         this.act(actionContext)
       }
     },
     {
-      name: "Sidecar Stats",
-      order: 30,
+      name: "Envoy Routes Config",
+      order: 24,
+      loadingMessage: "Loading Envoy Sidecars...",
+
+      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
+      
+      async act(actionContext) {
+        const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
+        if(sidecars.length < 1) {
+          this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
+          return
+        }
+        await outputSidecarConfig(this, actionContext, sidecars, EnvoyFunctions.gettEnvoyRoutes, "RoutesConfig")
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
+    },
+    {
+      name: "Envoy Stats",
+      order: 25,
       autoRefreshDelay: 30,
       loadingMessage: "Loading Envoy Sidecars...",
 
       choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
       
       async act(actionContext) {
-        this.onOutput && this.onOutput([["Sidecar Stats"]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Envoy Sidecar Stats"]], ActionOutputStyle.Log)
         this.showOutputLoading && this.showOutputLoading(true)
         const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
         for(const sidecar of sidecars) {
           this.onStreamOutput  && this.onStreamOutput([[">Sidecar: " + sidecar.title]])
           const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
-          const stats = await IstioFunctions.getIstioProxyStats(cluster.k8sClient, sidecar.namespace, sidecar.pod)
+          const stats = await EnvoyFunctions.getEnvoyStats(cluster.k8sClient, sidecar.namespace, sidecar.pod, "istio-proxy")
           this.onStreamOutput && this.onStreamOutput(stats.split("\n").map(line => [line]))
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
+    },
+    {
+      name: "Envoy ServerInfo",
+      order: 26,
+      autoRefreshDelay: 30,
+      loadingMessage: "Loading Envoy Sidecars...",
+
+      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 5),
+      
+      async act(actionContext) {
+        this.onOutput && this.onOutput([["Envoy Sidecar ServerInfo"]], ActionOutputStyle.Log)
+        this.showOutputLoading && this.showOutputLoading(true)
+        const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
+        for(const sidecar of sidecars) {
+          this.onStreamOutput  && this.onStreamOutput([[">Sidecar: " + sidecar.title]])
+          const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
+          const serverInfo = await EnvoyFunctions.getEnvoyServerInfo(cluster.k8sClient, sidecar.namespace, sidecar.pod, "istio-proxy")
+          this.onStreamOutput && this.onStreamOutput([serverInfo])
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },

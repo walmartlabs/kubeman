@@ -46,7 +46,7 @@ const plugin : ActionGroupSpec = {
       },
     },
     {
-      name: "List External Services",
+      name: "List All External Services",
       order: 2,
 
       async act(actionContext) {

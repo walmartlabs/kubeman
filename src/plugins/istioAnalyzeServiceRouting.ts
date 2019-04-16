@@ -51,6 +51,7 @@ const plugin : ActionGroupSpec = {
           await plugin.outputDestinationRules.call(this, service, cluster.k8sClient)
           await plugin.outputRoutingAnalysis.call(this, service, podsAndContainers, vsGateways, ingressPods, 
                                                   sidecarResources, cluster.k8sClient)
+          await plugin.outputIngressGatewayConfigs.call(this, service, cluster.k8sClient)
 
         } else {
           this.onStreamOutput && this.onStreamOutput([[">>Istio not installed"]])
@@ -185,7 +186,7 @@ const plugin : ActionGroupSpec = {
       ])
     }
 
-    const listeners = await IstioFunctions.getIngressConfigDump(k8sClient, "ListenersConfigDump")
+    const listeners = await IstioFunctions.getIngressGatewayEnvoyListeners(k8sClient)
     const ingressPorts: number[] = []
     listeners.forEach(l => ingressPorts.push(l.listener.address.socket_address.port_value))
     vsGateways.gateways && vsGateways.gateways.forEach(g => 
@@ -313,6 +314,21 @@ const plugin : ActionGroupSpec = {
     })
     this.onStreamOutput && this.onStreamOutput(output) 
     return {egressSidecarResources, incomingSidecarResources}
+  },
+
+  async outputIngressGatewayConfigs(service: ServiceDetails, k8sClient: K8sClient) {
+    const configsByType = await IstioFunctions.getIngressEnvoyConfigsForService(service, k8sClient)
+    const output: ActionOutput = []
+    Object.keys(configsByType).forEach(configType => {
+      output.push([">IngressGateway " + configType + " configs relevant to this service"])
+      const configs = configsByType[configType]
+      configs.length === 0 && output.push(["No " + configType + " configs"])
+      configs.forEach(c => {
+        output.push([">>"+c.title])
+        output.push([c])
+      })
+    })
+    this.onStreamOutput && this.onStreamOutput(output) 
   },
 }
 

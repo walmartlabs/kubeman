@@ -147,8 +147,6 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
 
   onCancelActionChoice = () => {
-    const {context} = this.state
-    context.selections = []
     this.setState({showActionInitChoices: false, showActionChoices: false, loading: false})
   }
 
@@ -187,6 +185,10 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     this.setState({context: context, output: []})
   }
 
+  runAction = (name, ...params) => {
+    this.actions && this.actions.runAction(name, ...params)
+  }
+
   render() {
     const { classes } = this.props;
     const { context, output, outputStyle, loading, loadingMessage, scrollMode,
@@ -211,7 +213,8 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                 <ContextPanel context={context} 
                     onUpdateContext={this.onUpdateContext}
                     onSelectContext={this.showContextDialog} 
-                    />
+                    runAction={this.runAction}
+                />
               </TableCell>
             </TableRow>
             <TableRow className={classes.lowerRow}>

@@ -22,7 +22,7 @@ const plugin : ActionGroupSpec = {
       },
     },
     {
-      name: "Compare Two Config Maps",
+      name: "Compare Two ConfigMaps",
       order: 22,
       loadingMessage: "Loading Config Maps...",
       async choose(actionContext) {

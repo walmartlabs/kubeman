@@ -1,8 +1,5 @@
 import _ from 'lodash'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
-import K8sFunctions from '../k8s/k8sFunctions'
-import IstioFunctions from '../k8s/istioFunctions'
-import IstioPluginHelper from '../k8s/istioPluginHelper'
 import { MtlsUtil } from '../k8s/mtlsUtil';
 
 const plugin : ActionGroupSpec = {
@@ -64,51 +61,25 @@ const plugin : ActionGroupSpec = {
             outputDestinationRules(": All Namespaces", ": All Namespaces", mtlsDestinationRules.globalRules)
           }
 
-          let sourceNamespaces = Object.keys(mtlsDestinationRules.allTo3rdPartyNSRules)
-          if(sourceNamespaces.length > 0) {
-            output.push([">>From All to 3rd Party Namespace mTLS DestinationRules", ""])
-            sourceNamespaces.forEach(sourceNS => {
-              Object.keys(mtlsDestinationRules.allTo3rdPartyNSRules[sourceNS]).forEach(targetNS => {
-                outputDestinationRules(": All Namespaces", "Namespace : "+targetNS, 
-                  mtlsDestinationRules.allTo3rdPartyNSRules[sourceNS][targetNS])
-              })
-            })
-          }
-
-          sourceNamespaces = Object.keys(mtlsDestinationRules.allToNSRules)
-          if(sourceNamespaces.length > 0) {
+          let targetNamespaces = Object.keys(mtlsDestinationRules.allToNSRules)
+          if(targetNamespaces.length > 0) {
             output.push([">>From All to Namespace mTLS DestinationRules", ""])
-            sourceNamespaces.forEach(sourceNS => {
-              Object.keys(mtlsDestinationRules.allToNSRules[sourceNS]).forEach(targetNS => {
-                outputDestinationRules(": All Namespaces", "Namespace : "+targetNS, 
-                  mtlsDestinationRules.allToNSRules[sourceNS][targetNS])
-              })
+            targetNamespaces.forEach(targetNS => {
+              outputDestinationRules(": All Namespaces", "Namespace : "+targetNS, 
+                mtlsDestinationRules.allToNSRules[targetNS])
             })
           }
 
-          sourceNamespaces = Object.keys(mtlsDestinationRules.allTo3rdPartyServiceRules)
-          if(sourceNamespaces.length > 0) {
-            output.push([">>From All to 3rd Party Service mTLS DestinationRules", ""])
-            sourceNamespaces.forEach(sourceNS => {
-              Object.keys(mtlsDestinationRules.allTo3rdPartyServiceRules[sourceNS]).forEach(targetService => {
-                outputDestinationRules(": All Namespaces", "Service : "+targetService, 
-                  mtlsDestinationRules.allTo3rdPartyServiceRules[sourceNS][targetService])
-              })
-            })
-          }
-
-          sourceNamespaces = Object.keys(mtlsDestinationRules.allToServiceRules)
-          if(sourceNamespaces.length > 0) {
+          let targetServices = Object.keys(mtlsDestinationRules.allToServiceRules)
+          if(targetServices.length > 0) {
             output.push([">>From All to Service mTLS DestinationRules", ""])
-            sourceNamespaces.forEach(sourceNS => {
-              Object.keys(mtlsDestinationRules.allToServiceRules[sourceNS]).forEach(targetService => {
-                outputDestinationRules(": All Namespaces", "Service : "+targetService, 
-                  mtlsDestinationRules.allToServiceRules[sourceNS][targetService])
-              })
+            targetServices.forEach(targetService => {
+              outputDestinationRules(": All Namespaces", "Service : "+targetService, 
+                mtlsDestinationRules.allToServiceRules[targetService])
             })
           }
 
-          sourceNamespaces = Object.keys(mtlsDestinationRules.nsToAllRules)
+          let sourceNamespaces = Object.keys(mtlsDestinationRules.nsToAllRules)
           if(sourceNamespaces.length > 0) {
             output.push([">>From Namespace to All mTLS DestinationRules", ""])
             sourceNamespaces.forEach(sourceNS => {

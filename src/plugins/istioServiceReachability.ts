@@ -3,7 +3,6 @@ import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, Act
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
-import { PodDetails } from '../k8s/k8sObjectTypes';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,

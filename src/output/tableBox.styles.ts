@@ -12,23 +12,23 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     width: '100%',
     height: '100%',
     padding: 0,
-    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
+    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
   },
   filterContainer: {
     paddingLeft: 5,
   },
   tableContainer: {
-    height: '100%',
+    height: '97.5%',
     padding: 0,
     paddingLeft: 5,
     margin: 0,
     tableLayout: 'fixed',
-    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
+    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
   },
   table: {
     padding: 0,
     paddingLeft: 5,
-    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
+    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
     wordWrap: 'break-word',
     wordBreak: 'break-all',
   },
@@ -37,7 +37,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     height: '100%',
     padding: 0,
     margin: 0,
-    backgroundColor: palette.type ==='dark' ? palette.background.paper : '#edeef8',
+    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
     overflowY: 'scroll',
     overflowX: 'hidden',
     '& pre': {
@@ -55,11 +55,10 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   },
   tableHeaderRow: {
     padding: 0,
-    height: 36,
+    height: 44,
     backgroundBlendMode: 'multiply',
-    background: palette.type ==='dark' ? 
-          'linear-gradient(45deg, #4b6082 20%, #4b6082 99%)'
-          : 'linear-gradient(45deg, #3141b4 20%, #3141b4 99%)'
+    background: palette.type ==='dark' ? '#003099' : '#3141b4',
+    cursor: 'pointer',
   },
   tableHeaderText: {
     color: '#ffffff !important',
@@ -77,7 +76,6 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     height: 32,
     backgroundColor: palette.type ==='dark' ? '#234B6D' : '#9abede',
     backgroundBlendMode: 'multiply',
-    boxShadow: 'inset 0.05em 0em 0em 1px rgba(0, 0, 0, .5)',
     cursor: 'pointer',
   },
   tableSectionRow: {
@@ -85,7 +83,6 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     height: 24,
     backgroundBlendMode: 'multiply',
     backgroundColor: palette.type === 'dark' ? '#455A64' : '#80a8ff',
-    boxShadow: 'inset 0.1em 0em 0em 1px rgba(0, 0, 0, .3)',
     cursor: 'pointer',
   },
   tableEmptyRow: {
@@ -96,25 +93,47 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   tableRow: {
     padding: 0,
     height: 24,
-    backgroundColor: palette.type ==='dark' ? palette.background.default : '#dae1fa',
     borderBottom: 0,
   },
   tableCellInnerRow: {
     padding: 0,
     height: 24,
-    backgroundColor: palette.type ==='dark' ? palette.background.default : '#dae1fa',
+    '&:not(:last-child)': {
+      //borderBottom: '1px dotted #909090',
+    },
+  },
+  tableCellWideRow: {
+    '&:first-child' :{
+      backgroundColor: '#1d2349',
+      color: '#fff',
+    },
   },
   tableGroupRowSpacer: {
     height: 12,
+    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
+  },
+  tableRowHidden: {
+    height: 20,
   },
   tableRowSpacer: {
     height: 4,
+    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
   },
   tableAppendedRow: {
     borderColor: palette.type ==='dark' ? '#806f00' : '#ffdd00',
   },
+  tableWrapperCell: {
+    padding: 0,
+    border: 0,
+    paddingRight: '5px !important',
+    paddingLeft: '5px !important',
+    color: 'inherit',
+    verticalAlign: 'top',
+    width: 'auto',
+  },
   tableCell: {
-    padding: '0px',
+    padding: 0,
+    borer: 0,
     color: 'inherit',
     verticalAlign: 'top',
     width: 'auto',
@@ -164,15 +183,20 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     padding: 0, 
     textAlign: 'left',
     paddingLeft: 10,
-    backgroundColor: palette.type ==='dark' ? palette.background.default : '#bcccdc',
+    backgroundColor: palette.type ==='dark' ? palette.background.default : '#dae1fa',
   },
   tableGridCell: {
     '&:not(:last-child)': {
-      borderBottom: '1px dashed #808080'
+      //borderBottom: '1px dashed #808080'
     }
   },
+  tableSpacerCell: {
+    height: 0,
+    border: 0,
+    padding: 0,
+  },
   searchHighlight: {
-    backgroundColor: palette.type ==='dark' ? '#804d00' : '#FFCC80',
+    backgroundColor: palette.type ==='dark' ? '#FF7788' : '#FFCC80',
   },
   grid: {
     

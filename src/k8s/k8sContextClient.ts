@@ -4,7 +4,7 @@ import Yaml from 'js-yaml'
 import jp from 'jsonpath'
 import fs from 'fs'
 import * as k8s from 'kubernetes-client'
-import {Cluster, Namespace, Pod, Item, PodTemplate} from "./k8sObjectTypes"
+import {Cluster, Namespace, PodTemplate} from "./k8sObjectTypes"
 import k8sFunctions from './k8sFunctions'
 
 const homedir = os.homedir();
@@ -33,11 +33,4 @@ export async function getNamespacesForCluster(cluster: Cluster) : Promise<Array<
   const client = getClientForCluster(cluster)
   const namespaces = await client.api.v1.namespaces.get()
   return namespaces.body.items.map(i => new Namespace(i.metadata.name, cluster))
-}
-
-export async function getPodsForNamespace(namespace: Namespace) : Promise<Array<Pod>> {
-  const client = getClientForCluster(namespace.cluster)
-  const result = await client.api.v1.namespace(namespace.name).pods.get()
-  const pods : PodTemplate[] = result.body.items.map(k8sFunctions.extractPodTemplate)
-  return pods.map(pod => new Pod(pod.name, namespace, pod.containers.map(c => c.name)))
 }

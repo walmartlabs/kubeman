@@ -4,10 +4,10 @@ import K8sFunctions from '../k8s/k8sFunctions';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Sidecars Recipes",
+  title: "Envoy Proxy Recipes",
   actions: [
     {
-      name: "Tail Sidecar Logs",
+      name: "Tail Envoy Logs",
       order: 11,
       selections: undefined,
       logStreams: [],

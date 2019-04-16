@@ -25,7 +25,7 @@ const plugin : ActionGroupSpec = {
         const clusters = actionContext.getClusters()
         for(const selection of selections) {
           const output: ActionOutput = []
-          output.push([">" + selection.title, ""])
+          output.push([">" + selection.title+"."+selection.namespace+" @ "+selection.cluster, ""])
           const deployment = selection.item
           const cluster = clusters.filter(c => c.name === selection.cluster)[0]
           if(deployment) {

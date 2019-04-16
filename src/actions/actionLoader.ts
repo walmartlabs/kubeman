@@ -1,11 +1,14 @@
+import _ from 'lodash'
 import PluginLoader from './pluginLoader'
 import {ActionContextType, ActionGroupSpec, ActionGroupSpecs, ActionContextOrder,
         isActionGroupSpec, isActionSpec, ActionOutput, ActionOutputStyle, 
-        ActionOutputCollector, ActionStreamOutputCollector, ActionChoiceMaker, BoundActionAct, ActionOnInfo, } from './actionSpec'
+        ActionOutputCollector, ActionStreamOutputCollector, ActionChoiceMaker, BoundActionAct, ActionOnInfo, ActionSpec, } from './actionSpec'
 import Context from "../context/contextStore";
 import ActionContext from './actionContext'
+import contextMenu from '../main/contextMenu';
 
 export class ActionLoader {
+  static actions: ActionSpec[]
   static onLoad: (ActionGroupSpecs) => void
   static onOutput: (action, output, style) => void
   static onStreamOutput: (action, output) => void
@@ -86,11 +89,12 @@ export class ActionLoader {
         console.log("Invalid ActionGroupSpec: " + JSON.stringify(actionGroupSpec))
       }
     })
+    const actionGroups : ActionGroupSpecs = Array.from(actionGroupsMap.values())
+    actionGroups.sort((i1,i2) => (i1.order !== i2.order) ? (i1.order || 100) - (i2.order || 100)
+                                    : (i1.title||"").localeCompare(i2.title||"") )
+    actionGroups.forEach(group => group.actions.sort((i1,i2) => (i1.order || 100) - (i2.order || 100)))
+    this.actions = _.flatten(actionGroups.map(spec => spec.actions))
     if(this.onLoad) {
-      const actionGroups : ActionGroupSpecs = Array.from(actionGroupsMap.values())
-      actionGroups.sort((i1,i2) => (i1.order !== i2.order) ? (i1.order || 100) - (i2.order || 100)
-                                      : (i1.title||"").localeCompare(i2.title||"") )
-      actionGroups.forEach(group => group.actions.sort((i1,i2) => (i1.order || 100) - (i2.order || 100)))
       this.onLoad(actionGroups)
     }
   }
@@ -102,22 +106,22 @@ export class ActionLoader {
 
   static bindActions(actionGroupSpec: ActionGroupSpec) {
     actionGroupSpec.actions.forEach(action => {
-      action.context = actionGroupSpec.context
-      action.actionContext = this.actionContext
       if(!isActionSpec(action)) {
         console.log("Not ActionSpec: " + JSON.stringify(action))
       } else {
+        action.context = actionGroupSpec.context
+        action.actionContext = this.actionContext
+        action.onOutput = this.onOutput.bind(this, action)
+        action.onStreamOutput = this.onStreamOutput.bind(this, action)
+        action.setScrollMode = this.onSetScrollMode
+        action.showOutputLoading = this.onOutputLoading
+        action.showInfo = this.onShowInfo
         action.chooseAndAct = () => {
           action.stopped = false
           if(this.checkSelections({
             checkClusters: true,
             checkNamespaces: false
           })) {
-            action.onOutput = this.onOutput.bind(this, action)
-            action.onStreamOutput = this.onStreamOutput.bind(this, action)
-            action.setScrollMode = this.onSetScrollMode
-            action.showOutputLoading = this.onOutputLoading
-            action.showInfo = this.onShowInfo
             if(action.choose) {
               this.actionContext.onActionInitChoices = this.onActionInitChoices.bind(this, action.act.bind(action, this.actionContext))
               this.actionContext.onSkipChoices = action.act.bind(action, this.actionContext)
@@ -132,10 +136,10 @@ export class ActionLoader {
         actionRefresh && (action.refresh = () => {
           actionRefresh && actionRefresh.call(action, this.actionContext)
         })
-        const stop = action.stop ? action.stop.bind(action, this.actionContext) : undefined
+        const actionStop = action.stop ? action.stop.bind(action, this.actionContext) : undefined
         action.stop = () => {
           action.stopped = true
-          stop && stop()
+          actionStop && actionStop()
         }
         const actionClear = action.clear && action.clear.bind(action)
         actionClear && (action.clear = () => actionClear(this.actionContext))

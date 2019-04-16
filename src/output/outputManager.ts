@@ -32,7 +32,7 @@ hljs.registerLanguage('yaml', yamlHighlight)
 
 function applyHighlight(text: string, filters: string[]) : [string, boolean] {
   const highlightColor = appTheme.activeTheme.palette && 
-          appTheme.activeTheme.palette.type === 'dark' ? '#804d00' : '#FFCC80'
+          appTheme.activeTheme.palette.type === 'dark' ? '#FF7788' : '#FFCC80'
 
   const lowerText = text.toLowerCase()
   const matchPositions : Set<number> = new Set
@@ -207,6 +207,9 @@ export class Cell {
   }
 
   formatText(text: any, isJSON: boolean) {
+    if(text.startsWith("##")) {
+      text = text.slice(2)
+    }
     if(isJSON) {
       text = "<pre>" + (this.isFiltered ? text : hljs.highlightAuto(text).value) + "</pre>"
     } else if(this.isLog) {
@@ -230,11 +233,11 @@ export class Cell {
 
   get groupText() {
     let text = this.isText ? this.formattedContent as string : ""
-    if(this.isGroup && text.charAt(0) === '>') {
+    if(this.isGroup && text.startsWith('>')) {
       text = text.slice(1)
-    } else if(this.isSubGroup && text.substring(0,2) === '>>') {
+    } else if(this.isSubGroup && text.startsWith('>>')) {
       text = text.slice(2)
-    } else if(this.isSection && text.substring(0,3) === '>>>') {
+    } else if(this.isSection && text.startsWith('>>>')) {
       text = text.slice(3)
     }
     return text
@@ -291,6 +294,7 @@ export class Row {
   private _isGroup: boolean = false
   private _isSubgroup: boolean = false
   private _isSection: boolean = false
+  private _isWide: boolean = false
 
   constructor(index: number, content: CellContent[], 
               groupIndex: number, subGroupIndex: number, sectionIndex: number,
@@ -312,6 +316,10 @@ export class Row {
       this._isSection = content[0].toString().startsWith(">>>") || false
       this._isSubgroup = !this._isSection && content[0].toString().startsWith(">>") || false
       this._isGroup = !this._isSection && !this._isSubgroup && content[0].toString().startsWith(">") || false
+      if((typeof content[0] === 'string' && content[0].toString().startsWith("##")) ||
+        (content[0] instanceof Array && (content[0] as []).length > 0 && content[0][0].toString().startsWith("##"))) {
+        this._isWide = true
+      }
       if(this.isGroupOrSubgroupOrSection && content.length < headersCount) {
         for(let i = content.length; i < headersCount; i++) {
           content.push("")
@@ -358,6 +366,10 @@ export class Row {
 
   get isSection() : boolean {
     return this._isSection
+  }
+
+  get isWide() : boolean {
+    return this._isWide
   }
 
   get groupText() : string {
@@ -546,9 +558,7 @@ export default class OutputManager {
     this.filteredRows = this.rows.concat()
     this.matchedColumns.clear()
     this.groupCount = this.subGroupCount = this.sectionCount = 0
-    this.lastGroupRow = undefined
-    this.lastSubGroupRow = undefined
-    this.lastSectionRow = undefined
+    this.lastGroupRow = this.lastSubGroupRow = this.lastSectionRow = undefined
     this.lastGroupVisibleCount = this.lastSubGroupVisibleCount = this.lastSectionVisibleCount = 0
   }
 
@@ -643,6 +653,10 @@ export default class OutputManager {
       .forEach(row => {
         row.isHidden = (anyVisible && anyHidden) ? false : !row.isHidden
       })
+  }
+
+  showeHideAllGroups() {
+    this.showeHideRows((row,index) => index > 0 && !row.isGroup && !row.isSubGroup && !row.isSection)
   }
 
   showeHideGroup(groupIndex: number) {

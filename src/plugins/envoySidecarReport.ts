@@ -4,13 +4,14 @@ import IstioFunctions from '../k8s/istioFunctions';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Sidecars Recipes",
+  title: "Envoy Proxy Recipes",
   actions: [
     {
-      name: "List Sidecar Proxies",
+      name: "List Envoy Sidecars",
       order: 1,
       async act(actionContext) {
         this.onOutput && this.onOutput([["", "Sidecars List"]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
 
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
@@ -29,13 +30,14 @@ const plugin : ActionGroupSpec = {
           }
           this.onStreamOutput && this.onStreamOutput(output)
         }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
       refresh(actionContext) {
         this.act(actionContext)
       }
     },
     {
-      name: "Sidecar Injection Report",
+      name: "Envoy Sidecar Injection Report",
       order: 2,
       async act(actionContext) {
         const clusters = actionContext.getClusters()

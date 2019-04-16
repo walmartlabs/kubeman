@@ -63,8 +63,8 @@ const plugin : ActionGroupSpec = {
         const command = commandText.split(" ")
         for(const selection of this.selections) {
           try {
-            const result = await k8sFunctions.podExec(selection.namespace, selection.pod, 
-                                  selection.container, selection.k8sClient, command)
+            const result = await k8sFunctions.podExec(selection.namespace, selection.podName, 
+                                  selection.containerName, selection.k8sClient, command)
             this.onStreamOutput && this.onStreamOutput([[">Pod: "+ selection.title+"."+selection.namespace 
                                   + ", Command: " + commandText]])
             const output = result.length > 0 ? [[result]] : [["No Results"]]

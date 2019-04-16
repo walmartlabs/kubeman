@@ -1,9 +1,6 @@
 import _ from 'lodash'
-import K8sFunctions from './k8sFunctions'
 import ChoiceManager from '../actions/choiceManager'
 import {ActionOutput, ActionOutputStyle} from '../actions/actionSpec'
-import {Cluster, Namespace, Pod, PodTemplate, PodDetails, PodContainerDetails} from "./k8sObjectTypes"
-import { K8sClient } from './k8sClient'
 
 export default class K8sPluginHelper {
   static async generateComparisonOutput(actionContext, onOutput, name, ...fields) {

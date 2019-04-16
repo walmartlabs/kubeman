@@ -23,8 +23,8 @@ const plugin : ActionGroupSpec = {
     const lineCount = (50/this.selections.length) < 20 ? 20 : (50/this.selections.length)
     for(const selection of this.selections) {
       action.showOutputLoading && action.showOutputLoading(true)
-      const logStream = await k8sFunctions.getPodLog(selection.namespace, selection.pod, 
-                                selection.container, selection.k8sClient, tail, lineCount)
+      const logStream = await k8sFunctions.getPodLog(selection.namespace, selection.podName, 
+                                selection.containerName, selection.k8sClient, tail, lineCount)
       logStream.onLog(lines => {
         lines = lines.split("\n")
                 .filter(line => line.length > 0)

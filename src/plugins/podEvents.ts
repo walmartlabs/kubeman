@@ -16,13 +16,17 @@ const plugin : ActionGroupSpec = {
       choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 10, false, false),
 
       async act(actionContext) {
-        this.clear && this.clear(actionContext)
+        const selections = await ChoiceManager.getPodSelections(actionContext, false)
+        this.directAct && this.directAct(selections)
+      },
+
+      async directAct(selections) {
+        this.clear && this.clear(this.actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
-        const selections = await ChoiceManager.getPodSelections(actionContext, true, false)
 
         for(const i in selections) {
           const selection = selections[i]
-          const pod = selection.pod
+          const pod = selection.podName
           const namespace = selection.namespace
           const cluster = selection.cluster
           const output: ActionOutput = []

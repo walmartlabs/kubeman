@@ -1,8 +1,8 @@
 import React from "react";
 import _ from 'lodash'
 import Context from "./contextStore";
-import {Cluster, Namespace, Pod, Item} from "../k8s/k8sObjectTypes";
-import SelectionDialog, {SelectionType} from './selectionDialog'
+import {Cluster, Namespace} from "../k8s/k8sObjectTypes";
+import SelectionDialog, {ContextSelectionType} from './selectionDialog'
 
 
 interface IProps extends React.DOMAttributes<{}> {
@@ -13,13 +13,10 @@ interface IState {
   context: Context
   showClusters: boolean
   showNamespaces: boolean
-  showPods: boolean
   forcedClusterSelection: boolean
   forcedNamespaceSelection: boolean
-  forcedPodSelection: boolean
   selectedClusters: Map<string, Cluster>
   selectedNamespaces: Map<string, Namespace>
-  selectedPods: Map<string, Pod>
   filter: string
 }
 
@@ -29,13 +26,10 @@ export default class ContextSelector extends React.Component<IProps, IState> {
     context: new Context(),
     showClusters: false,
     showNamespaces: false,
-    showPods: false,
     forcedClusterSelection: false,
     forcedNamespaceSelection: false,
-    forcedPodSelection: false,
     selectedClusters: new Map,
     selectedNamespaces: new Map,
-    selectedPods: new Map,
     filter: '',
   }
 
@@ -48,23 +42,19 @@ export default class ContextSelector extends React.Component<IProps, IState> {
   }
 
   
-  async onSelection(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, 
-              pods: Map<string, Pod>, filter: string) {
+  async onSelection(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, filter: string) {
     const {context} = this.state
-    await context.store(clusters, namespaces, pods)
+    await context.store(clusters, namespaces)
     this.props.onUpdateContext(context)
     this.setState({
       context, 
       selectedClusters: clusters,
       selectedNamespaces: namespaces,
-      selectedPods: pods,
       filter,
       showClusters: false, 
       showNamespaces: false, 
-      showPods: false, 
       forcedClusterSelection: false,
       forcedNamespaceSelection: false,
-      forcedPodSelection: false
     })
   }
 
@@ -76,10 +66,8 @@ export default class ContextSelector extends React.Component<IProps, IState> {
     this.setState({
       showClusters: false, 
       showNamespaces: false, 
-      showPods: false, 
       forcedClusterSelection: false,
       forcedNamespaceSelection: false,
-      forcedPodSelection: false
     })
   }
 
@@ -96,23 +84,12 @@ export default class ContextSelector extends React.Component<IProps, IState> {
     }
   }
 
-  selectPods() {
-    const {selectedNamespaces} = this.state
-    if(!selectedNamespaces || !selectedNamespaces.size || selectedNamespaces.size ==  0) {
-      this.setState({forcedNamespaceSelection: true})
-      this.selectNamespaces()
-    } else {
-      this.setState({showPods: true})
-    }
-  }
-
   render() {
-    const { context, showClusters, showNamespaces, showPods,
-            forcedClusterSelection, forcedNamespaceSelection, forcedPodSelection,
-            selectedClusters, selectedNamespaces, selectedPods, filter } = this.state;
-    const showDialog = showClusters || showNamespaces || showPods
-    const selection = showClusters ? SelectionType.Clusters :
-                        showNamespaces ? SelectionType.Namespaces : SelectionType.Pods
+    const { context, showClusters, showNamespaces,
+            forcedClusterSelection, forcedNamespaceSelection,
+            selectedClusters, selectedNamespaces, filter } = this.state;
+    const showDialog = showClusters || showNamespaces
+    const selection = showNamespaces ? ContextSelectionType.Namespaces : ContextSelectionType.Clusters
     
     return (
       <div>
@@ -121,10 +98,9 @@ export default class ContextSelector extends React.Component<IProps, IState> {
           selection={selection}
           selectedClusters={selectedClusters}
           selectedNamespaces={selectedNamespaces}
-          selectedPods={selectedPods}
           filter={filter}
           open={showDialog}
-          forced={forcedClusterSelection||forcedNamespaceSelection||forcedPodSelection}
+          forced={forcedClusterSelection||forcedNamespaceSelection}
           onCancel={this.onCancelSelection.bind(this)}
           onSelection={this.onSelection.bind(this)} />}
       </div>

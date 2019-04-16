@@ -1,4 +1,5 @@
 import _ from 'lodash'
+import JsonUtil from './jsonUtil';
 
 export const isGlobalFqdn = (host) => host && host === "*" 
                             || host === "*.local"
@@ -10,6 +11,9 @@ export const isGlobalFqdn = (host) => host && host === "*"
 export const isNamespaceFqdn = (host) => host && host.includes("*") && !isGlobalFqdn(host)
 
 export const isServiceFqdn = (host) => host && !host.includes("*")
+
+export const normalizeServiceFqdn = (host) => 
+    host && isServiceFqdn(host) && !host.includes(".svc.cluster.local") ? host+".svc.cluster.local" : host
 
 export const extractNamespaceFromFqdn = (fqdn) => {
   if(!fqdn) return "*"
@@ -51,14 +55,13 @@ export const  matchSubsetHosts = (hosts1, hosts2) => {
 }
 
 export class FqdnMatcher {
-  private static fqdn: string = ''
-  private static hasWildcard: boolean = false
-  private static rootDomain: string = ''
-  private static subdomain: string = ''
-  private static lastChar: string = ''
-  private static namespace: string = ''
-  private static service: string = ''
-  private static isStar: boolean = false
+  static fqdn: string = ''
+  static hasWildcard: boolean = false
+  static rootDomain: string = ''
+  static subdomain: string = ''
+  static namespace: string = ''
+  static service: string = ''
+  static isStar: boolean = false
 
   static init(fqdn: string) {
     this.fqdn = fqdn
@@ -66,7 +69,6 @@ export class FqdnMatcher {
     this.hasWildcard = fqdn.includes("*.")
     this.rootDomain = fqdn.replace("*.", "")
     this.subdomain = fqdn.replace("*.", ".")
-    this.lastChar = fqdn.slice(fqdn.length-1)
     this.namespace = extractNamespaceFromFqdn(fqdn)
     this.service = extractServiceFromFqdn(fqdn)
   }
@@ -77,7 +79,6 @@ export class FqdnMatcher {
     this.hasWildcard = service === "*."
     this.rootDomain = namespace
     this.subdomain = "."+namespace
-    this.lastChar = namespace.slice(namespace.length-1)
     this.namespace = namespace
     this.service = service
   }
@@ -86,9 +87,12 @@ export class FqdnMatcher {
     if(host) {
       if(this.isStar) return host.includes("*")
       return this.hasWildcard ? 
-        (host.includes(this.subdomain) && host.lastIndexOf(this.lastChar) === host.length-1) 
+          host.endsWith(this.subdomain)
+          || host.includes(this.subdomain+".")
           || host.includes(this.rootDomain) && host.length === this.rootDomain.length
-        : host === this.fqdn || (host.includes("."+this.fqdn) && host.lastIndexOf(this.lastChar) === host.length-1)
+        : host === this.fqdn 
+            || host.endsWith(this.subdomain)
+            || host.startsWith(this.rootDomain+".")
     }
     return false
   }
@@ -130,4 +134,16 @@ export const matchObjects = (obj1, obj2) => {
   if(keys1.length !== keys2.length) return false
   return keys1.filter(k => obj2[k] && obj2[k] === obj1[k]).length === keys1.length
           && keys2.filter(k => obj1[k] && obj1[k] === obj2[k]).length === keys2.length
+}
+
+export const getUniqueResources = (...resourcesLists) => {
+  const resources : {[key: string]: any} = {}
+  resourcesLists.forEach(list => list.forEach(r => resources[r.name+"."+r.namespace]=r))
+  return Object.values(resources)
+}
+
+export const getUniqueResourcesByField = (field: string, ...resourcesLists) => {
+  const resources : {[key: string]: any} = {}
+  resourcesLists.forEach(list => list.forEach(r => resources[JsonUtil.extract(r, field)]=r))
+  return Object.values(resources)
 }

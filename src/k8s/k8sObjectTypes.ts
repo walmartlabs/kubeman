@@ -3,8 +3,6 @@ import * as k8s from "./k8sClient";
 export enum KubeComponentType {
   Cluster = "Cluster",
   Namespace = "Namespace",
-  Pod = "Pod",
-  Item = "Item"
 }
 
 export interface KubeComponent {
@@ -38,65 +36,21 @@ export class Cluster implements KubeComponent {
   toString() {
     return "["+this.text()+"]"
   }
+  clearNamespaces() {
+    this.namespaces = []
+  }
 }
 
 export class Namespace implements KubeComponent {
   name: string
   type: KubeComponentType = KubeComponentType.Namespace
   cluster: Cluster
-  pods: Pod[] = []
-  items: Item[] = []
   constructor(name?: string, cluster?: Cluster) {
     this.name = name || ''
     this.cluster = cluster || new Cluster('');
   }
-  pod(name: string) {
-    const matches = this.pods.filter(pod => pod.name === name)
-    return matches.length > 0 ? matches[0] : undefined
-  }
   get group() {
     return "[" + this.cluster.name + "]"
-  }
-  text() {
-    return this.name + "@" + this.group
-  }
-  toString() {
-    return "["+this.text()+"]"
-  }
-}
-
-export class Pod implements KubeComponent {
-  name: string
-  type: KubeComponentType = KubeComponentType.Pod
-  namespace: Namespace
-  containers: string[] = []
-
-  constructor(name?: string, namespace?: Namespace, containers?: string[]) {
-    this.name = name || ''
-    this.namespace = namespace || new Namespace()
-    containers && (this.containers = containers.concat())
-  }
-  get group() {
-    return this.namespace.name + " [" + this.namespace.cluster.name + "]"
-  }
-  text() {
-    return this.name + "@" + this.group
-  }
-  toString() {
-    return "["+this.text()+"]"
-  }
-}
-
-export class Item implements KubeComponent {
-  name: string
-  type: KubeComponentType = KubeComponentType.Item
-  namespace: Namespace
-  constructor(name?: string, namespace?: Namespace) {
-    this.name = name || ''
-    this.namespace = namespace || new Namespace()
-  }
-  get group() {
-    return "<" + this.namespace.name + "><" + this.namespace.cluster.name + ">"
   }
   text() {
     return this.name + "@" + this.group

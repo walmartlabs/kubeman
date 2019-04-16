@@ -1,29 +1,23 @@
 import _ from 'lodash'
 
-import {Cluster, Namespace, Pod, KubeComponent, KubeComponentType} from "../k8s/k8sObjectTypes";
+import {Cluster, Namespace, KubeComponent, KubeComponentType} from "../k8s/k8sObjectTypes";
 import * as k8s from '../k8s/k8sContextClient'
 import {filter} from '../util/filterUtil'
 
-export type PodData = Map<string, Pod>
-export type NamespacePodData = [Namespace, PodData]
-export type NamespaceData = Map<string, NamespacePodData>
+export type NamespaceData = Map<string, Namespace>
 export type ClusterNamespaceData = [Cluster, NamespaceData]
 export type ClusterData = Map<string, ClusterNamespaceData>
 
 export type Clusters = {[group: string]: Cluster[]}
 export type ClusterNamespaces = {[cluster: string]: Namespace[]}
-export type NamespacePods = {[namespace: string]: Pod[]}
 
 export type SelectedClusters = Map<string, Cluster>
 export type SelectedNamespaces = Map<string, Namespace>
-export type SelectedPods = Map<string, Pod>
 
 export default class SelectionManager {
   static clusters: Clusters = {}
   static clusterNamespaces: ClusterNamespaces = {}
   static allNamespaces: Namespace[] = []
-  static namespacePods: NamespacePods = {}
-  static allPods: Pod[] = []
 
   static clusterData: ClusterData = new Map
   static clustersInError: string[] = []
@@ -31,7 +25,6 @@ export default class SelectionManager {
 
   static selectedClusters: SelectedClusters = new Map
   static selectedNamespaces: SelectedNamespaces = new Map
-  static selectedPods: SelectedPods = new Map
 
   private static loadingCounter: number = 0
 
@@ -40,8 +33,6 @@ export default class SelectionManager {
     clusters.forEach(c => this.clusters[''].push(c))
     this.clusterNamespaces = {}
     this.allNamespaces = []
-    this.namespacePods = {}
-    this.allPods = []
   }
 
   static loadNamespacesForSelectedClusters() {
@@ -53,50 +44,9 @@ export default class SelectionManager {
     })
   }
 
-  static async loadPodsForSelectedNamespaces() {
-    await this.loadPodsForNamespaces(Array.from(this.selectedNamespaces.values()))
-  }
-
-  static async loadPodsForNamespaces(namespaces: Namespace[]) {
-    this.namespacePods = {}
-    this.allPods = []
-    for(const namespace of namespaces) {
-      await this.loadNamespacePods(namespace)
-    }
-  }
-
-  private static async loadNamespacePods(namespace: Namespace) {
-    const clusterNamespaceMap = this.clusterData.get(namespace.cluster.name)
-    const namespaceMap = clusterNamespaceMap ? clusterNamespaceMap[1] : new Map
-    await k8s.getPodsForNamespace(namespace)
-      .then(pods => {
-        const podMap : PodData = new Map
-        pods.forEach(pod => {
-          podMap.set(pod.text(), pod)
-          this.allPods.push(pod)
-        })
-        this.namespacePods[namespace.text()] = pods
-        namespaceMap.set(namespace.text(), [namespace, podMap])
-        this.clusterData.set(namespace.cluster.name, [namespace.cluster, namespaceMap])
-      })
-      .catch(error => {
-        this.namespacesInError.push(namespace.text())
-        console.log("Error while loading pods for namespace %s: %s", namespace.name, error)
-      })
-  }
-
-  static getPodsForNamespace(namespace: Namespace) : Pod[] {
-    const clusterNamespaceData = this.clusterData.get(namespace.cluster.text())
-    const namespaceData = clusterNamespaceData && clusterNamespaceData[1].get(namespace.text())
-    return namespaceData ? Array.from(namespaceData[1].values())
-                      .sort((p1,p2) => p1.name.localeCompare(p2.name)) : []
-
-  }
-
-  static setSelections(selectedClusters: SelectedClusters, selectedNamespaces: SelectedNamespaces, selectedPods: Map<string, Pod>) {
+  static setSelections(selectedClusters: SelectedClusters, selectedNamespaces: SelectedNamespaces) {
     this.selectedClusters = new Map(selectedClusters)
     this.selectedNamespaces = new Map(selectedNamespaces)
-    this.selectedPods = new Map(selectedPods)
   }
 
   static loadSelectedClustersData() {
@@ -121,7 +71,7 @@ export default class SelectionManager {
       const namespaceMap : NamespaceData = new Map
       k8s.getNamespacesForCluster(cluster)
         .then(namespaces => {
-          namespaces.forEach(namespace => namespaceMap.set(namespace.text(), [namespace, new Map]))
+          namespaces.forEach(namespace => namespaceMap.set(namespace.text(), namespace))
           this.clusterData.set(cluster.name, [cluster, namespaceMap])
           this.loadingCounter--
           resolve(true)
@@ -149,25 +99,8 @@ export default class SelectionManager {
       if(!clusterRec || !clusterRec[1].has(ns.text())) {
         this.selectedNamespaces.delete(ns.text())
       } else {
-        const nsRec = clusterRec[1].get(ns.text())
-        nsRec && this.selectedNamespaces.set(ns.text(), nsRec[0])
-      }
-    })
-    this.selectedPods.forEach(pod => {
-      if(!this.selectedNamespaces.get(pod.namespace.text())) {
-        this.selectedPods.delete(pod.text())
-      }
-      const clusterRec = this.clusterData.get(pod.namespace.cluster.text())
-      const nsRec = clusterRec && clusterRec[1].get(pod.namespace.text())
-      if(!clusterRec || !nsRec) {
-        this.selectedPods.delete(pod.text())
-      } else {
-        const newPod = nsRec[1].get(pod.text())
-        if(!newPod) {
-          this.selectedPods.delete(pod.text())
-        } else {
-          newPod && this.selectedPods.set(pod.text(), newPod)
-        }
+        const namespace = clusterRec[1].get(ns.text())
+        namespace && this.selectedNamespaces.set(ns.text(), namespace)
       }
     })
   }
@@ -182,21 +115,11 @@ export default class SelectionManager {
   }
 
   static deselectNamespace(namespace: Namespace) {
-    this.selectedPods.forEach(pod => {
-      if(pod.namespace.text() === namespace.text()) {
-        this.selectedPods.delete(pod.text())
-      }
-    })
     this.selectedNamespaces.delete(namespace.text())
   }
 
-  static setFilteredSelections(namespcaes: Namespace[], pods: Pod[]) {
+  static setFilteredSelections(namespcaes: Namespace[]) {
     this.selectedNamespaces.clear()
-    this.selectedPods.clear()
-    pods.forEach(pod => {
-      this.selectedNamespaces.set(pod.namespace.text(), pod.namespace)
-      this.selectedPods.set(pod.text(), pod)
-    })
     namespcaes.forEach(namespace => this.selectedNamespaces.set(namespace.text(), namespace))
   }
 
@@ -204,28 +127,15 @@ export default class SelectionManager {
     const clusterNamespaceData = this.clusterData.get(cluster.text())
     return clusterNamespaceData ? 
             Array.from(clusterNamespaceData[1].values())
-              .map(rec => rec[0])
               .sort((n1,n2) => n1.name.localeCompare(n2.name)) : []
   }
 
   static filter(filterText: string, type: KubeComponentType) : KubeComponent[] {
-    const items: KubeComponent[] = type === KubeComponentType.Namespace ? this.allNamespaces : this.allPods
-    return filter(filterText, items, 'name') as KubeComponent[]
+    return filter(filterText, this.allNamespaces, 'name') as KubeComponent[]
   }
 
-  static async getMatchingNamespacesAndPods(filterText: string, loadPods: boolean) {
-    const namespaces = this.filter(filterText, KubeComponentType.Namespace) as Namespace[]
-    let pods: Pod[] = []
-    if(loadPods) {
-      await this.loadPodsForNamespaces(namespaces)
-      pods = this.filter(filterText, KubeComponentType.Pod) as Pod[]
-      pods.forEach(pod => {
-        if(!namespaces.includes(pod.namespace)) {
-          namespaces.push(pod.namespace)
-        }
-      })
-    }
-    return {namespaces, pods}
+  static async getMatchingNamespaces(filterText: string) {
+    return this.filter(filterText, KubeComponentType.Namespace) as Namespace[]
   }
 
   static get isLoading() {

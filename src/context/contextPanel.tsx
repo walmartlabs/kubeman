@@ -6,7 +6,7 @@ import { Paper, Tabs, Tab, Grid, TextField } from '@material-ui/core';
 import {List, ListSubheader, ListItem, ListItemText}  from '@material-ui/core';
 import {Avatar, Chip, Card, CardContent } from '@material-ui/core';
 
-import {Cluster, Namespace, Pod, Item} from "../k8s/k8sObjectTypes";
+import {Namespace} from "../k8s/k8sObjectTypes";
 import Context from "./contextStore";
 
 import styles from './contextPanel.styles'
@@ -20,6 +20,7 @@ interface IProps extends WithStyles<typeof styles> {
   context: Context,
   onUpdateContext: (Context) => void
   onSelectContext: () => void
+  runAction: (string, ...any) => void
 }
 
 class ContextPanel extends React.Component<IProps, IState> {
@@ -49,32 +50,7 @@ class ContextPanel extends React.Component<IProps, IState> {
     }
   };
 
-  renderNamespaceWithPods = (namespace: Namespace) => {
-    const {classes, context} = this.props
-    const pods = namespace.pods
-
-    return (
-      <List dense 
-        className={classes.list}
-        subheader={
-          <ListSubheader classes={{root: classes.listHeader}}>
-            <span className={classes.listHeader}>{namespace.name}</span>
-            <span className={classes.listInfoText}>{pods.length} Pod(s) selected</span>
-          </ListSubheader>
-        }>
-        {pods.map((pod, index) => (
-          <ListItem key={index} role={undefined} 
-              dense disableGutters divider
-              className={classes.listItem}>
-            <ListItemText primary={pod.name} />
-          </ListItem>
-        ))}
-      </List>
-    )
-  }
-
   renderNamespace = (namespace: Namespace) => {
-    const {classes, context} = this.props
     return (
       <Chip label={namespace.name}
             avatar={<Avatar>NS</Avatar>} 

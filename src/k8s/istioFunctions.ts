@@ -1,16 +1,13 @@
 import _ from 'lodash'
 import {K8sClient} from './k8sClient'
-import K8sFunctions, { GetItemsFunction } from '../k8s/k8sFunctions'
+import K8sFunctions from './k8sFunctions'
+import EnvoyFunctions from './envoyFunctions'
 import { ServiceDetails } from './k8sObjectTypes'
-import {matchObjects, extractServiceFromFqdn, extractNamespaceFromFqdn, FqdnMatcher} from '../util/matchUtil'
+import {matchObjects, extractServiceFromFqdn, extractNamespaceFromFqdn, 
+        getUniqueResources, FqdnMatcher, getUniqueResourcesByField} from '../util/matchUtil'
 
 export default class IstioFunctions {
 
-  private static getUniqueResources(...resourcesLists) {
-    const resources : {[key: string]: any} = {}
-    resourcesLists.forEach(list => list.forEach(r => resources[r.name+"."+r.namespace]=r))
-    return Object.values(resources)
-  }
 
   private static extractResource(result: any, ...specKeys) {
     const yaml = specKeys.includes("yaml")
@@ -137,7 +134,7 @@ export default class IstioFunctions {
                                 allVirtualServices, service, namespace, 'tls')
     const tcpVirtualServices = IstioFunctions.filterVirtualServicesByRouteForService(
                                 allVirtualServices, service, namespace, 'tcp')
-    return IstioFunctions.getUniqueResources(httpVirtualServices, tlsVirtualServices, tcpVirtualServices)
+    return getUniqueResources(httpVirtualServices, tlsVirtualServices, tcpVirtualServices)
   }
 
   static filterVirtualServicesByRouteForFqdn(virtualServices: any[], fqdn: string, routeType: string) {
@@ -165,7 +162,7 @@ export default class IstioFunctions {
                                 allVirtualServices, fqdn, 'tls')
     const tcpVirtualServices = IstioFunctions.filterVirtualServicesByRouteForFqdn(
                                 allVirtualServices, fqdn, 'tcp')
-    return IstioFunctions.getUniqueResources(vsMatchingHosts, httpVirtualServices, tlsVirtualServices, tcpVirtualServices)
+    return getUniqueResources(vsMatchingHosts, httpVirtualServices, tlsVirtualServices, tcpVirtualServices)
   }
 
   static getVirtualServicesForPorts = async (ports: number[], k8sClient: K8sClient) => {
@@ -412,22 +409,7 @@ export default class IstioFunctions {
   }
 
   static getIngressCertsFromPod = async (pod: string, k8sClient: K8sClient) => {
-    let commandOutput: any = (await K8sFunctions.podExec("istio-system", pod, "istio-proxy", k8sClient, 
-                                  ["curl", "-s", "127.0.0.1:15000/certs"])).trim()
-    try {
-      commandOutput = JSON.parse(commandOutput)
-    } catch(error) {
-      commandOutput = commandOutput.replace(/}/g, "},")
-      commandOutput = commandOutput.slice(0, commandOutput.lastIndexOf(","))
-      commandOutput = "[" + commandOutput + "]"
-      commandOutput = JSON.parse(commandOutput)
-    }
-    if(commandOutput.map) {
-      return commandOutput
-    } else if(commandOutput.certificates) {
-      return commandOutput.certificates
-    }
-    return []
+    return EnvoyFunctions.getEnvoyLoadedCerts(k8sClient, "istio-system", pod, "istio-proxy")
   }
 
   static getIngressCerts = async (k8sClient: K8sClient) => {
@@ -439,38 +421,6 @@ export default class IstioFunctions {
     return IstioFunctions.getIngressCertsFromPod(ingressPods[0].name, k8sClient)
   }
 
-  static async getIstioProxyConfigDump(k8sClient: K8sClient, namespace: string, pod: string, configType?: string) {
-    try {
-      const result = JSON.parse(await K8sFunctions.podExec(namespace, pod, "istio-proxy", k8sClient, 
-                                  ["curl", "-s", "http://127.0.0.1:15000/config_dump"]))
-      if(result.configs.clusters) {
-        result.configs = Object.values(result.configs)
-      }
-      let configs = result.configs
-      if(configType) {
-        configs = configs.filter(c => c["@type"].includes(configType))[0]
-      }
-      if(configType) {
-        const dynamicItems = configs[Object.keys(configs).filter(key => key.includes("dynamic"))[0]]
-        const staticItems = configs[Object.keys(configs).filter(key => key.includes("static"))[0]]
-        const items: any[] = []
-        staticItems && staticItems.forEach(item => item && items.push(item))
-        dynamicItems && dynamicItems.forEach(item => item && items.push(item))
-        return items
-      } else {
-        return configs
-      }
-    } catch(error) {
-      console.log(error)
-    }
-    return []
-  }
-
-  static async getIstioProxyStats(k8sClient: K8sClient, namespace: string, pod: string) {
-      return K8sFunctions.podExec(namespace, pod, "istio-proxy", k8sClient, 
-                                  ["curl", "-s", "http://127.0.0.1:15000/stats"])
-  }
-
   static async getIngressListenerPorts(k8sClient: K8sClient) {
     const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
     if(!ingressPods || ingressPods.length === 0) {
@@ -479,30 +429,102 @@ export default class IstioFunctions {
     }
     const ingressPodListenersMap = {}
     for(const ingressPod of ingressPods) {
-      const listeners = JSON.parse(await K8sFunctions.podExec("istio-system", ingressPod.name, "istio-proxy", k8sClient, 
-                                  ["curl", "-s", "http://127.0.0.1:15000/listeners"]))
-      ingressPodListenersMap[ingressPod.name] = listeners.map(l => l.split(":")[1])
-                        .filter(p => p).map(p => parseInt(p))
+      ingressPodListenersMap[ingressPod.name] = await EnvoyFunctions.getEnvoyListenerPorts(k8sClient, "istio-system", ingressPod.name, "istio-proxy")
     }
     return ingressPodListenersMap
   }
 
-  static async getIngressConfigDump(k8sClient: K8sClient, configType?: string) {
+  static async getIngressGatewayEnvoyBootstrapConfig(k8sClient: K8sClient) {
     const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
     if(!ingressPods || ingressPods.length === 0) {
       console.log("IngressGateway not found")
       return []
     }
-    return IstioFunctions.getIstioProxyConfigDump(k8sClient, "istio-system", ingressPods[0].name, configType)
+    return EnvoyFunctions.getEnvoyBootstrapConfig(k8sClient, "istio-system", ingressPods[0].name, "istio-proxy")
   }
-
-  static async getIngressGatwayStats(k8sClient: K8sClient) {
+  
+  static async getIngressGatewayEnvoyConfigs(configType: string, k8sClient: K8sClient) {
     const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
     if(!ingressPods || ingressPods.length === 0) {
       console.log("IngressGateway not found")
-      return ""
+      return []
     }
-    return IstioFunctions.getIstioProxyStats(k8sClient, "istio-system", ingressPods[0].name)
+    if(configType.includes("Cluster")) {
+      return EnvoyFunctions.getEnvoyClusters(k8sClient, "istio-system", ingressPods[0].name, "istio-proxy")
+    }
+    if(configType.includes("Listener")) {
+      return EnvoyFunctions.gettEnvoyListeners(k8sClient, "istio-system", ingressPods[0].name, "istio-proxy")
+    }
+    if(configType.includes("Route")) {
+      return EnvoyFunctions.gettEnvoyRoutes(k8sClient, "istio-system", ingressPods[0].name, "istio-proxy")
+    }
+    return []
+  }
+  
+  static async getIngressGatewayEnvoyClusters(k8sClient: K8sClient) {
+    return IstioFunctions.getIngressGatewayEnvoyConfigs("Clusters", k8sClient)
+  }
+  
+  static async getIngressGatewayEnvoyListeners(k8sClient: K8sClient) {
+    return IstioFunctions.getIngressGatewayEnvoyConfigs("Listeners", k8sClient)
+  }
+  
+  static async getIngressGatewayEnvoyRoutes(k8sClient: K8sClient) {
+    return IstioFunctions.getIngressGatewayEnvoyConfigs("Routes", k8sClient)
+  }
+  
+  static async getAllIngressGatewayEnvoyConfigs(k8sClient: K8sClient) {
+    const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
+    if(!ingressPods || ingressPods.length === 0) {
+      console.log("IngressGateway not found")
+      return {}
+    }
+    return EnvoyFunctions.getAllEnvoyConfigs(k8sClient, "istio-system", ingressPods[0].name, "istio-proxy")
+  }
+
+  static async getIngressGatwayEnvoyStats(k8sClient: K8sClient) {
+    const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
+    if(!ingressPods || ingressPods.length === 0) {
+      console.log("IngressGateway not found")
+      return {}
+    }
+    const ingressEnvoyStats = {}
+    for(const ingressPod of ingressPods) {
+      ingressEnvoyStats[ingressPod.name] = await EnvoyFunctions.getEnvoyStats(k8sClient, "istio-system", ingressPod.name, "istio-proxy")
+    }
+    return ingressEnvoyStats
+  }
+
+  static async getIngressGatwayEnvoyServerInfo(k8sClient: K8sClient) {
+    const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
+    if(!ingressPods || ingressPods.length === 0) {
+      console.log("IngressGateway not found")
+      return {}
+    }
+    const ingressEnvoyServerInfos = {}
+    for(const ingressPod of ingressPods) {
+      ingressEnvoyServerInfos[ingressPod.name] = await EnvoyFunctions.getEnvoyServerInfo(k8sClient, "istio-system", ingressPod.name, "istio-proxy")
+    }
+    return ingressEnvoyServerInfos
+  }
+
+  static async getIngressEnvoyConfigsForService(service: ServiceDetails, k8sClient: K8sClient) {
+    const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
+    if(!ingressPods || ingressPods.length === 0) {
+      console.log("IngressGateway not found")
+      return []
+    }
+    return EnvoyFunctions.getEnvoyConfigsForService(service.name, service.namespace,
+                            "istio-system", ingressPods[0].name, "istio-proxy", k8sClient)
+  }
+
+  static async getIngressEnvoyConfigsForFqdn(fqdn: string, k8sClient: K8sClient) {
+    const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
+    if(!ingressPods || ingressPods.length === 0) {
+      console.log("IngressGateway not found")
+      return []
+    }
+    return EnvoyFunctions.getEnvoyConfigsForFqdn(fqdn, "istio-system", ingressPods[0].name, "istio-proxy", k8sClient)
   }
 
   static async executeOnAnyPilotPod(k8sClient: K8sClient, command: string[]) {

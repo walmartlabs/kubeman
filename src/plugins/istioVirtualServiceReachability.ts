@@ -52,7 +52,7 @@ const plugin : ActionGroupSpec = {
           for(const destination of destinations) {
             const service = await K8sFunctions.getServiceDetails(namespace, destination, cluster.k8sClient)
             if(service) {
-              this.onStreamOutput && this.onStreamOutput([[">>VirtualService is backed by service: " + service.name]])
+              this.onStreamOutput && this.onStreamOutput([["VirtualService is backed by service: " + service.name]])
               await IstioPluginHelper.checkServiceReachabilityFromIngress(service, namespace, cluster.k8sClient, this.onStreamOutput)
             } else {
               this.onStreamOutput && this.onStreamOutput([["Backing service not found for the VirtualService"]])

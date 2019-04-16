@@ -10,7 +10,7 @@ const plugin : ActionGroupSpec = {
 
   actions: [
     {
-      name: "Test Pods Reachability",
+      name: "Test Containers Reachability",
       order: 20,
       autoRefreshDelay: 60,
       loadingMessage: "Loading Containers@Pods...",
@@ -29,7 +29,7 @@ const plugin : ActionGroupSpec = {
           this.onStreamOutput && this.onStreamOutput([[
             ">From: " + selection.title + ", Cluster: " + selection.cluster, "",""]])
           try {
-            const result = await k8sFunctions.podExec(selection.namespace, selection.pod, selection.container, 
+            const result = await k8sFunctions.podExec(selection.namespace, selection.podName, selection.containerName, 
                                 selection.k8sClient, ["ping", "-c", "1", "127.0.0.1"])
             const pingExists = result.includes("transmitted")
             if(!pingExists) {
@@ -52,11 +52,11 @@ const plugin : ActionGroupSpec = {
               continue
             }
             const ip = podContainerDetails.podStatus.podIP
-            const result = await k8sFunctions.podExec(selection.namespace, selection.pod, selection.container, 
+            const result = await k8sFunctions.podExec(selection.namespace, selection.podName, selection.containerName, 
               selection.k8sClient, ["ping", "-c", "2", ip])
             const pingSuccess = result.includes("0% packet loss")
             this.onStreamOutput && this.onStreamOutput([[
-              [target.pod, "IP: "+ip, "Cluster: " + target.cluster],
+              [target.podName, "IP: "+ip, "Cluster: " + target.cluster],
               result,
               pingSuccess ? "Reachable" : "Unreachable"
             ]])

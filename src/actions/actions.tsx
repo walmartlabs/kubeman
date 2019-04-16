@@ -71,7 +71,15 @@ export class Actions extends React.Component<IProps, IState> {
     ActionLoader.loadActionPlugins()
   }
 
-  onAction = (action: BoundAction) => {
+  runAction(name, ...params) {
+    const {actionGroupSpecs} = this.state
+    const action = _.flatten(actionGroupSpecs.map(spec => spec.actions))
+                      .filter(action => action.name === name)[0]
+    action && this.onRunAction(action, true, ...params)
+  }
+
+
+  onRunAction = (action: BoundAction, direct: boolean, ...params) => {
     if(!this.clickAllowed) return
     this.throttleClick()
     this.props.onAction(action)
@@ -80,11 +88,18 @@ export class Actions extends React.Component<IProps, IState> {
     ActionLoader.actionContext.inputText = undefined
     this.currentAction = action
     this.lastRefreshed = undefined
-    if(action.act) {
-      this.props.showLoading(action.loadingMessage)
+    this.props.showLoading(action.loadingMessage)
+    if(direct && action.directAct) {
+      action.directAct(params)
+      this.setAutoRefresh(false)
+    } else if(action.act) {
       action.chooseAndAct()
       this.setAutoRefresh(false)
     }
+  }
+
+  onAction = (action: BoundAction) => {
+    this.onRunAction(action, false)
   }
 
   throttleClick() {
@@ -156,6 +171,22 @@ export class Actions extends React.Component<IProps, IState> {
     }
   }
 
+  onReRun = () => {
+    if(this.currentAction) {
+      if(this.currentAction.canReact) {
+        this.currentAction.react && this.currentAction.react()
+      } else if(this.currentAction.refresh) {
+        this.currentAction.refresh()
+      } else {
+        this.currentAction.chooseAndAct()
+      }
+    }
+  }
+
+  onClearOutput = () => {
+    this.currentAction && this.currentAction.clear && this.currentAction.clear()
+  }
+
   onFilterChange = (event: ChangeEvent<HTMLInputElement>) => {
     const {actionGroupSpecs} = this.state
     let text = event.target.value
@@ -181,22 +212,6 @@ export class Actions extends React.Component<IProps, IState> {
     if(event.which === 27 /*Esc*/) {
       this.clearFilter()
     }
-  }
-
-  onReRun = () => {
-    if(this.currentAction) {
-      if(this.currentAction.canReact) {
-        this.currentAction.react && this.currentAction.react()
-      } else if(this.currentAction.refresh) {
-        this.currentAction.refresh()
-      } else {
-        this.currentAction.chooseAndAct()
-      }
-    }
-  }
-
-  onClearOutput = () => {
-    this.currentAction && this.currentAction.clear && this.currentAction.clear()
   }
 
 
@@ -239,15 +254,17 @@ export class Actions extends React.Component<IProps, IState> {
 
     return (
       <MuiThemeProvider theme={theme}>
-        <Paper  className={classes.filterContainer}>
-          <Input fullWidth autoFocus
-              placeholder="Type here to find plugins" 
-              value={this.filterText}
-              onChange={this.onFilterChange}
-              onKeyDown={this.onKeyDown}
-              className={classes.filterInput}
-          />
-        </Paper>
+        {context.hasClusters &&
+          <Paper  className={classes.filterContainer}>
+            <Input fullWidth autoFocus
+                placeholder="Type here to find plugins" 
+                value={this.filterText}
+                onChange={this.onFilterChange}
+                onKeyDown={this.onKeyDown}
+                className={classes.filterInput}
+            />
+          </Paper>
+        }
         <div className={classes.root}>
           {filteredActions.length > 0 && 
             this.renderExpansionPanel("Matching Actions", filteredActions, true)

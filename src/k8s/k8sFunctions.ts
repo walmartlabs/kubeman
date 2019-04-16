@@ -1,6 +1,6 @@
 import jsonUtil from '../util/jsonUtil'
 import {K8sClient} from './k8sClient'
-import {Cluster, Namespace, Pod, Metadata, PodInfo, PodDetails, PodTemplate, PodStatus,
+import {Cluster, Namespace, Metadata, PodInfo, PodDetails, PodTemplate, PodStatus,
         ContainerInfo, ContainerStatus, PodContainerDetails, ServiceDetails} from "./k8sObjectTypes";
 
 export type StringStringStringBooleanMap = {[key: string]: {[key: string]: {[key: string]: boolean}}}
@@ -333,6 +333,18 @@ export default class K8sFunctions {
       })
     }
     return configMaps
+  }
+
+  static getNamespaceConfigMap = async (configMapName: string, namespace: string, k8sClient: K8sClient) => {
+    const result = await k8sClient.namespaces(namespace).configmaps.get()
+    if(result && result.body) {
+      const item = result.body.items[0]
+      return {
+        ...K8sFunctions.extractMetadata(item),
+        data: item.data
+      }
+    }
+    return undefined
   }
   
   static getPodDetails = async (namespace: string, pod: string, k8sClient: K8sClient) => {

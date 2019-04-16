@@ -1,8 +1,9 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder, ActionSpec} from '../actions/actionSpec'
+import EnvoyFunctions, {EnvoyConfigType} from '../k8s/envoyFunctions'
 import IstioFunctions from '../k8s/istioFunctions';
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import JsonUtil from '../util/jsonUtil';
-import {outputConfig} from './istioSidecarConfigDump'
+import {outputConfig} from './envoySidecarConfigDump'
 
 function compareConfigs(onStreamOutput, pilotConfigs: any[], sidecarConfigs: any[], 
                         type: string, itemKey: string, sidecarItemKey: string = itemKey) {
@@ -22,7 +23,11 @@ function compareConfigs(onStreamOutput, pilotConfigs: any[], sidecarConfigs: any
     if(key.includes("dynamic")) {
       sidecarConfig[key].forEach(c => {
         if(items[c[sidecarItemKey].name]) {
-          const pilotItem = JsonUtil.transformObject(items[c[sidecarItemKey].name][0])
+          const pilotConfig = items[c[sidecarItemKey].name][0]
+          //delete type field because there's in unnecessary mismatch
+          delete pilotConfig.type
+          delete c[sidecarItemKey].type
+          const pilotItem = JsonUtil.transformObject(pilotConfig)
           const sidecarItem = JsonUtil.transformObject(c[sidecarItemKey])
           const matches = JsonUtil.compareObjects(pilotItem, sidecarItem)
           if(matches) {
@@ -52,13 +57,14 @@ function compareConfigs(onStreamOutput, pilotConfigs: any[], sidecarConfigs: any
   onStreamOutput(output)
 }
 
-function getConfigItems(configs, configType) {
+function getConfigItems(configs, configType, titleField) {
   configs = configs.filter(c => c["@type"].includes(configType))[0]
   const dynamicItems = configs[Object.keys(configs).filter(key => key.includes("dynamic"))[0]]
   const staticItems = configs[Object.keys(configs).filter(key => key.includes("static"))[0]]
   const items: any[] = []
   staticItems && staticItems.forEach(item => item && items.push(item))
   dynamicItems && dynamicItems.forEach(item => item && items.push(item))
+  items.forEach(item => item.title = JsonUtil.extract(item, titleField))
   return items
 }
 
@@ -71,8 +77,8 @@ async function outputSidecarConfig(action, actionContext, configType, titleField
 
   const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, sidecar.title)
   action.onStreamOutput && action.onStreamOutput([[">" + configType + " for " + sidecar.title]])
-  outputConfig(action.onStreamOutput, getConfigItems(pilotConfigs, configType), 
-                      titleField, dataField, dataTitleField)
+  const configs = getConfigItems(pilotConfigs, configType, titleField)
+  outputConfig(action.onStreamOutput, configs, dataField, dataTitleField)
   action.showOutputLoading && action.showOutputLoading(false)
 }
 
@@ -140,13 +146,13 @@ const plugin : ActionGroupSpec = {
         ]], ActionOutputStyle.Log)
 
         const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, sidecar.title)
-        const sidecarConfigs = await IstioFunctions.getIstioProxyConfigDump(cluster.k8sClient, sidecar.namespace, sidecar.pod)
+        const sidecarConfigs = await EnvoyFunctions.getEnvoyConfigDump(cluster.k8sClient, sidecar.namespace, sidecar.pod, "istio-proxy")
 
-        compareConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, "ClustersConfigDump", "cluster")
+        compareConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, EnvoyConfigType.Clusters, "cluster")
 
-        compareConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, "ListenersConfigDump", "listener")
+        compareConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, EnvoyConfigType.Listeners, "listener")
 
-        compareConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, "RoutesConfigDump", "routeConfig", "route_config")
+        compareConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, EnvoyConfigType.Routes, "routeConfig", "route_config")
 
         this.showOutputLoading && this.showOutputLoading(false)
       },
@@ -161,13 +167,15 @@ const plugin : ActionGroupSpec = {
         this.showOutputLoading && this.showOutputLoading(true)
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
-          this.onStreamOutput && this.onStreamOutput([[">Cluster: " + cluster.name]])
-        if(cluster.hasIstio) {
+          const output: ActionOutput = []
+          output.push([">Cluster: " + cluster.name])
+          if(cluster.hasIstio) {
             const result = await IstioFunctions.getPilotSidecarSyncStatus(cluster.k8sClient)
-            this.onStreamOutput && this.onStreamOutput([[result]])
+            result.forEach(r => output.push([r], []))
           } else {
-            this.onStreamOutput && this.onStreamOutput([["Istio not installed"]])
+            output.push(["Istio not installed"])
           }
+          this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },

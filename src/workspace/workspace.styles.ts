@@ -35,7 +35,8 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
     border: 0,
     padding: 0,
     margin: 0,
-    paddingLeft: 5,
+    paddingLeft: '2px !important',
+    paddingRight: '2px !important',
     paddingBottom: 5,
   },
   actionCell: {
@@ -58,7 +59,9 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
     minHeight: 500,
     padding: 0,
     margin: 0,
-    paddingLeft: 5,
+    paddingLeft: '2px !important',
+    paddingRight: '2px !important',
+    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
   },
   button: {
     margin: spacing.unit,

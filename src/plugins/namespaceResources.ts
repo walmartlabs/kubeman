@@ -15,8 +15,28 @@ export async function listResources(type: string, namespace: string, k8sClient: 
     output.push([">>>"+item.name])
     output.push([item.yaml])
   })
-  items.length === 0 && output.push([">>>No "+type])
+  items.length === 0 && output.push(["No "+type])
   onStreamOutput(output)
+}
+
+export async function outputConfigMaps(namespace: string, k8sClient: K8sClient, onStreamOutput, showData: boolean = false) {
+  await listResources("ConfigMaps", namespace, k8sClient, 
+  async (namespace, k8sClient) => {
+    return (await K8sFunctions.getNamespaceConfigMaps('', namespace, k8sClient))
+            .map(c => {
+              return {
+                name: c.name,
+                yaml: {
+                  name: c.name,
+                  namespace: c.namespace,
+                  creationTimestamp: c.creationTimestamp,
+                  labels: c.labels,
+                  annotations: c.annotations,
+                  data: showData ? c.data : undefined
+                }
+              }
+            })
+  }, onStreamOutput)
 }
 
 const plugin : ActionGroupSpec = {
@@ -91,22 +111,32 @@ const plugin : ActionGroupSpec = {
                           })
                 }, this.onStreamOutput)
 
-          await listResources("ConfigMaps", namespace.name, cluster.k8sClient, 
-                async (namespace, k8sClient) => {
-                  return (await K8sFunctions.getNamespaceConfigMaps(cluster.name, namespace, k8sClient))
-                          .map(c => {
-                            return {
-                              name: c.name,
-                              yaml: {
-                                name: c.name,
-                                namespace: c.namespace,
-                                creationTimestamp: c.creationTimestamp,
-                                labels: c.labels,
-                                annotations: c.annotations,
-                              }
-                            }
-                          })
-                }, this.onStreamOutput)
+          await outputConfigMaps(namespace.name, cluster.k8sClient, this.onStreamOutput)
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
+      }
+    },
+    {
+      name: "View Namespace ConfigMaps",
+      order: 21,
+
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 1),
+      
+      async act(actionContext) {
+        const namespaces = await ChoiceManager.getSelections(actionContext).map(s => s.item)
+        this.directAct && this.directAct(namespaces)
+      },
+
+      async directAct(namespaces) {
+        this.onOutput && this.onOutput([["Namespace ConfigMaps"]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
+        const clusters = this.actionContext.getClusters()
+        for(const namespace of namespaces) {
+          const cluster = clusters.filter(c => c.name === namespace.cluster.name)[0]
+          
+          this.onStreamOutput && this.onStreamOutput([[">Namespace " + namespace.name + ", Cluster: " + cluster.name]])
+
+          await outputConfigMaps(namespace.name, cluster.k8sClient, this.onStreamOutput, true)
         }
         this.showOutputLoading && this.showOutputLoading(false)
       }

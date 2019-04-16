@@ -22,6 +22,3 @@
   color: rgb(184, 61, 61);
   font-weight: 400
 }
-.gridRow:not(:last-child) {
-  border-bottom: 1px dotted #909090
-}

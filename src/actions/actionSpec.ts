@@ -29,6 +29,14 @@ export enum ActionOutputStyle {
   LogWithHealth = "LogWithHealth",
 }
 
+export enum SelectionType {
+  Namespace = "Namespace",
+  Pod = "Pod",
+  Service = "Service",
+  Container = "Container",
+  Sidecar = "Sidecar"
+}
+
 export interface Choice {
   displayItem: any[]
   data: any
@@ -39,7 +47,9 @@ export type ActionOnChoice = (title: string, choices: Choice[], minChoices: numb
 
 export type ActionOutput = any[][]
 export type ActionAct = (actionContext: ActionContext) => void
+export type ActionDirectAct = (...params) => void
 export type BoundActionAct = () => void
+export type BoundActionDirectAct = (...params) => void
 export type ActionOutputCollector = (output: ActionOutput|string[], style: ActionOutputStyle) => void
 export type ActionStreamOutputCollector = (output: ActionOutput|string[]) => void
 export type ActionOnInfo = (title: string, info: any[]) => void
@@ -53,22 +63,27 @@ export interface ActionSpec {
   order?: number
   choose?: ActionAct
   act: ActionAct
+  directAct?: ActionDirectAct
   react?: ActionAct
   refresh?: ActionAct
   stop?: ActionAct
   clear?: ActionAct
+  filterSelections?: (selections: []) => any[]
   onOutput?: ActionOutputCollector
   onStreamOutput?: ActionStreamOutputCollector
   showChoices?: ActionOnChoice
   showInfo?: ActionOnInfo
-  autoRefreshDelay?: number
   setScrollMode?: (boolean) => void
   showOutputLoading?: (boolean) => void
+  autoRefreshDelay?: number
+  selectionType?: SelectionType
+  hideFromContextMenu?: boolean
   [x: string]: any
 }
 
 export interface BoundAction extends ActionSpec {
   chooseAndAct: BoundActionAct
+  directAct?: BoundActionDirectAct
   stop?: BoundActionAct
   react?: BoundActionAct
   refresh?: BoundActionAct

@@ -1,12 +1,12 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder, ActionSpec} from '../actions/actionSpec'
 import ActionContext from '../actions/actionContext';
-import JsonUtil from '../util/jsonUtil';
 import IstioFunctions from '../k8s/istioFunctions';
+import {outputConfig} from './envoySidecarConfigDump'
 
-async function outputConfig(action: ActionSpec, actionContext: ActionContext, type: string, 
-                            titleField: string, dataField?: string, dataTitleField?: string) {
+async function outputIngresEnvoyConfig(action: ActionSpec, actionContext: ActionContext, configFn: (K8sClient) => Promise<any[]>,
+                            configType: string, dataField?: string, dataTitleField?: string) {
   action.onOutput &&
-    action.onOutput([["Istio IngressGateway " + type]], ActionOutputStyle.Table)
+    action.onOutput([["Istio IngressGateway Envoy " + configType]], ActionOutputStyle.Table)
   action.showOutputLoading && action.showOutputLoading(true)
 
   const clusters = actionContext.getClusters()
@@ -16,32 +16,8 @@ async function outputConfig(action: ActionSpec, actionContext: ActionContext, ty
       action.onStreamOutput  && action.onStreamOutput([["Istio not installed"]])
       continue
     }
-    const output: ActionOutput = []
-    const k8sClient = cluster.k8sClient
-
-    const configs = await IstioFunctions.getIngressConfigDump(k8sClient, type)
-    configs.forEach(c => {
-      const configTitle = JsonUtil.extract(c, titleField)
-      const data = dataField ? JsonUtil.extract(c, dataField) : c
-      let dataTitle = dataTitleField && JsonUtil.extract(data, dataTitleField)
-      dataTitle && (dataTitle = dataTitle.length > 0 ? dataTitle : undefined)
-      if(data instanceof Array) {
-        data.forEach(item => {
-          const itemTitle = dataTitleField && JsonUtil.extract(item, dataTitleField)
-          let title = configTitle || ""
-          dataTitle && (title += (title.length > 0 ? " > " : "") + dataTitle)
-          itemTitle && (title += (title.length > 0 ? " > " : "") + itemTitle)
-          output.push([">>"+title])
-          output.push([item])
-        })
-      } else {
-        let title = configTitle || ""
-        dataTitle && (title += (title.length > 0 ? " > " : "") + dataTitle)
-        output.push([">>"+title])
-        output.push([data])
-      }
-    })
-    action.onStreamOutput  && action.onStreamOutput(output)
+    const configs = await configFn(cluster.k8sClient)
+    outputConfig(action.onStreamOutput, configs, dataField, dataTitleField)
   }
   action.showOutputLoading && action.showOutputLoading(false)
 }
@@ -51,46 +27,56 @@ const plugin : ActionGroupSpec = {
   title: "Istio Ingress Recipes",
   actions: [
     {
-      name: "IngressGateway Clusters Config",
+      name: "IngressGateway Envoy Bootstrap",
       order: 25,
       
       async act(actionContext) {
-        await outputConfig(this, actionContext, "ClustersConfigDump", "cluster.name")
+        await outputIngresEnvoyConfig(this, actionContext, IstioFunctions.getIngressGatewayEnvoyBootstrapConfig,  "BootstrapConfig")
       },
       refresh(actionContext) {
         this.act(actionContext)
       }
     },
     {
-      name: "IngressGateway Listeners Config",
+      name: "IngressGateway Envoy Clusters",
       order: 26,
       
       async act(actionContext) {
-        await outputConfig(this, actionContext, "ListenersConfigDump", "listener.address.socket_address.port_value")
+        await outputIngresEnvoyConfig(this, actionContext, IstioFunctions.getIngressGatewayEnvoyClusters, "ClustersConfig")
       },
       refresh(actionContext) {
         this.act(actionContext)
       }
     },
     {
-      name: "IngressGateway Routes Config",
+      name: "IngressGateway Envoy Listeners",
       order: 27,
       
       async act(actionContext) {
-        await outputConfig(this, actionContext, "RoutesConfigDump", "route_config.name", 
-                                      "route_config.virtual_hosts", "name")
+        await outputIngresEnvoyConfig(this, actionContext, IstioFunctions.getIngressGatewayEnvoyListeners, "ListenersConfig")
       },
       refresh(actionContext) {
         this.act(actionContext)
       }
     },
     {
-      name: "IngressGateway Stats",
+      name: "IngressGateway Envoy Routes",
       order: 28,
+      
+      async act(actionContext) {
+        await outputIngresEnvoyConfig(this, actionContext, IstioFunctions.getIngressGatewayEnvoyRoutes, "RoutesConfig")
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
+    },
+    {
+      name: "IngressGateway Envoy Stats",
+      order: 29,
       autoRefreshDelay: 60,
       
       async act(actionContext) {
-        this.onOutput && this.onOutput([["IngressGateway Stats"]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["IngressGateway Envoy Stats"]], ActionOutputStyle.Log)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const clusters = actionContext.getClusters()
@@ -100,8 +86,40 @@ const plugin : ActionGroupSpec = {
             this.onStreamOutput  && this.onStreamOutput([["Istio not installed"]])
             continue
           }
-          const stats = await IstioFunctions.getIngressGatwayStats(cluster.k8sClient)
-          this.onStreamOutput && this.onStreamOutput(stats.split("\n").map(line => [line]))
+          const ingressEnvoyStats = await IstioFunctions.getIngressGatwayEnvoyStats(cluster.k8sClient)
+          const output: ActionOutput = []
+          Object.keys(ingressEnvoyStats).forEach(name => output.push(
+            [">>Pod: "+name], 
+            ...(ingressEnvoyStats[name].split("\n").map(line => [line]))
+          ))
+          this.onStreamOutput && this.onStreamOutput(output)
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
+      },
+    },
+    {
+      name: "IngressGateway Envoy ServerInfo",
+      order: 30,
+      autoRefreshDelay: 60,
+      
+      async act(actionContext) {
+        this.onOutput && this.onOutput([["IngressGateway Envoy ServerInfo"]], ActionOutputStyle.Log)
+        this.showOutputLoading && this.showOutputLoading(true)
+
+        const clusters = actionContext.getClusters()
+        for(const cluster of clusters) {
+          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name]])
+          if(!cluster.hasIstio) {
+            this.onStreamOutput  && this.onStreamOutput([["Istio not installed"]])
+            continue
+          }
+          const ingressEnvoyServerInfos = await IstioFunctions.getIngressGatwayEnvoyServerInfo(cluster.k8sClient)
+          const output: ActionOutput = []
+          Object.keys(ingressEnvoyServerInfos).forEach(name => output.push([">>Pod: "+name], [ingressEnvoyServerInfos[name]]))
+          this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },

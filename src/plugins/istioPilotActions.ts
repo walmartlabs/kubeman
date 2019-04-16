@@ -48,20 +48,21 @@ const plugin : ActionGroupSpec = {
         this.onOutput && this.onOutput([["Service Endpoints Known to Pilot"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
         const selections = await ChoiceManager.getSelections(actionContext)
+        const output: ActionOutput = []
         for(const selection of selections) {
           const cluster = actionContext.getClusters().filter(c => c.name === selection.cluster)[0]
           if(cluster.hasIstio) {
             const service = selection.item as ServiceDetails
             const namespace = selection.namespace
             const endpoints = await IstioFunctions.getPilotEndpoints(cluster.k8sClient, service.name, namespace)
-            this.onStreamOutput && this.onStreamOutput([
-              [">Service: " + service.name + ", Namespace: " + namespace + ", Cluster: " + cluster.name],
-              [endpoints]
-            ])
+            output.push([">Service: " + service.name + ", Namespace: " + namespace + ", Cluster: " + cluster.name])
+            endpoints.length === 0 && output.push(["No Endpoints Found"])
+            endpoints.forEach(ep => output.push([">>"+ep.clusterName], [ep]))
           } else {
-            this.onStreamOutput && this.onStreamOutput([["Istio not installed"]])
+            output.push(["Istio not installed"])
           }
         }
+        this.onStreamOutput && this.onStreamOutput(output)
         this.showOutputLoading && this.showOutputLoading(false)
       },
       refresh(actionContext) {

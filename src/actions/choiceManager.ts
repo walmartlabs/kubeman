@@ -1,9 +1,9 @@
 import _ from 'lodash'
 import K8sFunctions, {StringStringArrayMap, GetItemsFunction} from '../k8s/k8sFunctions'
-import {Cluster, Namespace, Pod, PodTemplate, PodDetails, PodContainerDetails} from "../k8s/k8sObjectTypes"
+import {Cluster, PodDetails, PodContainerDetails} from "../k8s/k8sObjectTypes"
 import { K8sClient } from '../k8s/k8sClient'
 import ActionContext from './actionContext'
-import {ActionOutput, ActionOutputStyle, Choice} from './actionSpec'
+import {Choice} from './actionSpec'
 
 export interface ItemSelection {
   title: string
@@ -15,8 +15,8 @@ export interface ItemSelection {
 
 export interface PodSelection {
   title: string
-  container: string
-  pod: string
+  containerName: string
+  podName: string
   podContainerDetails?: PodDetails|PodContainerDetails
   namespace: string
   cluster: string
@@ -45,7 +45,7 @@ export default class ChoiceManager {
 
   static createChoices(items, namespace, cluster, ...fields) {
     const choices: Choice[] = []
-    items.forEach(item => {
+    items && items.forEach(item => {
       const choiceItem: any[] = []
       const choiceData: any = {}
       if(fields.length > 0) {
@@ -75,7 +75,7 @@ export default class ChoiceManager {
     return choices
   }
 
-  private static async _storeItems(cache: boolean, cacheKey: string|undefined, 
+  private static async _createAndStoreItems(cache: boolean, cacheKey: string|undefined, 
                                     actionContext: ActionContext, getItems: GetItemsFunction, 
                                     useNamespace: boolean = true, ...fields) {
     const clusters = actionContext.getClusters()
@@ -156,20 +156,21 @@ export default class ChoiceManager {
     return choices
   }
 
-  private static async storeItems(actionContext: ActionContext, getItems: GetItemsFunction, 
+  static async storeItems(actionContext: ActionContext, getItems: GetItemsFunction, 
                                    useNamespace: boolean = true, ...fields) {
-    return this._storeItems(false, undefined, actionContext, getItems, useNamespace, ...fields)
+    return this._createAndStoreItems(false, undefined, actionContext, getItems, useNamespace, ...fields)
   }
 
-  private static async storeCachedItems(cacheKey: string, actionContext: ActionContext, getItems: GetItemsFunction, 
+  static async storeCachedItems(cacheKey: string, actionContext: ActionContext, getItems: GetItemsFunction, 
                                           useNamespace: boolean = true, ...fields) {
-    return this._storeItems(true, cacheKey, actionContext, getItems, useNamespace, ...fields)
+    return this._createAndStoreItems(true, cacheKey, actionContext, getItems, useNamespace, ...fields)
   }
 
   static async _prepareChoices(cache: boolean, cacheKey: string|undefined, actionContext: ActionContext, k8sFunction: GetItemsFunction, 
                               name: string, min: number, max: number, useNamespace: boolean = true, ...fields) {
     const previousSelections = cache && this.cacheKey === cacheKey ? actionContext.getSelections() : []
-    const choices: any[] = await ChoiceManager._storeItems(cache, cacheKey, actionContext, k8sFunction, useNamespace, ...fields)
+    this.cacheKey !== cacheKey && actionContext.context && (actionContext.context.selections = [])
+    const choices: any[] = await ChoiceManager._createAndStoreItems(cache, cacheKey, actionContext, k8sFunction, useNamespace, ...fields)
     let howMany = ""
     if(min === max && max > 0) {
       howMany = " " + max + " "
@@ -278,49 +279,9 @@ export default class ChoiceManager {
 
   static async choosePod(min: number = 1, max: number = 1, chooseContainers: boolean = false, 
                           loadDetails: boolean = false, actionContext: ActionContext) {
-    const contextPods = actionContext.getPods()
-    const containers = _.flatMap(contextPods, pod => pod.containers)
-    const contextHasLess = chooseContainers ? containers.length < min : contextPods.length < min
-    const contextHasMore = chooseContainers ? containers.length > max : contextPods.length > max
-    if(contextHasLess || contextHasMore) {
-      ChoiceManager.prepareCachedChoices(actionContext, 
-        async (cluster, namespace, k8sClient) => {
-          let pods : any[] = []
-          if(contextHasLess) {
-            pods = namespace ? await K8sFunctions.getAllPodsForNamespace(namespace, k8sClient) : []
-          } else {
-            const namespaces = actionContext.getNamespaces()
-            pods = _.flatMap(
-                    namespaces.filter(ns => ns.cluster.name === cluster && ns.name === namespace),
-                    ns => ns.pods)
-            if(loadDetails) {
-              for(const i in pods) {
-                pods[i] = namespace ? await K8sFunctions.getPodDetails(namespace, pods[i].name, k8sClient) : undefined
-              }
-            }
-          }
-          if(chooseContainers) {
-            pods = _.flatMap(pods, pod => pod.containers.map(c => {
-              return {
-                ...pod,
-                name: (c.name ? c.name : c)+"@"+pod.name,
-              }
-            }))
-          }
-          return pods
-        },
-        chooseContainers ? "Container@Pod" : "Pod(s)", min, max, true, "name"
-      )
-    } else {
-      const selections = await ChoiceManager.storeItems(actionContext, async (clusterName, nsName, k8sClient) => {
-        const cluster = actionContext.context && actionContext.context.cluster(clusterName)
-        const namespace = cluster && nsName && cluster.namespace(nsName)
-        let pods: any[] = namespace ? namespace.pods : []
-        if(namespace && loadDetails) {
-          for(const i in pods) {
-            pods[i] = await K8sFunctions.getPodDetails(namespace.name, pods[i].name, k8sClient)
-          }
-        }
+    ChoiceManager.prepareCachedChoices(actionContext, 
+      async (cluster, namespace, k8sClient) => {
+        let pods : any[] = namespace ? await K8sFunctions.getAllPodsForNamespace(namespace, k8sClient) : []
         if(chooseContainers) {
           pods = _.flatMap(pods, pod => pod.containers.map(c => {
             return {
@@ -329,41 +290,32 @@ export default class ChoiceManager {
             }
           }))
         }
-        return Promise.resolve(pods)
-      }, true, "name")
-      actionContext.context && (actionContext.context.selections = selections)
-      actionContext.onSkipChoices && actionContext.onSkipChoices()
-    }
+        return pods
+      },
+      chooseContainers ? "Container@Pod" : "Pod(s)", min, max, true, "name"
+    )
   }
 
-  static async getPodSelections(actionContext: ActionContext, loadDetails: boolean = false, loadContainers: boolean = true) {
+  static async getPodSelections(actionContext: ActionContext, loadContainers: boolean = true) {
     const selections = actionContext.getSelections()
-    const pods : PodSelection[] = []
+    const podSelections : PodSelection[] = []
     for(const selection of selections) {
       const namespace = selection.data.namespace
-      const cluster = selection.data.cluster
       const clusters = actionContext.getClusters()
-      const k8sClient = clusters.filter(c => c.name === cluster)
-                                  .map(cluster => cluster.k8sClient)[0]
+      const k8sClient = clusters.filter(c => c.name === selection.data.cluster)
+                                .map(cluster => cluster.k8sClient)[0]
       const title = selection.data.name || selection.data.title
-      const podAndContainer = loadContainers ? title.split("@") : undefined
-      const container = loadContainers ? podAndContainer[0] : undefined
-      const pod = loadContainers ? podAndContainer[1] : title
-
-      const podContainerDetails : PodDetails|PodContainerDetails|undefined = loadDetails ? 
-              loadContainers ? await K8sFunctions.getContainerDetails(namespace, pod, container, k8sClient) 
-                              : await K8sFunctions.getPodDetails(namespace, pod, k8sClient)
-                              : undefined
-      pods.push({
-        title,
-        container,
-        pod,
-        podContainerDetails,
-        namespace,
-        cluster,
-        k8sClient
-      })
+      const podAndContainerName = loadContainers ? title.split("@") : undefined
+      const containerName = loadContainers ? podAndContainerName[0] : undefined
+      const podName = loadContainers ? podAndContainerName[1] : title
+      const podContainerDetails = loadContainers ? 
+            await K8sFunctions.getContainerDetails(namespace, podName, containerName, k8sClient) : selection.data.item
+      selection.data.podName = podName
+      selection.data.containerName = containerName
+      selection.data.podContainerDetails = podContainerDetails
+      selection.data.k8sClient = k8sClient
+      podSelections.push(selection.data)
     }
-    return pods
+    return podSelections
   }
 }
