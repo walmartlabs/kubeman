@@ -277,9 +277,11 @@ export class TableBox extends React.Component<IProps, IState> {
     const columnCount = this.outputManager.headers.length
     const components : any[] = []
 
-    
+    const cellCount = row.cells.length
+    const gap = columnCount - cellCount > 0 ? 1 + columnCount - cellCount : 1
+
     const cells = row.cells.map((cell, ci) => {
-      const isKeyColumn = cell.isFirstColumn && row.columnCount > 1
+      const isKeyColumn = !row.isNoKey && cell.isFirstColumn && row.columnCount > 1
       const cellClass = computeCellClass(cell, isKeyColumn, highlight, compare, health, log, row.isWide, classes)
       if(cell.isArray) {
         return (
@@ -288,6 +290,7 @@ export class TableBox extends React.Component<IProps, IState> {
                     cell={cell}
                     wide={row.isWide}
                     className={cellClass}
+                    colSpan={gap}
           />
         )
       } else {
@@ -296,7 +299,7 @@ export class TableBox extends React.Component<IProps, IState> {
                     index={ci} 
                     cell={cell}
                     className={cellClass}
-                    colSpan={1}
+                    colSpan={gap}
           />
         )
       }

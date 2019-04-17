@@ -1,7 +1,7 @@
 import _ from 'lodash'
 import {K8sClient} from './k8sClient'
 import K8sFunctions from '../k8s/k8sFunctions'
-import {getUniqueResourcesByField, FqdnMatcher} from '../util/matchUtil'
+import {getUniqueResourcesByField, FqdnMatcher, getFqdnFromCluster} from '../util/matchUtil'
 
 export enum EnvoyConfigType {
   Bootstrap = "BootstrapConfig",
@@ -11,10 +11,6 @@ export enum EnvoyConfigType {
 }
 
 export default class EnvoyFunctions {
-  static getFqdnFromCluster = (cluster: string) => {
-    const parts = cluster.includes("|") ? cluster.split("|") : cluster.split("_.")
-    return parts[parts.length-1]
-  }
 
   static async getEnvoyConfigDump(k8sClient: K8sClient, namespace: string, pod: string, container: string) : Promise<any[]> {
     try {
@@ -223,7 +219,7 @@ export default class EnvoyFunctions {
   }
 
   private static filterClustersForFqdn(clusters: any[]) {
-    const nameMatches = clusters.filter(c => FqdnMatcher.matchDomain(EnvoyFunctions.getFqdnFromCluster(c.cluster.name)))
+    const nameMatches = clusters.filter(c => FqdnMatcher.matchDomain(getFqdnFromCluster(c.cluster.name)))
     const hostMatches = clusters
       .filter(c => c.cluster.hosts && 
         c.cluster.hosts.filter(h => FqdnMatcher.matchDomain(h.socket_address.address)).length > 0)
@@ -259,7 +255,7 @@ export default class EnvoyFunctions {
     return listeners.filter(l => {
       const matchingFilterChains = l.listener.filter_chains.filter(fc =>
         fc.filters && fc.filters.filter(f => f.config.cluster && 
-          FqdnMatcher.matchDomain(EnvoyFunctions.getFqdnFromCluster(f.config.cluster))).length > 0)
+          FqdnMatcher.matchDomain(getFqdnFromCluster(f.config.cluster))).length > 0)
       matchingFilterChains.length > 0 && 
         (l.matchingFilterChains = (l.matchingFilterChains||[]).concat(matchingFilterChains))
       return matchingFilterChains.length > 0
@@ -275,7 +271,7 @@ export default class EnvoyFunctions {
   private static filterRoutesByClusterMatch(routes: any[]) {
     return routes.filter(r => {
       return r.routes && r.routes.filter(rt => rt.route.cluster)
-        .filter(rt => FqdnMatcher.matchDomain(EnvoyFunctions.getFqdnFromCluster(rt.route.cluster))).length > 0
+        .filter(rt => FqdnMatcher.matchDomain(getFqdnFromCluster(rt.route.cluster))).length > 0
     })
   }
 

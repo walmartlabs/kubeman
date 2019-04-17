@@ -10,48 +10,33 @@ const plugin : ActionGroupSpec = {
   
   actions: [
     {
-      name: "List Pods",
+      name: "List Namespace Pods",
       order: 1,
       loadingMessage: "Loading Namespaces...",
 
       choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 10),
       
       async act(actionContext) {
-        this.onOutput && this.onOutput([["Pod Name", "Summary Info"]], ActionOutputStyle.Table)
+        const namespaces = await ChoiceManager.getSelections(actionContext).map(s => s.item)
+        this.directAct && this.directAct(namespaces)
+      },
+
+      async directAct(namespaces) {
+        this.onOutput && this.onOutput([["Namespace Pods"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
 
-        const clusters = actionContext.getClusters()
-        const selections = await ChoiceManager.getSelections(actionContext)
-        for(const cluster of clusters) {
-          this.onStreamOutput && this.onStreamOutput([[">Cluster: "+cluster.name, ""]])
+        for(const namespace of namespaces) {
+          const output: ActionOutput = []
+          const cluster = namespace.cluster
+          output.push([">Namespace " + namespace.name + ", Cluster: " + cluster.name])
       
-          let clusterNamespaces = selections.filter(s => s.cluster === cluster.name).map(s => s.item) as Namespace[]
-          for(const namespace of clusterNamespaces) {
-            const output: ActionOutput = []
-            output.push([">>Namespace: "+namespace.name, ""])
-            const pods = await K8sFunctions.getAllPodsForNamespace(namespace.name, cluster.k8sClient)
-            pods.length === 0 && output.push(["", "No pods found"])
-            pods.forEach(pod => {
-              output.push([pod.name, {
-                podIP: pod.podIP,
-                hostIP: pod.hostIP,
-                nodeName: pod.nodeName,
-                labels: pod.labels,
-                annotations: pod.annotations,
-                volumes: pod.volumes.map(v => v.name),
-                containers: pod.containers.map(c => {
-                  return {
-                    name: c.name,
-                    ports: c.ports,
-                    status: pod.containerStatuses.filter(cs => cs.name === c.name)
-                            .map(cs => cs.state)
-                  }
-                }),
-                conditions: pod.conditions,
-              }])
-            })
-            this.onStreamOutput && this.onStreamOutput(output)
-          }
+          const pods = await K8sFunctions.getAllPodsForNamespace(namespace.name, cluster.k8sClient)
+          pods.length === 0 && output.push(["No pods found"])
+          pods.forEach(pod => {
+            output.push([">>"+pod.name])
+            output.push([pod.yaml])
+          })
+          this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },

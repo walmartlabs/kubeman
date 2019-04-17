@@ -1,5 +1,5 @@
 import _ from 'lodash'
-import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput} from '../actions/actionSpec'
+import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioFunctions from '../k8s/istioFunctions'
 import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
@@ -10,11 +10,12 @@ import {matchSubsetHosts} from '../util/matchUtil'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "More Istio Recipes",
+  title: "Analysis Recipes",
+  order: ActionContextOrder.Istio+5,
   actions: [
     {
       name: "Analyze Service Details and Routing",
-      order: 110,
+      order: 1,
       loadingMessage: "Loading Services...",
 
       async choose(actionContext) {

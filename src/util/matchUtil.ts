@@ -15,6 +15,19 @@ export const isServiceFqdn = (host) => host && !host.includes("*")
 export const normalizeServiceFqdn = (host) => 
     host && isServiceFqdn(host) && !host.includes(".svc.cluster.local") ? host+".svc.cluster.local" : host
 
+export const getFqdnFromCluster = (cluster: string) => {
+  const parts = cluster.includes("|") ? cluster.split("|") : 
+                  cluster.includes("_.") ? cluster.split("_.") : undefined
+  return parts && parts.length > 0 ? parts[parts.length-1] : cluster
+}
+
+export const getFqdnAndPortFromCluster = (cluster: string) => {
+  const parts = cluster.includes("|") ? cluster.split("|") : 
+                  cluster.includes("_.") ? cluster.split("_.") : undefined
+  return parts && parts.length > 1 ? {fqdn: parts[parts.length-1], port: parts[1]} 
+              : {fqdn: cluster}
+}
+
 export const extractNamespaceFromFqdn = (fqdn) => {
   if(!fqdn) return "*"
   let namespace = fqdn.replace(".svc.cluster.local", "")

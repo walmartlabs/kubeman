@@ -362,7 +362,6 @@ export class MtlsUtil {
         const servicePoliciesMtlsStatus = MtlsUtil.getServicePoliciesMtlsStatus(
                 service, servicesWithMtlsPolicies, namespaceDefaultMtlsMode, globalMtlsStatus)
         const serviceDestRulesMtlsStatus = MtlsUtil.getServiceDestinationRulesMtlsStatus(service, mtlsDestinationRules, mtlsModes)
-        
         const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(service, k8sClient)
         const containers = podsAndContainers.containers ? podsAndContainers.containers as any[] : []
         const hasSidecar = containers.filter(c => c === "istio-proxy").length > 0
@@ -387,8 +386,13 @@ export class MtlsUtil {
           const mtlsAccessOnly = servicePortMtlsEnabled && !servicePortMtlsPermissive
           const sidecarAccessNamespaces: any[] = []
           const clientNamespacesInConflictWithMtlsPolicy = {}
+          let globalClientMtlsMode = effectiveClientModes[""] && effectiveClientModes[""][0].mode
+          let clientNSWithMtlsDestRules = 0
           Object.keys(effectiveClientModes)
             .forEach(sourceNS => {
+              if(sourceNS !== "") {
+                clientNSWithMtlsDestRules++
+              }
               if(effectiveClientModes[sourceNS].length === 1) {
                 const sourceNSMtlsMode = effectiveClientModes[sourceNS][0].mode
                 const sourceDR = effectiveClientModes[sourceNS][0].dr
@@ -409,11 +413,9 @@ export class MtlsUtil {
             })
           const clientHasConflicts = clientNamespacesWithMtlsConflicts.length > 0 
                 || Object.keys(clientNamespacesInConflictWithMtlsPolicy).length > 0
-          const allAccess = (!servicePortMtlsEnabled || servicePortMtlsPermissive) 
-                && (noDestinationRules || !clientHasConflicts)
+          const allAccess = sidecarAccessNamespaces.length === 0
           const noAccess = mtlsAccessOnly && noDestinationRules
           const nonSidecarOnly = !servicePortMtlsEnabled || (servicePortMtlsPermissive && noDestinationRules)
-          const sidecarOnly = servicePortMtlsEnabled && !servicePortMtlsPermissive
 
           servicePortAccess[p.port] = {
             service: {
@@ -430,7 +432,7 @@ export class MtlsUtil {
               noDestinationRules,
               noAccess,
               allAccess,
-              sidecarOnly,
+              sidecarOnly: mtlsAccessOnly,
               nonSidecarOnly,
             }
           }

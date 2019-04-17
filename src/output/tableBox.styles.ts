@@ -48,7 +48,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
       wordWrap: 'break-word',
       wordBreak: 'break-all',
       fontFamily: 'Courier, monospace',
-      fontSize: '0.9rem',
+      fontSize: '0.95rem',
       height: '15px',
       filter: palette.type ==='dark' ? 'brightness(120%)' : 'brightness(70%)'
     },
@@ -133,7 +133,6 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   },
   tableCell: {
     padding: 0,
-    borer: 0,
     color: 'inherit',
     verticalAlign: 'top',
     width: 'auto',

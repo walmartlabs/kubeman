@@ -72,7 +72,15 @@ export default class IstioFunctions {
 
   static getGatewaysForPorts = async (ports: number[], k8sClient: K8sClient) => {
     const allGateways = await IstioFunctions.listAllGateways(k8sClient, false)
-    return allGateways.filter(g => g.servers.filter(s => ports.includes(s.port.number)).length > 0)
+    return allGateways.filter(g => {
+      const gatewayPorts = g.servers.map(s => s.port.number)
+              .filter(p => ports.includes(p))
+      if(gatewayPorts.length > 0) {
+        g.gatewayPorts = gatewayPorts
+        return true
+      }
+      return false
+    })
   }
 
   static getNamespaceGateways = async (namespace: string, k8sClient: K8sClient) => {
@@ -166,17 +174,40 @@ export default class IstioFunctions {
   }
 
   static getVirtualServicesForPorts = async (ports: number[], k8sClient: K8sClient) => {
+    const portsOutput = {}
+    const matchRoutePorts = (port, routeConfigs) => {
+      const matchPorts = _.flatten(routeConfigs.map(rc => rc.match ? rc.match.map(m => m.port) : [])).filter(p => p)
+      const matchesMatchPort = matchPorts.includes(port)
+      const destinationPorts = _.flatten(routeConfigs.map(rc => rc.route ? rc.route.map(r => 
+              r.destination && r.destination.port && r.destination.port.number) : [])).filter(p => p)
+      const matchesDestPort = destinationPorts.includes(port)
+
+      if(matchesDestPort) {
+        portsOutput[port].matchPorts = _.uniqBy(portsOutput[port].matchPorts.concat(matchPorts))
+        if(!portsOutput[port].destinationPorts.includes(port)) {
+          portsOutput[port].destinationPorts.push(port)
+        }
+      }
+      if(matchesMatchPort) {
+        portsOutput[port].destinationPorts = _.uniqBy(portsOutput[port].destinationPorts.concat(destinationPorts))
+        if(!portsOutput[port].matchPorts.includes(port)) {
+          portsOutput[port].matchPorts.push(port)
+        }
+      }
+      return matchesMatchPort || matchesDestPort
+    }
+
     const allVirtualServices = await IstioFunctions.listAllVirtualServices(k8sClient, false)
-    return allVirtualServices.filter(vs => {
-      const routeConfigs: any[] = []
-      vs.http && vs.http.forEach(r => routeConfigs.push(r))
-      vs.tls && vs.tls.forEach(r => routeConfigs.push(r))
-      vs.tcp && vs.tcp.forEach(r => routeConfigs.push(r))
-      return routeConfigs.filter(rc => rc.match && rc.match.filter(m => ports.includes(m.port)).length > 0).length > 0
-      ||
-      routeConfigs.filter(rc => rc.route && rc.route.filter(r => 
-        r.destination && r.destination.port && ports.includes(r.destination.port.number)).length > 0).length > 0
+    ports.forEach(port => {
+      portsOutput[port] = {matchPorts: [], destinationPorts: [], vs: []}
+      portsOutput[port].vs = allVirtualServices.filter(vs => {
+        const matchHttp = vs.http && matchRoutePorts(port, vs.http)
+        const matchTls = vs.tls && matchRoutePorts(port, vs.tls)
+        const matchTcp = vs.tcp && matchRoutePorts(port, vs.tcp)
+        return matchHttp || matchTls || matchTcp
+      })
     })
+    return portsOutput
   }
 
   static getNamespaceVirtualServices = async (namespace: string, k8sClient: K8sClient) => {

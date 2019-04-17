@@ -1,0 +1,328 @@
+import _ from 'lodash'
+import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder, SelectionType} from '../actions/actionSpec'
+import K8sFunctions from '../k8s/k8sFunctions'
+import IstioFunctions from '../k8s/istioFunctions'
+import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
+import { MtlsUtil } from '../k8s/mtlsUtil';
+
+const plugin : ActionGroupSpec = {
+  context: ActionContextType.Istio,
+  title: "Analysis Recipes",
+  order: ActionContextOrder.Istio+5,
+  actions: [
+    {
+      name: "Analyze Service mTLS Status",
+      order: 2,
+      selectionType: SelectionType.Service,
+      loadingMessage: "Loading Services...",
+
+      async choose(actionContext) {
+        await ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", 
+                                              1, 5, true, "name")
+      },
+
+      async act(actionContext) {
+        const selections = await ChoiceManager.getSelections(actionContext)
+        this.directAct && this.directAct(selections)
+      },
+
+      async directAct(selections) {
+        this.showTitle(selections)
+        this.showOutputLoading && this.showOutputLoading(true)
+
+        const globalMtlsStatuses = {}
+        const clusterServiceMtlsStatuses = {}
+        const clusters = this.actionContext.getClusters()
+        for(const cluster of clusters) {
+          globalMtlsStatuses[cluster.name] = await MtlsUtil.getGlobalMtlsStatus(cluster.k8sClient)
+          const clusterServices = selections.filter(s => s.cluster === cluster.name).map(s => s.item)
+          clusterServiceMtlsStatuses[cluster.name] = await MtlsUtil.getServiceMtlsStatuses(cluster.k8sClient, clusterServices)
+        }
+
+        for(const selection of selections) {
+          const cluster = this.actionContext.getClusters().filter(c => c.name === selection.cluster)[0]
+          const service = selection.item
+          const output: ActionOutput = []
+          output.push([">" + service.name+"."+service.namespace+" @ "+cluster.name, ""])
+          if(!cluster.hasIstio) {
+            output.push([">>Istio not installed", ""])
+            this.onStreamOutput && this.onStreamOutput(output)
+            continue
+          }
+          const globalMtlsStatus = globalMtlsStatuses[cluster.name]
+          const serviceMtlsStatuses = clusterServiceMtlsStatuses[cluster.name]
+          const namespaceMtlsStatus = serviceMtlsStatuses[service.namespace]
+          const serviceMtlsStatus = namespaceMtlsStatus[service.name]
+          output.push(["Cluster mTLS", globalMtlsStatus.globalMtlsMode || "Disabled"])
+          output.push(["Namespace Default mTLS", namespaceMtlsStatus.namespaceDefaultMtlsMode || "None"])
+          output.push(["Envoy Sidecar Status", serviceMtlsStatus.hasSidecar ? "Sidecar Proxy Present" : "Sidecar Proxy Not Deployed"])
+
+          this.outputServicePolicies(serviceMtlsStatus, output)
+          this.outputServiceDestinationRules(serviceMtlsStatus, output)
+
+
+          const portNumbers: any[] = ["##Port"]
+          const portMtls: any[] = ["mTLS"]
+          const policyConflicts: any[] = ["Policy Conflicts"]
+          const drConflicts: any[] = ["DR Conflicts"]
+          const clientAccess: any[] = ["Client Access"]
+          const impactedClients: any[] = ["Impacted Clients"]
+          const portsAnalysis: any[] = []
+
+          this.generatePortTable(service, serviceMtlsStatus, namespaceMtlsStatus, globalMtlsStatus, 
+                        portNumbers, portMtls, policyConflicts, drConflicts, clientAccess, impactedClients)
+
+          output.push([])
+          output.push([">>>Service Ports"])
+          output.push([portNumbers, portMtls, policyConflicts, drConflicts, clientAccess, impactedClients])
+          output.push([])
+          output.push(...portsAnalysis)
+
+          this.onStreamOutput && this.onStreamOutput(output)
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
+      },
+
+      showTitle(selections) {
+        if(selections && selections.length > 0){ 
+          const servicesTitle = selections.map(s => "["+s.name+"."+s.namespace+"@"+s.cluster+"]").join(", ")
+          this.onOutput && this.onOutput([["mTLS Analysis for Service " + servicesTitle, ""]], ActionOutputStyle.Table)
+        } else {
+          this.onOutput && this.onOutput([["Service mTLS Analysis", ""]], ActionOutputStyle.Table)
+        }
+      },
+
+      refresh(actionContext) {
+        this.act(actionContext)
+      },
+
+      filterSelections(selections) {
+        return selections && selections.length > 0 ? selections.slice(0, 5) : []
+      },
+
+      outputServicePolicies(serviceMtlsStatus, output) {
+        output.push([])
+        output.push([">>>Relevant Service mTLS Policies", ""])
+        serviceMtlsStatus.servicePoliciesMtlsStatus.mtlsPolicies.length === 0 
+          && output.push(["", "No Policies"])
+        serviceMtlsStatus.servicePoliciesMtlsStatus.mtlsPolicies.forEach(sp => {
+          delete sp.labels
+          delete sp.annotations
+          output.push([sp.name, sp])
+        })
+      },
+
+      outputServiceDestinationRules(serviceMtlsStatus, output) {
+        output.push([])
+        output.push([">>>Relevant mTLS Destination Rules", ""])
+        serviceMtlsStatus.serviceDestRulesMtlsStatus.mtlsDestinationRules.length === 0 
+          && output.push(["","No DestinationRules"])
+        serviceMtlsStatus.serviceDestRulesMtlsStatus.mtlsDestinationRules.forEach(dr => {
+          delete dr.labels
+          delete dr.annotations
+          output.push([dr.name, dr])
+        })
+      },
+
+      generatePortTable(service, serviceMtlsStatus, namespaceMtlsStatus, globalMtlsStatus, 
+                        portNumbers, portMtls, policyConflicts, drConflicts, clientAccess, impactedClients) {
+        service.ports.forEach(sp => {
+          portNumbers.push(sp.port)
+          const portStatus = serviceMtlsStatus.servicePortAccess[sp.port]
+          const servicePortClientMtlsModes = serviceMtlsStatus.serviceDestRulesMtlsStatus.effectiveServicePortClientMtlsModes[sp.port]
+          const portMtlsMode = portStatus.service.conflict ? "Conflict" :
+                    !portStatus.service.mtls ? "None" :
+                    portStatus.service.servicePortMtlsMode ? portStatus.service.servicePortMtlsMode : 
+                    namespaceMtlsStatus.namespaceDefaultMtlsMode ? namespaceMtlsStatus.namespaceDefaultMtlsMode :
+                    globalMtlsStatus.globalMtlsMode || "None"
+          portMtls.push(portMtlsMode)
+
+          policyConflicts.push(portStatus.service.conflict ? "Has Conflicts" : "No Conflicts")
+
+          
+          const clientNamespacesWithDRPolicyConflicts = Object.keys(portStatus.client.clientNamespacesInConflictWithMtlsPolicy)
+          const clientNamespacesWithConflicts = portStatus.client.clientNamespacesWithMtlsConflicts
+                                .concat(clientNamespacesWithDRPolicyConflicts)
+
+          impactedClients.push(clientNamespacesWithConflicts.length === 0 ? "" :
+              clientNamespacesWithConflicts.map(n => n.length > 0 ? n : "All Sidecar Clients").join(", ") 
+              +
+              (clientNamespacesWithConflicts.length === 1 && clientNamespacesWithConflicts[0] === ""
+                && portStatus.client.sidecarAccessNamespaces.length > 0 ? 
+                    " (Except: " + portStatus.client.sidecarAccessNamespaces.map(ns => ns.namespace).join(", ") + ")" : "")
+          )
+
+          if(portStatus.client.conflict) {
+            if(portStatus.client.clientNamespacesWithMtlsConflicts.length > 0) {
+              portStatus.client.clientNamespacesWithMtlsConflicts.forEach(ns => {
+                const rules = _.uniqBy(servicePortClientMtlsModes[ns].map(info => info.dr.name+"."+info.dr.namespace)).join(", ")
+                drConflicts.push(rules)
+              })
+            }
+            if(clientNamespacesWithDRPolicyConflicts.length > 0) {
+              clientNamespacesWithDRPolicyConflicts.forEach(ns => {
+                const destRules = portStatus.client.clientNamespacesInConflictWithMtlsPolicy[ns]
+                const ruleNames = _.uniqBy(destRules.map(dr => dr.name+"."+dr.namespace)).join(", ")
+                drConflicts.push(ruleNames)
+              })
+            }
+          }
+          if(!portStatus.client.conflict && clientNamespacesWithConflicts.length === 0) {
+            drConflicts.push("No Conflicts")
+          }
+          let clientAccessConflictMessage = portStatus.client.noAccess ? "Blocked for all clients" :
+                portStatus.client.allAccess ? "Open to all clients" : 
+                portStatus.client.nonSidecarOnly ? "Non-Sidecar Clients Only" : 
+                portStatus.client.sidecarOnly ? "Sidecar Clients Only" :
+                portStatus.client.conflict ? "Some namespaces have conflicts" : ""
+          clientAccessConflictMessage.length > 0 && clientAccess.push(clientAccessConflictMessage)
+
+        })
+      },
+
+      performPortAnalysis(service, serviceMtlsStatus, namespaceMtlsStatus, globalMtlsStatus, 
+                        portNumbers, portMtls, policyConflicts, drConflicts, impactedClients, portsAnalysis) {
+        service.ports.forEach(sp => {
+          portsAnalysis.push([">>>Service Port " + sp.port + " Analysis"])
+          portNumbers.push(sp.port)
+          const portStatus = serviceMtlsStatus.servicePortAccess[sp.port]
+          const servicePortClientMtlsModes = serviceMtlsStatus.serviceDestRulesMtlsStatus.effectiveServicePortClientMtlsModes[sp.port]
+          const portMtlsMode = portStatus.service.conflict ? "Conflict" :
+                    !portStatus.service.mtls ? "None" :
+                    portStatus.service.servicePortMtlsMode ? portStatus.service.servicePortMtlsMode : 
+                    namespaceMtlsStatus.namespaceDefaultMtlsMode ? namespaceMtlsStatus.namespaceDefaultMtlsMode :
+                    globalMtlsStatus.globalMtlsMode || "None"
+          portMtls.push(portMtlsMode)
+
+          policyConflicts.push(portStatus.service.conflict ? "Has Conflicts" : "No Conflicts")
+
+          
+          const clientNamespacesWithDRPolicyConflicts = Object.keys(portStatus.client.clientNamespacesInConflictWithMtlsPolicy)
+          const clientNamespacesWithConflicts = portStatus.client.clientNamespacesWithMtlsConflicts
+                                .concat(clientNamespacesWithDRPolicyConflicts)
+
+          const clientConflictInfo: any[] = []
+          impactedClients.push(clientNamespacesWithConflicts.length === 0 ? "" :
+              clientNamespacesWithConflicts.map(n => n.length > 0 ? n : "All Sidecar Clients").join(", ") 
+              +
+              (clientNamespacesWithConflicts.length === 1 && clientNamespacesWithConflicts[0] === ""
+                && portStatus.client.sidecarAccessNamespaces.length > 0 ? 
+                    " (Except: " + portStatus.client.sidecarAccessNamespaces.map(ns => ns.namespace).join(", ") + ")" : "")
+          )
+
+          if(portStatus.client.conflict) {
+            if(portStatus.client.clientNamespacesWithMtlsConflicts.length > 0) {
+              portStatus.client.clientNamespacesWithMtlsConflicts.forEach(ns => {
+                const rules = _.uniqBy(servicePortClientMtlsModes[ns].map(info => info.dr.name+"."+info.dr.namespace)).join(", ")
+                drConflicts.push(rules)
+                servicePortClientMtlsModes[ns].map(data => {
+                  const rule = data.dr.name + "." + data.dr.namespace
+                  clientConflictInfo.push(["Rule [" + rule + "] for " + (ns.length > 0 ? " namespace ["+ns+"]" : "all sidecar clients")
+                          + " uses mTLS mode [" + data.mode + "]"])
+                })
+              })
+            }
+            if(clientNamespacesWithDRPolicyConflicts.length > 0) {
+              clientNamespacesWithDRPolicyConflicts.forEach(ns => {
+                const destRules = portStatus.client.clientNamespacesInConflictWithMtlsPolicy[ns]
+                const ruleNames = _.uniqBy(destRules.map(dr => dr.name+"."+dr.namespace)).join(", ")
+                drConflicts.push(ruleNames)
+                servicePortClientMtlsModes[ns].map(data => {
+                  const rule = data.dr.name + "." + data.dr.namespace
+                  clientConflictInfo.push([
+                    "Rule [" + rule + "] uses mTLS mode [" + data.mode + "] for " 
+                      + (ns.length > 0 ? " namespace ["+ns+"]" : "all sidecar clients")
+                      + (serviceMtlsStatus.hasSidecar ? 
+                          "  whereas service port mTLS mode is [" + portMtlsMode + "]" :
+                          "  whereas service runs without sidecar and does not support mTLS")
+                  ])
+                })
+              })
+            }
+          }
+          if(!portStatus.client.conflict && clientNamespacesWithConflicts.length === 0) {
+            drConflicts.push("No Conflicts")
+          }
+
+          clientConflictInfo.length > 0 && portsAnalysis.push(["DR Conflicts", clientConflictInfo])
+
+          const clientAccess: any[] = []
+          let clientAccessConflictMessage = portStatus.client.noAccess ? "Blocked for all clients" :
+                portStatus.client.allAccess ? "Open to all clients" : 
+                portStatus.client.nonSidecarOnly ? "Non-Sidecar Clients Only" : 
+                portStatus.client.sidecarOnly ? "Sidecar Clients Only" :
+                portStatus.client.conflict ? "One or more client namespaces have conflicts" : ""
+          clientAccessConflictMessage.length > 0 && clientAccess.push([clientAccessConflictMessage])
+
+          const accessAnalysis: any[] = []
+          if(namespaceMtlsStatus.namespaceDefaultMtlsMode) {
+            if(portStatus.service.servicePortMtlsMode &&
+              namespaceMtlsStatus.namespaceDefaultMtlsMode !== portStatus.service.servicePortMtlsMode) {
+              accessAnalysis.push("Service policy has overridden mTLS mode from namespace default of ["
+                + namespaceMtlsStatus.namespaceDefaultMtlsMode + "] to [" + portStatus.service.servicePortMtlsMode + "]")
+            }
+          } else {
+            if(portStatus.service.servicePortMtlsMode &&
+              globalMtlsStatus.globalMtlsMode !== portStatus.service.servicePortMtlsMode) {
+              accessAnalysis.push("Service policy has overridden mTLS mode from global default of ["
+                + globalMtlsStatus.globalMtlsMode + "] to [" + portStatus.service.servicePortMtlsMode + "]")
+            }
+          }
+
+          if(portStatus.service.conflict) {
+            accessAnalysis.push("Service policies have conflicting mTLS configuration")
+            accessAnalysis.push("Port mTLS Modes: " + serviceMtlsStatus.servicePoliciesMtlsStatus.effectiveServicePortMtlsModes[sp.port])
+          } else {
+            portStatus.service.mtls && portStatus.service.permissive 
+              && accessAnalysis.push("Service has given PERMISSIVE mTLS access to allow access without a sidecar")
+            portStatus.service.mtls && !portStatus.service.permissive 
+              && accessAnalysis.push("Service requires STRICT mTLS access, and cannot be accessed without a sidecar")
+            portStatus.client.noDestinationRules && portStatus.service.permissive
+              && accessAnalysis.push("No DestinationRule is defined to configure mTLS, so sidecar clients will also access without mTLS")
+            portStatus.service.mtls && !portStatus.service.permissive  && portStatus.client.noDestinationRules 
+              && accessAnalysis.push("Sidecar mTLS access requires a DestinationRule, but none are defined for this port")
+            if(clientNamespacesWithConflicts.length > 0) {
+              portStatus.client.clientNamespacesWithMtlsConflicts.forEach(ns => {
+                accessAnalysis.push((ns.length > 0 ? "Sidecar clients in Namespace [" + ns + "]" : "All sidecar clients")
+                  + " are blocked due to DestinationRule [" + (ns.dr ? ns.dr.name : "") + "]")
+              })
+              clientNamespacesWithDRPolicyConflicts.forEach(ns => {
+                const destRules = portStatus.client.clientNamespacesInConflictWithMtlsPolicy[ns]
+                const ruleNames = _.uniqBy(destRules.map(dr => dr.name+"."+dr.namespace)).join(", ")
+                accessAnalysis.push((ns.length > 0 ? "Sidecar clients in Namespace [" + ns + "]" : "All sidecar clients")
+                  + " are blocked due to DestinationRules [" + ruleNames + "]")
+              })
+            }
+            portStatus.client.sidecarAccessNamespaces.forEach(s => {
+              if(s.dr) {
+                accessAnalysis.push((s.namespace.length > 0 ? "Clients in Namespace [" + s.namespace + "]" : 
+                  portStatus.client.conflict ? "All other client namespaces" : "All client namespaces")
+                  + " can access via sidecar using DestinationRule [" + s.dr.name+"."+s.dr.namespace + "]" )
+              } else {
+                accessAnalysis.push((s.namespace.length > 0 ? "Clients in Namespace [" + s.namespace + "]" : 
+                  portStatus.client.conflict ? "All other client namespaces" : "All client namespaces")
+                  + " can access via sidecar without any DestinationRule as mTLS is not required by the service" )
+              }
+            })
+          }
+          clientAccess.push(accessAnalysis)
+          portsAnalysis.push(["Client Access", clientAccess])
+
+          if(portStatus.client.sidecarAccessNamespaces.length > 0) {
+            const exceptions: string[] = []
+            clientNamespacesWithDRPolicyConflicts.forEach(ns => ns.length > 0 && exceptions.push(ns))
+            portStatus.client.clientNamespacesWithMtlsConflicts.forEach(ns => ns.length > 0 && exceptions.push(ns))
+            portsAnalysis.push(["Client Namespaces with Sidecar access", 
+              portStatus.client.sidecarAccessNamespaces.map(ns => ns.namespace.length > 0 ? ns.namespace : "All")
+              +
+              (exceptions.length > 0 ? 
+                " (Except: " + exceptions.join(", ") + ")" : "")
+            ])
+          }
+        })
+      }
+    }
+  ],
+}
+
+export default plugin

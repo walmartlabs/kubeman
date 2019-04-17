@@ -4,58 +4,8 @@ import IstioFunctions from '../k8s/istioFunctions';
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import JsonUtil from '../util/jsonUtil';
 import {outputConfig} from './envoySidecarConfigDump'
+import {compareEnvoyConfigs} from './envoySidecarConfigComparison'
 
-function compareConfigs(onStreamOutput, pilotConfigs: any[], sidecarConfigs: any[], 
-                        type: string, itemKey: string, sidecarItemKey: string = itemKey) {
-  const output: ActionOutput = []
-
-  const pilotConfig = pilotConfigs.filter(c => c["@type"].includes(type))[0]
-  const sidecarConfig = sidecarConfigs.filter(c => c["@type"].includes(type))[0]
-  const items = {}
-  const matchingRecords: string[] = []
-  Object.keys(pilotConfig).forEach(key => {
-    if(key.includes("dynamic")) {
-      pilotConfig[key].forEach(c => items[c[itemKey].name]=[c[itemKey], "Missing"])
-    }
-  })
-
-  Object.keys(sidecarConfig).forEach(key => {
-    if(key.includes("dynamic")) {
-      sidecarConfig[key].forEach(c => {
-        if(items[c[sidecarItemKey].name]) {
-          const pilotConfig = items[c[sidecarItemKey].name][0]
-          //delete type field because there's in unnecessary mismatch
-          delete pilotConfig.type
-          delete c[sidecarItemKey].type
-          const pilotItem = JsonUtil.transformObject(pilotConfig)
-          const sidecarItem = JsonUtil.transformObject(c[sidecarItemKey])
-          const matches = JsonUtil.compareObjects(pilotItem, sidecarItem)
-          if(matches) {
-            matchingRecords.push(c[sidecarItemKey].name)
-            delete items[c[sidecarItemKey].name]
-          } else {
-            items[c[sidecarItemKey].name][1]=c[sidecarItemKey]
-          }
-        } else {
-          items[c[sidecarItemKey].name] = ["Missing", c[sidecarItemKey]]
-        }
-      })
-    }
-  })
-
-  output.push([">Matching "+type, "", ""])
-  matchingRecords.forEach(c => output.push(["", c, ""]))
-
-  if(Object.keys(items).length > 0) {
-    output.push([">>Mismatched "+type, "", ""])
-    Object.keys(items).forEach(item => {
-      output.push([items[item][0].name, items[item][0], items[item][1]])
-    })
-  } else {
-    output.push([">>No Mismatched "+type, "", ""])
-  }
-  onStreamOutput(output)
-}
 
 function getConfigItems(configs, configType, titleField) {
   configs = configs.filter(c => c["@type"].includes(configType))[0]
@@ -132,27 +82,22 @@ const plugin : ActionGroupSpec = {
 
       async act(actionContext) {
         const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
-        if(sidecars.length < 1) {
-          this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
-          return
-        }
-
         this.showOutputLoading && this.showOutputLoading(true)
         const sidecar = sidecars[0]
         const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
 
         this.onOutput && this.onOutput([[
-          "", "Pilot-Sidecar Config Comparison", ""
+          "", "Pilot <-> Sidecar Config Comparison", ""
         ]], ActionOutputStyle.Log)
 
         const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, sidecar.title)
         const sidecarConfigs = await EnvoyFunctions.getEnvoyConfigDump(cluster.k8sClient, sidecar.namespace, sidecar.pod, "istio-proxy")
 
-        compareConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, EnvoyConfigType.Clusters, "cluster")
+        compareEnvoyConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, EnvoyConfigType.Clusters, true, "cluster")
 
-        compareConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, EnvoyConfigType.Listeners, "listener")
+        compareEnvoyConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, EnvoyConfigType.Listeners, true, "listener")
 
-        compareConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, EnvoyConfigType.Routes, "routeConfig", "route_config")
+        compareEnvoyConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, EnvoyConfigType.Routes, true, "routeConfig", "route_config")
 
         this.showOutputLoading && this.showOutputLoading(false)
       },

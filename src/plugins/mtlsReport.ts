@@ -4,11 +4,12 @@ import { MtlsUtil } from '../k8s/mtlsUtil';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "More Istio Recipes",
+  title: "Analysis Recipes",
+  order: ActionContextOrder.Istio+5,
   actions: [
     {
-      name: "Cluster mTLS Info",
-      order: 105,
+      name: "Cluster mTLS Report",
+      order: 3,
       
       async act(actionContext) {
         const clusters = actionContext.getClusters()

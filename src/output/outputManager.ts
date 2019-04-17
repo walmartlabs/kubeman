@@ -295,6 +295,7 @@ export class Row {
   private _isSubgroup: boolean = false
   private _isSection: boolean = false
   private _isWide: boolean = false
+  private _isNoKey: boolean = false
 
   constructor(index: number, content: CellContent[], 
               groupIndex: number, subGroupIndex: number, sectionIndex: number,
@@ -319,6 +320,12 @@ export class Row {
       if((typeof content[0] === 'string' && content[0].toString().startsWith("##")) ||
         (content[0] instanceof Array && (content[0] as []).length > 0 && content[0][0].toString().startsWith("##"))) {
         this._isWide = true
+      }
+      this._isNoKey = content[0].toString().startsWith("<<") || false
+      if(this._isNoKey) {
+        console.log(content.concat())
+        content.shift()
+        console.log(content.concat())
       }
       if(this.isGroupOrSubgroupOrSection && content.length < headersCount) {
         for(let i = content.length; i < headersCount; i++) {
@@ -370,6 +377,10 @@ export class Row {
 
   get isWide() : boolean {
     return this._isWide
+  }
+
+  get isNoKey() : boolean {
+    return this._isNoKey
   }
 
   get groupText() : string {
@@ -427,9 +438,11 @@ export class Row {
       rowChanged = rowChanged || newCellData[1]
     })
     if(rowChanged) {
-      return [new Row(this.index, this.content, this.groupIndex, this.subGroupIndex, 
+      const newRow = new Row(this.index, this.content, this.groupIndex, this.subGroupIndex, 
                       this.sectionIndex, this.headersCount, this.healthColumnIndex,
-                      this.isLog, formattedCellContent, this.appliedFilters), true]
+                      this.isLog, formattedCellContent, this.appliedFilters)
+      newRow._isNoKey = this._isNoKey
+      return [newRow, true]
     } else {
       return [this, false]
     }
