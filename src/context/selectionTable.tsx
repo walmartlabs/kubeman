@@ -1,14 +1,13 @@
-import React from 'react';
+import React, { ChangeEvent } from 'react';
 import _ from 'lodash'
 import { isNullOrUndefined } from 'util';
-
 import { withStyles, WithStyles } from '@material-ui/core/styles'
-import { FormControlLabel, FormHelperText, Checkbox, Typography } from '@material-ui/core';
+import { FormControlLabel, FormHelperText, Checkbox, Typography, Input } from '@material-ui/core';
 import { Table, TableBody, TableCell, TableRow } from '@material-ui/core';
 import { ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails } from '@material-ui/core';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-
 import {KubeComponent} from "../k8s/k8sObjectTypes";
+import {filter} from '../util/filterUtil'
 
 import styles from './selectionTable.styles'
 
@@ -59,6 +58,7 @@ interface SelectionTableProps extends WithStyles<typeof styles> {
 interface SelectionTableState {
   table: {[group: string]: KubeComponent[]}
   newSelections: Map<string, KubeComponent>
+  filteredList: KubeComponent[]
   collapsedGroups: {}
   countSelected: number,
 }
@@ -70,10 +70,12 @@ class SelectionTable extends React.Component<SelectionTableProps, SelectionTable
 
   state: SelectionTableState = {
     table: {},
+    filteredList: [],
     newSelections: new Map(),
     collapsedGroups: {},
     countSelected: 0,
   }
+  filterText: string = ''
 
   componentDidMount() {
     this.handleChange = this.handleChange.bind(this)
@@ -119,8 +121,36 @@ class SelectionTable extends React.Component<SelectionTableProps, SelectionTable
     this.setState({collapsedGroups});
   }
 
+  onFilterChange = (event) => {
+    const {table} = this.state
+    let text = event.target.value
+    if(text && text.length > 0) {
+      this.filterText = text
+      if(text.length > 1) {
+        const groups = Object.keys(table)
+        const list = table[groups[0]]
+        const filteredList = filter(text, list, "name")
+        this.setState({filteredList})
+      }
+    } else {
+      this.clearFilter()
+    }
+    this.forceUpdate()
+  }
+
+  clearFilter() {
+    this.filterText = ''
+    this.setState({filteredList: []})
+  }
+
+  onKeyDown = (event) => {
+    if(event.which === 27 /*Esc*/) {
+      this.clearFilter()
+    }
+  }
+
   render() {
-    const {table, newSelections, countSelected, collapsedGroups} = this.state;
+    const {table, filteredList, newSelections, countSelected, collapsedGroups} = this.state;
     const {title, classes, maxSelect, grouped} = this.props;
     const groups = Object.keys(table)
     const hasData = _.flatten(_.values(table)).length > 0
@@ -131,8 +161,7 @@ class SelectionTable extends React.Component<SelectionTableProps, SelectionTable
     } else {
       return (
         <div>
-          {maxSelect > 0 && 
-          <FormHelperText>Select up to {maxSelect} {title}</FormHelperText>}
+          {maxSelect > 0 && <FormHelperText>Select up to {maxSelect} {title}</FormHelperText>}
           {
           grouped ? 
             groups.map((group, index) => {
@@ -156,12 +185,21 @@ class SelectionTable extends React.Component<SelectionTableProps, SelectionTable
               )
             })
             :
-            <ItemsList  title={title} 
-                        classes={classes} 
-                        newSelections={newSelections}
-                        list={table[groups[0]]} 
-                        disbleSelection={disbleSelection}
-                        handleChange={this.handleChange} />
+            <div>
+              <Input fullWidth autoFocus
+                  placeholder="Type here to search" 
+                  value={this.filterText}
+                  onChange={this.onFilterChange}
+                  onKeyDown={this.onKeyDown}
+                  className={classes.filterInput}
+              />
+              <ItemsList  title={title} 
+                          classes={classes} 
+                          newSelections={newSelections}
+                          list={filteredList.length > 0 ? filteredList : table[groups[0]]} 
+                          disbleSelection={disbleSelection}
+                          handleChange={this.handleChange} />
+            </div>
           }
         </div>
       )

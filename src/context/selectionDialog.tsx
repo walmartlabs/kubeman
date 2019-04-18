@@ -235,7 +235,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
               <div>
                 {reportClusterError && 
                 <FormHelperText style={{fontSize: 14, marginTop: 20, color: 'red'}}>
-                  Failed to load data for the following cluster(s): {clustersInError}
+                  Failed to load data for the following cluster(s): {clustersInError.join(", ")}
                 </FormHelperText>
                 }
                 <SelectionTable 

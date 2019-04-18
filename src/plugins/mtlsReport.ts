@@ -34,8 +34,10 @@ const plugin : ActionGroupSpec = {
 
           const namespacesWithDefaultMtlsPolicies = Object.keys(mtlsPolicies.namespaceDefaultMtlsPolicies)
           if(namespacesWithDefaultMtlsPolicies.length > 0) {
-              output.push([">>Namespaces With default mTLS Policies", ""])
-              namespacesWithDefaultMtlsPolicies.forEach(ns => output.push([ns, mtlsPolicies.namespaceDefaultMtlsPolicies[ns]]))
+            output.push([">>Namespaces With default mTLS Policies", ""])
+            namespacesWithDefaultMtlsPolicies.forEach(ns => output.push([ns, mtlsPolicies.namespaceDefaultMtlsPolicies[ns]]))
+          } else {
+            output.push([">>No namespaces with default mTLS policies", ""])
           }
 
           if(mtlsPolicies.servicesWithMtlsPolicies.length > 0) {
@@ -46,6 +48,8 @@ const plugin : ActionGroupSpec = {
               servicePoliciesByNamespace[namespace].map(sp => 
                 output.push(["Service: "+sp.serviceName+"."+sp.namespace, sp.policy]))
             })
+          } else {
+            output.push([">>No services with mTLS policies", ""])
           }
 
           const outputDestinationRules = (source, target, drules) => {
@@ -56,6 +60,14 @@ const plugin : ActionGroupSpec = {
             })
           }
           const mtlsDestinationRules = await MtlsUtil.getMtlsDestinationRules(cluster.k8sClient)
+          if(mtlsDestinationRules.globalRules.length === 0 
+              && Object.keys(mtlsDestinationRules.allToNSRules).length === 0
+              && Object.keys(mtlsDestinationRules.allToServiceRules).length === 0
+              && Object.keys(mtlsDestinationRules.nsToAllRules).length === 0
+              && Object.keys(mtlsDestinationRules.nsToNSRules).length === 0
+              && Object.keys(mtlsDestinationRules.nsToServiceRules).length === 0) {
+                output.push([">>No mTLS destination rules", ""])
+          }
 
           if(mtlsDestinationRules.globalRules.length > 0) {
             output.push([">>Global mTLS DestinationRules", ""])

@@ -26,6 +26,9 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     marginLeft: 10,
     marginTop: 2,
   },
+  filterInput: {
+    fontSize: '0.9rem',
+  },
 })
 
 export default styles

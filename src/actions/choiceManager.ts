@@ -277,7 +277,7 @@ export default class ChoiceManager {
     return ChoiceManager._chooseNamespaces(clusters, unique, min, max, actionContext)
   }
 
-  static async choosePod(min: number = 1, max: number = 1, chooseContainers: boolean = false, 
+  static async choosePods(min: number = 1, max: number = 1, chooseContainers: boolean = false, 
                           loadDetails: boolean = false, actionContext: ActionContext) {
     ChoiceManager.prepareCachedChoices(actionContext, 
       async (cluster, namespace, k8sClient) => {
@@ -293,6 +293,27 @@ export default class ChoiceManager {
         return pods
       },
       chooseContainers ? "Container@Pod" : "Pod(s)", min, max, true, "name"
+    )
+  }
+
+  static async chooseServicePods(serviceName: string, serviceNamespace: string, 
+                                min: number = 1, max: number = 1, chooseContainers: boolean = false, 
+                                loadDetails: boolean = false, actionContext: ActionContext) {
+    ChoiceManager.prepareCachedChoices(actionContext, 
+      async (cluster, namespace, k8sClient) => {
+        let podsAndContainers = await K8sFunctions.getPodsAndContainersForServiceName(serviceName, serviceNamespace, k8sClient, true)
+        let pods = podsAndContainers.pods as any[]
+        if(chooseContainers) {
+          pods = _.flatMap(pods, pod => pod.containers.map(c => {
+            return {
+              ...pod,
+              name: (c.name ? c.name : c)+"@"+pod.name,
+            }
+          }))
+        }
+        return pods
+      },
+      chooseContainers ? "Container@Pod" : "Pod(s)", min, max, false, "name"
     )
   }
 

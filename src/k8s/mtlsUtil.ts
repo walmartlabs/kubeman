@@ -151,14 +151,25 @@ export class MtlsUtil {
       if(dr.data.isTargetGlobal) {
         nsToAllRules[sourceNS] = nsToAllRules[sourceNS] || []
         nsToAllRules[sourceNS].push(dr)
+        //An NSToAll rule is also an AllToNS rule
+        allToNSRules[sourceNS] = allToNSRules[sourceNS] || []
+        allToNSRules[sourceNS].push(dr)
       } else if(dr.data.isTargetNamespace) {
         nsToNSRules[sourceNS] = nsToNSRules[sourceNS] || {}
         nsToNSRules[sourceNS][targetNS] = nsToNSRules[sourceNS][targetNS] || []
         nsToNSRules[sourceNS][targetNS].push(dr)
+        if(sourceNS === targetNS) {
+          allToNSRules[targetNS] = allToNSRules[targetNS] || []
+          allToNSRules[targetNS].push(dr)
+        }
       } else if(dr.data.isTargetService) {
         nsToServiceRules[sourceNS] = nsToServiceRules[sourceNS] || {}
         nsToServiceRules[sourceNS][dr.data.targetService] = nsToServiceRules[sourceNS][dr.data.targetService] || []
         nsToServiceRules[sourceNS][dr.data.targetService].push(dr)
+        if(sourceNS === targetNS) {
+          allToServiceRules[dr.data.targetService] = allToServiceRules[dr.data.targetService] || []
+          allToServiceRules[dr.data.targetService].push(dr)
+        }
       } 
       delete dr.data
     })
@@ -531,10 +542,10 @@ export class MtlsUtil {
       applicableDestinationRules = applicableDestinationRules.concat(
         mtlsDestinationRules.allToServiceRules[serviceFqdn])
     }
-    if(mtlsDestinationRules.nsToAllRules[serviceNS]) {
+    Object.keys(mtlsDestinationRules.nsToAllRules).forEach(sourceNS => {
       applicableDestinationRules = applicableDestinationRules.concat(
-        mtlsDestinationRules.nsToAllRules[serviceNS])
-    }
+        mtlsDestinationRules.nsToAllRules[sourceNS])
+    })
     if(mtlsDestinationRules.nsToNSRules[serviceNS]) {
       Object.keys(mtlsDestinationRules.nsToNSRules[serviceNS]).forEach(targetNS => {
         applicableDestinationRules = applicableDestinationRules.concat(

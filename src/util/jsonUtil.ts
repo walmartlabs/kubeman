@@ -124,35 +124,48 @@ export default class JsonUtil {
     return true
   }
 
-  static compareObjects(obj1, obj2, diffCollector: string[], ignoreValues?: string[], parentKey?: string) {
+  static compareObjects(obj1, obj2, diffCollector: string[], ignoreKeys?: string[], ignoreValues?: string[], parentKey?: string) {
     const keys1 = Object.keys(obj1)
     const keys2 = Object.keys(obj2)
+    const ignoreKeysFull = ignoreKeys || []
+    const ignoreKeysMid = ignoreKeysFull.map(k => "."+k+".")
+    const ignoreKeysEnd = ignoreKeysFull.map(k => "."+k)
+    parentKey && (parentKey += ".")
 
-    if(!this.compareFlatArrays(keys1, keys2, ignoreValues)) {
+    if(!this.compareFlatArrays(keys1, keys2, ignoreKeys)) {
+      let differentKeys = keys1.filter(k => !keys2.includes(k))
+      differentKeys = differentKeys.concat(keys2.filter(k => !keys1.includes(k)))
+      diffCollector.push(...differentKeys)
       return false
     }
     const allKeys = keys1
     keys2.forEach(k => !allKeys.includes(k) && allKeys.push(k))
 
-    const matchKeyValues = key => {
+    const matchKeyValues = (key, fullKeyPath) => {
+      if(ignoreKeysFull.includes(key) || ignoreKeysMid.filter(k => key.includes(k)).length > 0
+          || ignoreKeysEnd.filter(k => key.endsWith(k)).length > 0) return true
+
       const value1 = obj1[key]
       const value2 = obj2[key]
-      if(isNullOrUndefined(value1) !== isNullOrUndefined(value2)) {
-        return false
-      }
-      if(typeof value1 !== typeof value2) {
-        return false
-      }
+
+      if(isNullOrUndefined(value1) !== isNullOrUndefined(value2)) return false
+      if(typeof value1 !== typeof value2) return false
       if(typeof value1 === 'object') {
-        return this.compareObjects(value1, value2, diffCollector, ignoreValues, (parentKey ? parentKey+"." : "")+key)
+        return this.compareObjects(value1, value2, diffCollector, ignoreKeys, ignoreValues, fullKeyPath)
       }
-      return (ignoreValues && (ignoreValues.includes(value1) || ignoreValues.includes(value2)))
-              ||  value1 === value2
+      return value1 === value2 || ignoreValues && 
+          (ignoreValues.includes(value1) || ignoreValues.includes(value2)
+            || ignoreValues.filter(v => value1.includes(v) || value2.includes(v)).length > 0)
     }
-    const matchingKeys = allKeys.filter(k => matchKeyValues(k))
-    const nonMatchingKeys = allKeys.filter(k => !matchingKeys.includes(k))
-    nonMatchingKeys.forEach(key => diffCollector.push( (parentKey ? parentKey+"." : "")+key))
-    return nonMatchingKeys.length === 0
+
+    const matchingKeys = allKeys.filter(key => {
+      const fullKeyPath = (parentKey || "")+key
+      const result = matchKeyValues(key, fullKeyPath)
+      !result && diffCollector.push(fullKeyPath)
+      return result
+    })
+    //const nonMatchingKeys = allKeys.filter(k => !matchingKeys.includes(k))
+    return matchingKeys.length === allKeys.length
   }
 
   static underScoreToCamelCaseTransformer(key: string) {

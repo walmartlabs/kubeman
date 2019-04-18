@@ -50,7 +50,7 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 30,
       loadingMessage: "Loading Containers@Pods...",
 
-      choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 5, true, false),
+      choose: ChoiceManager.choosePods.bind(ChoiceManager, 1, 5, true, false),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, this, false)
       },
@@ -66,7 +66,7 @@ const plugin : ActionGroupSpec = {
       order: 11,
       loadingMessage: "Loading Containers@Pods...",
 
-      choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 5, true, false),
+      choose: ChoiceManager.choosePods.bind(ChoiceManager, 1, 5, true, false),
       async act(actionContext) {
         await plugin.getPodLogs(actionContext, this, true)
       },

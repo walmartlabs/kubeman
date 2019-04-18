@@ -238,7 +238,8 @@ export class TableBox extends React.Component<IProps, IState> {
     components.push(
       <TableRow key={rowIndex+".group"} 
                 className={row.isGroup ? classes.tableGroupRow : 
-                           row.isSubGroup ? classes.tableSubgroupRow : classes.tableSectionRow }
+                           row.isSubGroup ? classes.tableSubgroupRow : 
+                           classes.tableSectionRow }
                 onClick={
                   row.isGroup ? this.onGroupClick.bind(this, row.groupIndex) :
                   row.isSubGroup ? this.onSubGroupClick.bind(this, row.subGroupIndex) :
@@ -281,7 +282,7 @@ export class TableBox extends React.Component<IProps, IState> {
     const gap = columnCount - cellCount > 0 ? 1 + columnCount - cellCount : 1
 
     const cells = row.cells.map((cell, ci) => {
-      const isKeyColumn = !row.isNoKey && cell.isFirstColumn && row.columnCount > 1
+      const isKeyColumn = !row.isNoKey && !row.isTitle && cell.isFirstColumn && row.columnCount > 1
       const cellClass = computeCellClass(cell, isKeyColumn, highlight, compare, health, log, row.isWide, classes)
       if(cell.isArray) {
         return (
@@ -304,11 +305,12 @@ export class TableBox extends React.Component<IProps, IState> {
         )
       }
     })
-
+    const rowClass = row.isEmpty ? classes.tableEmptyRow : 
+                      row.isTitle ? classes.tableTitleRow :
+                      classes.tableRow + " " + (isAppendedRow && this.props.scrollMode ? classes.tableAppendedRow : "")
     components.push(
       <TableRow key={rowIndex} 
-        className={row.isEmpty ? classes.tableEmptyRow : 
-                    classes.tableRow + " " + (isAppendedRow && this.props.scrollMode ? classes.tableAppendedRow : "")} >
+        className={rowClass} >
       {
         row.isWide ? (
           <TableCell colSpan={columnCount} className={classes.tableWrapperCell}>
@@ -377,121 +379,6 @@ export class TableBox extends React.Component<IProps, IState> {
         })
         }
       </TableRow>
-    )
-  }
-
-  render2() {
-    const {classes, acceptInput, allowRefresh} = this.props
-
-    if(!this.outputManager.hasContent) {
-      return <div/>
-    }
-
-    const rows = this.outputManager.filteredRows
-    const columnCount = this.outputManager.headers.length
-    let inputMessage = "Type to filter results"
-    if(acceptInput || allowRefresh) {
-      inputMessage += ", or enter"
-      acceptInput && (inputMessage += " /<input>")
-      acceptInput && allowRefresh && (inputMessage += " or")
-      allowRefresh && (inputMessage += " /r")
-      inputMessage += " (enter /help to see available commands)"
-    }
-    let hiddenIndicatorShown = false
-    let parentIsGroup = false
-    let parentIsSubGroup = false
-    let parentIsSection = false
-    let isAppendedRow = false
-
-    
-    return (
-      <div className={classes.root}>
-        <Paper className={classes.filterContainer}>
-          <Input  fullWidth disableUnderline autoFocus
-                  value={this.filterText}
-                  placeholder={inputMessage}
-                  className={classes.filterInput}
-                  onChange={this.onTextInput}
-                  onKeyDown={this.onKeyDown}
-          />
-        </Paper>
-        <Table className={classes.tableContainer}>
-          <TableHead>
-            {this.renderHeaderRow()}
-          </TableHead>
-          <TableBody>
-            <TableRow>
-              <TableCell colSpan={columnCount} style={{width: '100%', padding: 0}}>
-                {this.loading && <CircularProgress className={classes.loading} />}
-                <div className={classes.tableBody} onScroll={this.onScroll}>
-                  <Table className={classes.table}>
-                    <TableBody>
-                      {rows.map((row, index) => {
-                        if(row.isGroupOrSubgroupOrSection) {
-                          hiddenIndicatorShown = false
-                          parentIsGroup = parentIsGroup || row.isGroup
-                          parentIsSubGroup = row.isGroup ? false : (parentIsSubGroup || row.isSubGroup)
-                          parentIsSection = (row.isGroup || row.isSubGroup) ? false : (parentIsSection || row.isSection)
-                          if(!row.isHidden) {
-                            return this.renderGroupRow(row, index)
-                          } else {
-                            return <tr key={index}/>
-                          }
-                        } else {
-                          const tableRows : any[] = []
-                          if(row.isFirstAppendedRow) {
-                            isAppendedRow = true
-                            tableRows.push(
-                              <TableRow key={index+"scroll"} style={{height: 0}}>
-                                <TableCell style={{height: 0, padding: 0}}>
-                                  <div className="scrollDiv" ref={ref => this.scrollToRef = ref}/>
-                                </TableCell>
-                              </TableRow>
-                            )
-                          }
-                          if(row.isHidden) {
-                            if(!hiddenIndicatorShown) {
-                              hiddenIndicatorShown = true
-                              tableRows.push(
-                                <TableRow key={index+"hidden"} className={classes.tableRowHidden}>
-                                  <TableCell className={classes.tableCellHidden}
-                                            style={{cursor: parentIsGroup || parentIsSubGroup || parentIsSection ? 'pointer' : 'inherit'}}
-                                            colSpan={columnCount}
-                                            onClick={() => 
-                                              parentIsSection ? this.onSectionClick(row.sectionIndex) :
-                                              parentIsSubGroup ? this.onSubGroupClick(row.subGroupIndex) : 
-                                              parentIsGroup ? this.onGroupClick(row.groupIndex) :
-                                              undefined}
-                                  >
-                                  ...
-                                  </TableCell>
-                                </TableRow>
-                              )
-                              tableRows.push(
-                                <TableRow key={index+".hidden.spacer"} className={classes.tableRowSpacer}>
-                                  <TableCell colSpan={columnCount} className={classes.tableSpacerCell} />
-                                </TableRow>
-                              )
-                            }
-                          } else {
-                            tableRows.push(this.renderRow(row, index, isAppendedRow))
-                          }
-                          return tableRows
-                        }
-                      })}
-                      <TableRow style={{height: 0}}>
-                        <TableCell className={classes.tableSpacerCell}>
-                          <div className="bottomDiv" ref={ref => this.bottomRef = ref}/>
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>      
     )
   }
 

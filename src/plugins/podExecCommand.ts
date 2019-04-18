@@ -2,7 +2,6 @@ import k8sFunctions from '../k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, } from '../actions/actionSpec'
 import ChoiceManager from '../actions/choiceManager'
 
-
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
   title: "Pod Recipes",
@@ -15,7 +14,7 @@ const plugin : ActionGroupSpec = {
 
       selections: undefined,
       
-      choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 10, true, false),
+      choose: ChoiceManager.choosePods.bind(ChoiceManager, 1, 10, true, false),
       
       async act(actionContext) {
         const selections = await ChoiceManager.getPodSelections(actionContext)
@@ -60,7 +59,7 @@ const plugin : ActionGroupSpec = {
           return
         }
         this.showOutputLoading && this.showOutputLoading(true)
-        const command = commandText.split(" ")
+        const command = ["sh", "-c", commandText]
         for(const selection of this.selections) {
           try {
             const result = await k8sFunctions.podExec(selection.namespace, selection.podName, 

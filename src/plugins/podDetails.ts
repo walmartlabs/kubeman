@@ -11,7 +11,7 @@ const plugin : ActionGroupSpec = {
       order: 4,
       loadingMessage: "Loading Pods...",
 
-      choose: ChoiceManager.choosePod.bind(ChoiceManager, 1, 10, false, true),
+      choose: ChoiceManager.choosePods.bind(ChoiceManager, 1, 10, false, true),
 
       async act(actionContext) {
         const selections = await ChoiceManager.getPodSelections(actionContext, false)

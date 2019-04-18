@@ -64,7 +64,7 @@ export default class SelectionManager {
   }
 
   static loadClusterData(cluster: Cluster) {
-    this.clustersInError = []
+    this.clustersInError = this.clustersInError.filter(c => c !== cluster.text())
     this.namespacesInError = []
     this.loadingCounter++
     return new Promise((resolve, reject) => {
@@ -112,6 +112,7 @@ export default class SelectionManager {
       }
     })
     this.selectedClusters.delete(cluster.text())
+    this.clustersInError = this.clustersInError.filter(c => c !== cluster.text())
   }
 
   static deselectNamespace(namespace: Namespace) {

@@ -294,6 +294,7 @@ export class Row {
   private _isGroup: boolean = false
   private _isSubgroup: boolean = false
   private _isSection: boolean = false
+  private _isTitle: boolean = false
   private _isWide: boolean = false
   private _isNoKey: boolean = false
 
@@ -321,12 +322,8 @@ export class Row {
         (content[0] instanceof Array && (content[0] as []).length > 0 && content[0][0].toString().startsWith("##"))) {
         this._isWide = true
       }
+      this._isTitle = content[0].toString().startsWith("++") || false
       this._isNoKey = content[0].toString().startsWith("<<") || false
-      if(this._isNoKey) {
-        console.log(content.concat())
-        content.shift()
-        console.log(content.concat())
-      }
       if(this.isGroupOrSubgroupOrSection && content.length < headersCount) {
         for(let i = content.length; i < headersCount; i++) {
           content.push("")
@@ -340,6 +337,9 @@ export class Row {
           healthColumnIndex ? healthColumnIndex === cellIndex : false,
           isLog || false
           ))
+      if(this._isNoKey || this._isTitle) {
+        this.cells.shift()
+      }
           
       this.healthColumnIndex = healthColumnIndex
       this.firstColumn = this.cells.length > 0 ? this.cells[0] : undefined
@@ -373,6 +373,10 @@ export class Row {
 
   get isSection() : boolean {
     return this._isSection
+  }
+
+  get isTitle() : boolean {
+    return this._isTitle
   }
 
   get isWide() : boolean {
@@ -442,6 +446,7 @@ export class Row {
                       this.sectionIndex, this.headersCount, this.healthColumnIndex,
                       this.isLog, formattedCellContent, this.appliedFilters)
       newRow._isNoKey = this._isNoKey
+      newRow._isTitle = this._isTitle
       return [newRow, true]
     } else {
       return [this, false]

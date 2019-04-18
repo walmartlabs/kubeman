@@ -63,18 +63,18 @@ const plugin : ActionGroupSpec = {
 
           const portNumbers: any[] = ["##Port"]
           const portMtls: any[] = ["mTLS"]
+          const clientAccess: any[] = ["Client Access"]
           const policyConflicts: any[] = ["Policy Conflicts"]
           const drConflicts: any[] = ["DR Conflicts"]
-          const clientAccess: any[] = ["Client Access"]
           const impactedClients: any[] = ["Impacted Clients"]
           const portsAnalysis: any[] = []
 
           this.generatePortTable(service, serviceMtlsStatus, namespaceMtlsStatus, globalMtlsStatus, 
-                        portNumbers, portMtls, policyConflicts, drConflicts, clientAccess, impactedClients)
+                        portNumbers, portMtls, clientAccess, policyConflicts, drConflicts, impactedClients)
 
           output.push([])
           output.push([">>>Service Ports"])
-          output.push([portNumbers, portMtls, policyConflicts, drConflicts, clientAccess, impactedClients])
+          output.push([portNumbers, portMtls, clientAccess, policyConflicts, drConflicts, impactedClients])
           output.push([])
           output.push(...portsAnalysis)
 
@@ -114,7 +114,7 @@ const plugin : ActionGroupSpec = {
 
       outputServiceDestinationRules(serviceMtlsStatus, output) {
         output.push([])
-        output.push([">>>Relevant mTLS Destination Rules", ""])
+        output.push([">>>Relevant mTLS DestinationRules", ""])
         serviceMtlsStatus.serviceDestRulesMtlsStatus.mtlsDestinationRules.length === 0 
           && output.push(["","No DestinationRules"])
         serviceMtlsStatus.serviceDestRulesMtlsStatus.mtlsDestinationRules.forEach(dr => {
@@ -125,7 +125,7 @@ const plugin : ActionGroupSpec = {
       },
 
       generatePortTable(service, serviceMtlsStatus, namespaceMtlsStatus, globalMtlsStatus, 
-                        portNumbers, portMtls, policyConflicts, drConflicts, clientAccess, impactedClients) {
+                        portNumbers, portMtls, clientAccess, policyConflicts, drConflicts, impactedClients) {
         service.ports.forEach(sp => {
           portNumbers.push(sp.port)
           const portStatus = serviceMtlsStatus.servicePortAccess[sp.port]

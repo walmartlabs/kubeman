@@ -416,6 +416,11 @@ export default class K8sFunctions {
     return pods
   }
 
+  static async getPodsAndContainersForServiceName(serviceName: string, serviceNamespace: string, k8sClient: K8sClient, loadDetails: boolean = false) {
+    return K8sFunctions.getPodsAndContainersForService(
+      await K8sFunctions.getServiceDetails(serviceNamespace, serviceName, k8sClient), k8sClient, loadDetails)
+  }
+
   static async getPodsAndContainersForService(service: ServiceDetails, k8sClient: K8sClient, loadDetails: boolean = false) {
     if(!service || !service.selector) {
       return {}

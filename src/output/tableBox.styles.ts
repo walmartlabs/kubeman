@@ -85,6 +85,12 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     backgroundColor: palette.type === 'dark' ? '#455A64' : '#80a8ff',
     cursor: 'pointer',
   },
+  tableTitleRow: {
+    padding: 0,
+    height: 20,
+    backgroundBlendMode: 'multiply',
+    backgroundColor: palette.type === 'dark' ? '#505050' : '#a0b0c0',
+  },
   tableEmptyRow: {
     padding: 0,
     height: 5,
