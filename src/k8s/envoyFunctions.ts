@@ -270,7 +270,7 @@ export default class EnvoyFunctions {
 
   private static filterRoutesByClusterMatch(routes: any[]) {
     return routes.filter(r => {
-      return r.routes && r.routes.filter(rt => rt.route.cluster)
+      return r.routes && r.routes.filter(rt => rt.route && rt.route.cluster)
         .filter(rt => FqdnMatcher.matchDomain(getFqdnFromCluster(rt.route.cluster))).length > 0
     })
   }

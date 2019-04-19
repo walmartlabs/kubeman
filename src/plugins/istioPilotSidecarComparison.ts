@@ -9,13 +9,17 @@ import {compareEnvoyConfigs} from './envoySidecarConfigComparison'
 
 function getConfigItems(configs, configType, titleField) {
   configs = configs.filter(c => c["@type"].includes(configType))[0]
-  const dynamicItems = configs[Object.keys(configs).filter(key => key.includes("dynamic"))[0]]
-  const staticItems = configs[Object.keys(configs).filter(key => key.includes("static"))[0]]
-  const items: any[] = []
-  staticItems && staticItems.forEach(item => item && items.push(item))
-  dynamicItems && dynamicItems.forEach(item => item && items.push(item))
-  items.forEach(item => item.title = JsonUtil.extract(item, titleField))
-  return items
+  if(configs) {
+    const dynamicItems = configs[Object.keys(configs).filter(key => key.includes("dynamic"))[0]]
+    const staticItems = configs[Object.keys(configs).filter(key => key.includes("static"))[0]]
+    const items: any[] = []
+    staticItems && staticItems.forEach(item => item && items.push(item))
+    dynamicItems && dynamicItems.forEach(item => item && items.push(item))
+    items.forEach(item => item.title = JsonUtil.extract(item, titleField))
+    return items
+  } else {
+    return []
+  }
 }
 
 async function outputSidecarConfig(action, actionContext, configType, titleField: string, 

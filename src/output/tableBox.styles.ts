@@ -171,7 +171,8 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     },
   },
   tableCellHighlight: {
-    borderLeft: '1px solid red',
+    borderLeft: '2px solid red',
+    borderRight: '2px solid red',
     //backgroundColor: palette.type ==='dark' ? "#6c6313" : "#FFFDE7",
   },
   tableCellFiltered: {
