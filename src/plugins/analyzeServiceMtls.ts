@@ -3,7 +3,7 @@ import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, Act
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioFunctions from '../k8s/istioFunctions'
 import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
-import { MtlsUtil } from '../k8s/mtlsUtil';
+import { MtlsUtil, ClientMtlsMode } from '../k8s/mtlsUtil';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
@@ -54,7 +54,7 @@ const plugin : ActionGroupSpec = {
           const namespaceMtlsStatus = serviceMtlsStatuses[service.namespace]
           const serviceMtlsStatus = namespaceMtlsStatus[service.name]
           output.push(["Cluster mTLS", globalMtlsStatus.globalMtlsMode || "Disabled"])
-          output.push(["Namespace Default mTLS", namespaceMtlsStatus.namespaceDefaultMtlsMode || "None"])
+          output.push(["Namespace Default mTLS", namespaceMtlsStatus.namespaceDefaultMtlsMode || "N/A"])
           output.push(["Envoy Sidecar Status", serviceMtlsStatus.hasSidecar ? "Sidecar Proxy Present" : "Sidecar Proxy Not Deployed"])
 
           this.outputServicePolicies(serviceMtlsStatus, output)
@@ -72,9 +72,13 @@ const plugin : ActionGroupSpec = {
           this.generatePortTable(service, serviceMtlsStatus, namespaceMtlsStatus, globalMtlsStatus, 
                         portNumbers, portMtls, clientAccess, policyConflicts, drConflicts, impactedClients)
 
+          const portTable: any[] = []
+          portNumbers.forEach((p,i) => {
+            portTable.push([portNumbers[i], portMtls[i], clientAccess[i], policyConflicts[i], drConflicts[i], impactedClients[i]])
+          })
           output.push([])
           output.push([">>>Service Ports"])
-          output.push([portNumbers, portMtls, clientAccess, policyConflicts, drConflicts, impactedClients])
+          output.push(portTable)
           output.push([])
           output.push(...portsAnalysis)
 
@@ -103,9 +107,9 @@ const plugin : ActionGroupSpec = {
       outputServicePolicies(serviceMtlsStatus, output) {
         output.push([])
         output.push([">>>Relevant Service mTLS Policies", ""])
-        serviceMtlsStatus.servicePoliciesMtlsStatus.mtlsPolicies.length === 0 
+        serviceMtlsStatus.mtlsPolicies.length === 0 
           && output.push(["", "No Policies"])
-        serviceMtlsStatus.servicePoliciesMtlsStatus.mtlsPolicies.forEach(sp => {
+        serviceMtlsStatus.mtlsPolicies.forEach(sp => {
           delete sp.labels
           delete sp.annotations
           output.push([sp.name, sp])
@@ -115,9 +119,9 @@ const plugin : ActionGroupSpec = {
       outputServiceDestinationRules(serviceMtlsStatus, output) {
         output.push([])
         output.push([">>>Relevant mTLS DestinationRules", ""])
-        serviceMtlsStatus.serviceDestRulesMtlsStatus.mtlsDestinationRules.length === 0 
+        serviceMtlsStatus.mtlsDestinationRules.length === 0 
           && output.push(["","No DestinationRules"])
-        serviceMtlsStatus.serviceDestRulesMtlsStatus.mtlsDestinationRules.forEach(dr => {
+        serviceMtlsStatus.mtlsDestinationRules.forEach(dr => {
           delete dr.labels
           delete dr.annotations
           output.push([dr.name, dr])
@@ -129,12 +133,13 @@ const plugin : ActionGroupSpec = {
         service.ports.forEach(sp => {
           portNumbers.push(sp.port)
           const portStatus = serviceMtlsStatus.servicePortAccess[sp.port]
-          const servicePortClientMtlsModes = serviceMtlsStatus.serviceDestRulesMtlsStatus.effectiveServicePortClientMtlsModes[sp.port]
+          const portDefaultMtlsDestinationRuleStatus = serviceMtlsStatus.servicePortDefaultMtlsDestinationRuleStatus[sp.port]
+          const servicePortClientMtlsModes = serviceMtlsStatus.effectiveServicePortClientMtlsModes[sp.port]
           const portMtlsMode = portStatus.service.conflict ? "Conflict" :
-                    !portStatus.service.mtls ? "None" :
+                    !portStatus.service.mtls ? ClientMtlsMode.DISABLE :
                     portStatus.service.servicePortMtlsMode ? portStatus.service.servicePortMtlsMode : 
                     namespaceMtlsStatus.namespaceDefaultMtlsMode ? namespaceMtlsStatus.namespaceDefaultMtlsMode :
-                    globalMtlsStatus.globalMtlsMode || "None"
+                    globalMtlsStatus.globalMtlsMode || "N/A"
           portMtls.push(portMtlsMode)
 
           policyConflicts.push(portStatus.service.conflict ? "Has Conflicts" : "No Conflicts")
@@ -143,37 +148,44 @@ const plugin : ActionGroupSpec = {
           const clientNamespacesWithDRPolicyConflicts = Object.keys(portStatus.client.clientNamespacesInConflictWithMtlsPolicy)
           const clientNamespacesWithConflicts = portStatus.client.clientNamespacesWithMtlsConflicts
                                 .concat(clientNamespacesWithDRPolicyConflicts)
+          
+          const impactedClientItems: any[] = []
+          impactedClientItems.push(clientNamespacesWithConflicts.length === 0 ? "" :
+              clientNamespacesWithConflicts.map(n => n.length > 0 ? n : "All Sidecar Clients"))
+          clientNamespacesWithConflicts.length === 1 && clientNamespacesWithConflicts[0] === ""
+                && portStatus.client.sidecarAccessNamespaces.length > 0 &&
+                impactedClientItems.push(" (Except: " + portStatus.client.sidecarAccessNamespaces.map(ns => ns.namespace).join(", ") + ")")
+          if(impactedClientItems.length > 0) {
+            impactedClients.push(...impactedClientItems)
+          }
 
-          impactedClients.push(clientNamespacesWithConflicts.length === 0 ? "" :
-              clientNamespacesWithConflicts.map(n => n.length > 0 ? n : "All Sidecar Clients").join(", ") 
-              +
-              (clientNamespacesWithConflicts.length === 1 && clientNamespacesWithConflicts[0] === ""
-                && portStatus.client.sidecarAccessNamespaces.length > 0 ? 
-                    " (Except: " + portStatus.client.sidecarAccessNamespaces.map(ns => ns.namespace).join(", ") + ")" : "")
-          )
-
+          let drConflictsItems: any[] = []
           if(portStatus.client.conflict) {
             if(portStatus.client.clientNamespacesWithMtlsConflicts.length > 0) {
               portStatus.client.clientNamespacesWithMtlsConflicts.forEach(ns => {
-                const rules = _.uniqBy(servicePortClientMtlsModes[ns].map(info => info.dr.name+"."+info.dr.namespace)).join(", ")
-                drConflicts.push(rules)
+                const rules = _.uniqBy(servicePortClientMtlsModes[ns].map(info => info.dr.name+"."+info.dr.namespace))
+                drConflictsItems.push(rules.join(", "))
               })
             }
             if(clientNamespacesWithDRPolicyConflicts.length > 0) {
               clientNamespacesWithDRPolicyConflicts.forEach(ns => {
                 const destRules = portStatus.client.clientNamespacesInConflictWithMtlsPolicy[ns]
-                const ruleNames = _.uniqBy(destRules.map(dr => dr.name+"."+dr.namespace)).join(", ")
-                drConflicts.push(ruleNames)
+                const ruleNames = _.uniqBy(destRules.map(dr => dr.name+"."+dr.namespace))
+                drConflictsItems.push(ruleNames.join(", "))
               })
             }
           }
-          if(!portStatus.client.conflict && clientNamespacesWithConflicts.length === 0) {
+          if(drConflictsItems.length > 0) {
+            drConflicts.push(drConflictsItems)
+          } else {//if(!portStatus.client.conflict && clientNamespacesWithConflicts.length === 0) {
             drConflicts.push("No Conflicts")
           }
+
           let clientAccessConflictMessage = portStatus.client.noAccess ? "Blocked for all clients" :
-                portStatus.client.allAccess ? "Open to all clients" : 
+                portStatus.client.allAccess ? drConflictsItems.length === 0 ? "Open to all clients" : "Open to all clients except DR conflicts" :
                 portStatus.client.nonSidecarOnly ? "Non-Sidecar Clients Only" : 
-                portStatus.client.sidecarOnly ? "Sidecar Clients Only" :
+                portStatus.client.sidecarOnly ? drConflictsItems.length > 0 ? "All sidecar clients except DR conflicts" :
+                 portDefaultMtlsDestinationRuleStatus.onlyDefaultMtlsDestinationRuleDefined ? "All sidecar clients" : "Select sidecar clients (see DR)" :
                 portStatus.client.conflict ? "Some namespaces have conflicts" : ""
           clientAccessConflictMessage.length > 0 && clientAccess.push(clientAccessConflictMessage)
 
@@ -186,12 +198,12 @@ const plugin : ActionGroupSpec = {
           portsAnalysis.push([">>>Service Port " + sp.port + " Analysis"])
           portNumbers.push(sp.port)
           const portStatus = serviceMtlsStatus.servicePortAccess[sp.port]
-          const servicePortClientMtlsModes = serviceMtlsStatus.serviceDestRulesMtlsStatus.effectiveServicePortClientMtlsModes[sp.port]
+          const servicePortClientMtlsModes = serviceMtlsStatus.effectiveServicePortClientMtlsModes[sp.port]
           const portMtlsMode = portStatus.service.conflict ? "Conflict" :
-                    !portStatus.service.mtls ? "None" :
+                    !portStatus.service.mtls ? "N/A" :
                     portStatus.service.servicePortMtlsMode ? portStatus.service.servicePortMtlsMode : 
                     namespaceMtlsStatus.namespaceDefaultMtlsMode ? namespaceMtlsStatus.namespaceDefaultMtlsMode :
-                    globalMtlsStatus.globalMtlsMode || "None"
+                    globalMtlsStatus.globalMtlsMode || "N/A"
           portMtls.push(portMtlsMode)
 
           policyConflicts.push(portStatus.service.conflict ? "Has Conflicts" : "No Conflicts")
@@ -271,7 +283,7 @@ const plugin : ActionGroupSpec = {
 
           if(portStatus.service.conflict) {
             accessAnalysis.push("Service policies have conflicting mTLS configuration")
-            accessAnalysis.push("Port mTLS Modes: " + serviceMtlsStatus.servicePoliciesMtlsStatus.effectiveServicePortMtlsModes[sp.port])
+            accessAnalysis.push("Port mTLS Modes: " + serviceMtlsStatus.effectiveServicePortMtlsModes[sp.port])
           } else {
             portStatus.service.mtls && portStatus.service.permissive 
               && accessAnalysis.push("Service has given PERMISSIVE mTLS access to allow access without a sidecar")

@@ -97,8 +97,8 @@ export class Cell {
   isHealthStatusField: boolean = false
   isMatched: boolean = false
   isFiltered: boolean = false
+  content: CellContent
 
-  private content: CellContent
   private formattedContent: CellContent
   private filteredIndexes: number[] = []
   private stringContent: string = ''
@@ -274,6 +274,7 @@ export class Cell {
 export class Row {
   index: number
   cells: Cell[] = []
+  subTable: Cell[][] = []
   isLog: boolean = false
   isFirstAppendedRow: boolean = false
   groupIndex: number = 0
@@ -329,14 +330,23 @@ export class Row {
           content.push("")
         }
       }
-      this.cells = content.map((cellContent, cellIndex) => 
-        new Cell(cellContent, cellIndex,  
-          formattedContent ? formattedContent[cellIndex] : undefined,
-          this.appliedFilters,
-          this.isGroup, this.isSubGroup, this._isSection,
-          healthColumnIndex ? healthColumnIndex === cellIndex : false,
-          isLog || false
-          ))
+      if(this._isWide) {
+        const subTable = content as any[][]
+        this.subTable = subTable.map((subRow, subRowIndex) => subRow.map((cellContent, cellIndex) =>
+          new Cell(cellContent, subRowIndex+cellIndex,
+            formattedContent ? formattedContent[subRowIndex][cellIndex] : undefined,
+            this.appliedFilters, false, false, false, false, isLog || false))
+        )
+      } else {
+        this.cells = content.map((cellContent, cellIndex) => 
+          new Cell(cellContent, cellIndex,  
+            formattedContent ? formattedContent[cellIndex] : undefined,
+            this.appliedFilters,
+            this.isGroup, this.isSubGroup, this._isSection,
+            healthColumnIndex ? healthColumnIndex === cellIndex : false,
+            isLog || false
+            ))
+      }
       if(this._isNoKey || this._isTitle) {
         this.cells.shift()
       }

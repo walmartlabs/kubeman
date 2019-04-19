@@ -163,7 +163,7 @@ const plugin : ActionGroupSpec = {
       const invalidServiceTargetPorts = serviceTargetPorts.filter(p => !containerPorts.includes(p))
       output.push([
         invalidServiceTargetPorts.length > 0 ?
-          "Found service target ports that are mismatched and don't exist as container ports: " + invalidServiceTargetPorts.join(", ")
+          "[CONFLICT] Found service target ports that are mismatched and don't exist as container ports: " + invalidServiceTargetPorts.join(", ")
           : "Service target ports correctly match container ports."
       ])
     }

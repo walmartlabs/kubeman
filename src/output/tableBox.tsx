@@ -14,7 +14,6 @@ interface ITableCellProps extends WithStyles<typeof styles> {
   index: number
   cell: Cell
   colSpan?: number
-  wide?: boolean
   className: string
 }
 
@@ -44,7 +43,7 @@ function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, 
   return className
 }
 
-const TextCell = withStyles(styles)(({index, cell, colSpan, wide, className, classes}: ITableCellProps) => {
+const TextCell = withStyles(styles)(({index, cell, colSpan, className, classes}: ITableCellProps) => {
   return cell.render((formattedText) => {
     return (
       <TableCell key={"textcell"+index} component="th" scope="row" colSpan={colSpan}
@@ -54,7 +53,7 @@ const TextCell = withStyles(styles)(({index, cell, colSpan, wide, className, cla
     )})
 })
 
-const GridCell = withStyles(styles)(({index, cell, colSpan, wide, className, classes}: ITableCellProps) => {
+const GridCell = withStyles(styles)(({index, cell, colSpan, className, classes}: ITableCellProps) => {
   return (
     <TableCell key={"gridcell"+index} component="th" scope="row" colSpan={colSpan}
               className={className}
@@ -63,7 +62,7 @@ const GridCell = withStyles(styles)(({index, cell, colSpan, wide, className, cla
         <TableBody>
           {cell.render((formattedText, gridIndex) => {
             return (
-              <TableRow key={gridIndex} className={classes.tableCellInnerRow + " " + (wide ? classes.tableCellWideRow : "")}>
+              <TableRow key={gridIndex} className={classes.tableCellInnerRow}>
                 <TableCell component="th" scope="row" colSpan={colSpan}
                 className={className}
                 style={{paddingLeft: cell.isGroup ? '2px' : '10px', border: 0}}
@@ -272,16 +271,11 @@ export class TableBox extends React.Component<IProps, IState> {
     return components
   }
 
-  renderRow(row: Row, rowIndex: number, isAppendedRow: boolean) {
+  renderCells(row, cells, gap) {
     const {classes, compare, health, log} = this.props
     let highlight = compare ? row.columnsDiffer : false
-    const columnCount = this.outputManager.headers.length
-    const components : any[] = []
 
-    const cellCount = row.cells.length
-    const gap = columnCount - cellCount > 0 ? 1 + columnCount - cellCount : 1
-
-    const cells = row.cells.map((cell, ci) => {
+    return cells.map((cell, ci) => {
       const isKeyColumn = !row.isNoKey && !row.isTitle && cell.isFirstColumn && row.columnCount > 1
       const cellClass = computeCellClass(cell, isKeyColumn, highlight, compare, health, log, row.isWide, classes)
       if(cell.isArray) {
@@ -289,9 +283,8 @@ export class TableBox extends React.Component<IProps, IState> {
           <GridCell key={"GridCell"+ci} 
                     index={ci} 
                     cell={cell}
-                    wide={row.isWide}
                     className={cellClass}
-                    colSpan={gap}
+                    colSpan={ci === 0 ? gap : 1}
           />
         )
       } else {
@@ -300,30 +293,45 @@ export class TableBox extends React.Component<IProps, IState> {
                     index={ci} 
                     cell={cell}
                     className={cellClass}
-                    colSpan={gap}
+                    colSpan={ci === 0 ? gap : 1}
           />
         )
       }
     })
+
+  }
+
+  renderRow(row: Row, rowIndex: number, isAppendedRow: boolean) {
+    const {classes, compare, health, log} = this.props
+    const columnCount = this.outputManager.headers.length
+    const components : any[] = []
+
+    let cellContent
+    if(row.isWide) {
+      cellContent = (
+        <TableCell colSpan={columnCount} className={classes.tableWrapperCell}>
+          <Table>
+            <TableBody>
+              {row.subTable.map((subRow, ri) => (
+                <TableRow key={"SubRow"+ri} className={classes.tableRow + " " + classes.tableCellWideRow}>
+                  {this.renderCells(row, subRow, 1)}
+                </TableRow>
+              ))}
+              </TableBody>
+            </Table>
+          </TableCell>
+      )
+    } else {
+      const cellCount = row.cells.length
+      const gap = columnCount - cellCount > 0 ? 1 + columnCount - cellCount : 1
+      cellContent = this.renderCells(row, row.cells, gap)
+    }
     const rowClass = row.isEmpty ? classes.tableEmptyRow : 
                       row.isTitle ? classes.tableTitleRow :
                       classes.tableRow + " " + (isAppendedRow && this.props.scrollMode ? classes.tableAppendedRow : "")
     components.push(
-      <TableRow key={rowIndex} 
-        className={rowClass} >
-      {
-        row.isWide ? (
-          <TableCell colSpan={columnCount} className={classes.tableWrapperCell}>
-            <Table>
-              <TableBody>
-                <TableRow className={classes.tableRow}>
-                  {cells}
-                </TableRow>
-              </TableBody>
-            </Table>
-          </TableCell>
-        ): cells
-      }
+      <TableRow key={rowIndex} className={rowClass} >
+        {cellContent}
       </TableRow>
     )
     components.push(

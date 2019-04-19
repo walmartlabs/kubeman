@@ -3,14 +3,26 @@ import IstioFunctions from "./istioFunctions";
 import { K8sClient } from "./k8sClient";
 import K8sFunctions from "./k8sFunctions";
 import { ServiceDetails } from "./k8sObjectTypes";
-import {isGlobalFqdn, isNamespaceFqdn, isServiceFqdn, normalizeServiceFqdn} from '../util/matchUtil'
+import {isGlobalFqdn, isNamespaceFqdn, isServiceFqdn, normalizeServiceFqdn, FqdnMatcher} from '../util/matchUtil'
 import yaml from 'yaml'
 import { inherits } from "util";
+
+export enum ServiceMtlsMode {
+  DISABLE = "DISABLE", 
+  STRICT = "STRICT", 
+  PERMISSIVE = "PERMISSIVE"
+}
+
+export enum ClientMtlsMode {
+  NONE = "NONE", 
+  DISABLE = "DISABLE", 
+  ISTIO_MUTUAL = "ISTIO_MUTUAL"
+}
 
 export interface GlobalMtlsStatus {
   isGlobalMtlsEnabled: boolean
   isGlobalMtlsPermissive: boolean
-  globalMtlsMode: string
+  globalMtlsMode: ServiceMtlsMode
 }
 
 export interface MtlsPolicyInfo {
@@ -26,19 +38,16 @@ export interface MtlsPolicyInfo {
 export class MtlsUtil {
 
   static getGlobalMtlsStatus = async (k8sClient: K8sClient) => {
-    let isGlobalMtlsEnabled: boolean = false
-    let globalMtlsMode = ''
+    let globalMtlsMode = ServiceMtlsMode.DISABLE
     const defaultMeshPolicy = (await IstioFunctions.listAllMeshPolicies(k8sClient))
-            .filter(policy => policy.name === 'default')
-    if(defaultMeshPolicy && defaultMeshPolicy.length > 0) {
-      isGlobalMtlsEnabled = true
-      globalMtlsMode = defaultMeshPolicy[0].peers
-                          .filter(p => p.mtls)
-                          .map(p => p.mtls.mode||"STRICT")[0]
+            .filter(policy => policy.name === 'default')[0]
+    if(defaultMeshPolicy) {
+      const meshPolicyMtls = defaultMeshPolicy.peers.filter(p => p.mtls).map(p => p.mtls)[0]
+      meshPolicyMtls && (globalMtlsMode = meshPolicyMtls.mode ? meshPolicyMtls.mode.toUpperCase() : ServiceMtlsMode.DISABLE)
     }
     return {
-      isGlobalMtlsEnabled,
-      isGlobalMtlsPermissive: globalMtlsMode && (globalMtlsMode.toLowerCase() === "permissive") ? true : false,
+      isGlobalMtlsEnabled: globalMtlsMode !== ServiceMtlsMode.DISABLE,
+      isGlobalMtlsPermissive: globalMtlsMode === ServiceMtlsMode.PERMISSIVE,
       globalMtlsMode,
     } as GlobalMtlsStatus
   }
@@ -51,32 +60,30 @@ export class MtlsUtil {
     const policies = await IstioFunctions.listAllPolicies(k8sClient, false)
     if(policies && policies.length) {
       policies
-        .filter(policy => policy.name === 'default'&& !policy.targets &&
-                      policy.peers && policy.peers.filter(peer => peer.mtls).length > 0)
+        .filter(policy => policy.name === 'default' && !policy.targets && policy.peers && 
+                          (policy.peers.length === 0 || policy.peers.filter(peer => peer.mtls).length > 0))
         .forEach(policy => {
           namespaceDefaultMtlsPolicies[policy.namespace] = policy
-          const peerMtls = policy.peers.filter(peer => peer.mtls)
-                            .map(peer => peer.mtls)[0]
-          namespacesWithDefaultMtls[policy.namespace] = peerMtls.mode || "STRICT"
+          const peerMtls = policy.peers.filter(peer => peer.mtls).map(peer => peer.mtls)[0]
+          namespacesWithDefaultMtls[policy.namespace] = peerMtls && peerMtls.mode ? peerMtls.mode.toUpperCase() : ServiceMtlsMode.DISABLE
         })
 
-      policies
-        .filter(policy => policy.name !== 'default' &&
+      policies.filter(policy => policy.name !== 'default' &&
                       policy.peers && policy.peers.filter(peer => peer.mtls).length > 0
                       && policy.targets && policy.targets.length > 0)
 
-        .forEach(policy => policy.targets.forEach(target => 
+        .forEach(policy => policy.targets.forEach(target => {
+          const peerMtls = policy.peers.filter(peer => peer.mtls).map(peer => peer.mtls)[0]
           servicesWithMtlsPolicies.push({
                 serviceName: target.name,
                 ports: target.ports,
                 policyName: policy.name,
                 namespace: policy.namespace,
                 peers: policy.peers,
-                mode: policy.peers.filter(peer => peer.mtls)
-                        .map(peer => peer.mtls.mode ? peer.mtls.mode : "STRICT")[0],
+                mode: peerMtls && peerMtls.mode ? peerMtls.mode.toUpperCase() : ServiceMtlsMode.DISABLE,
                 policy
           })
-        ))
+        }))
     }
 
 
@@ -132,6 +139,7 @@ export class MtlsUtil {
     const nsToNSRules = {}
     const nsToServiceRules = {}
 
+    //Global rules have lowest priority
     allGlobalRules.forEach(dr => {
       if(dr.data.isTargetGlobal) {
         globalRules.push(dr)
@@ -145,9 +153,11 @@ export class MtlsUtil {
       delete dr.data
     })
 
+    //Service namespace rules have medium priority
     allNonGlobalRules.forEach(dr => {
       const sourceNS = dr.data.sourceNamespace
       const targetNS = dr.data.targetNamespace
+      
       if(dr.data.isTargetGlobal) {
         nsToAllRules[sourceNS] = nsToAllRules[sourceNS] || []
         nsToAllRules[sourceNS].push(dr)
@@ -184,14 +194,12 @@ export class MtlsUtil {
   }
 
   static TlsModeExtractor = {
-    currentLevelPortTlsModes: {},
+    currentLevelPortTlsModes: {}, //used to reset a port's tls config if seen at a higher priority level
     map: {},
-    map2: {},
 
-    init(map: any, map2?: any) {
+    init(map: any) {
       this.currentLevelPortTlsModes = {}
       this.map = map
-      this.map2 = map2
     },
 
     extractDestinationRuleTlsModes(dr) {
@@ -200,26 +208,16 @@ export class MtlsUtil {
           Object.keys(this.map).forEach(key => {
             if(this.currentLevelPortTlsModes[key]) {
               this.map[key].push({mode: dr.trafficPolicy.tls.mode, dr})
-              if(this.map2) {
-                this.map2[key] = this.map2[key] || []
-                this.map2[key].push(dr.trafficPolicy.tls.mode)
-              }
             } else {
               this.currentLevelPortTlsModes[key]=true
               this.map[key] = [{mode: dr.trafficPolicy.tls.mode, dr}]
-              this.map2 && (this.map2[key] = [dr.trafficPolicy.tls.mode])
             }
           })
           if(this.currentLevelPortTlsModes[""]) {
             this.map[""].push({mode: dr.trafficPolicy.tls.mode, dr})
-            if(this.map2) {
-              this.map2[""] = this.map2[""] || []
-              this.map2[""].push(dr.trafficPolicy.tls.mode)
-            }
           } else {
             this.currentLevelPortTlsModes[""]=true
             this.map[""] = [{mode: dr.trafficPolicy.tls.mode, dr}]
-            this.map2 && (this.map2[""] = [dr.trafficPolicy.tls.mode])
           }
         }
         dr.trafficPolicy.portLevelSettings &&
@@ -228,11 +226,9 @@ export class MtlsUtil {
               const portId = p.port.number || p.port.name
               if(this.currentLevelPortTlsModes[portId]) {
                 this.map[portId].push({mode: p.tls.mode, dr})
-                this.map2 && this.map2[portId].push(p.tls.mode)
               } else {
                 this.currentLevelPortTlsModes[portId]=true
                 this.map[portId] = [{mode: p.tls.mode, dr}]
-                this.map2 && (this.map2[portId] = [p.tls.mode])
               }
             }
           })
@@ -245,53 +241,52 @@ export class MtlsUtil {
   static getMtlsModes = (mtlsDestinationRules: any) => {
     const {globalRules, allToNSRules, allToServiceRules, nsToAllRules, nsToNSRules, nsToServiceRules} = mtlsDestinationRules
 
-    const globalClientMtlsModes = {}
-    const nsToNSMtlsModes = {"": {}}
-    const nsToNSPriorityMtlsModes = {"": {}}
+    //maps from NS/Service to ports to array of tls modes
+    const allToAllMtlsModes = {}
+    const allToNSMtlsModes = {}
+    const nsToAllMtlsModes = {}
+    const nsToNSMtlsModes = {}
+    const allToServiceMtlsModes = {}
     const nsToServiceMtlsModes = {"": {}}
 
-    MtlsUtil.TlsModeExtractor.init(globalClientMtlsModes)
+    MtlsUtil.TlsModeExtractor.init(allToAllMtlsModes)
     globalRules.filter(dr => dr.host === "*")
       .forEach(dr => MtlsUtil.TlsModeExtractor.extractDestinationRuleTlsModes(dr))
 
-    MtlsUtil.TlsModeExtractor.init(globalClientMtlsModes)
+    MtlsUtil.TlsModeExtractor.init(allToAllMtlsModes)
     globalRules.filter(dr => dr.host === "*.local")
       .forEach(dr => MtlsUtil.TlsModeExtractor.extractDestinationRuleTlsModes(dr))
 
-    MtlsUtil.TlsModeExtractor.init(globalClientMtlsModes)
+    MtlsUtil.TlsModeExtractor.init(allToAllMtlsModes)
     globalRules.filter(dr => dr.host === "*.cluster.local")
       .forEach(dr => MtlsUtil.TlsModeExtractor.extractDestinationRuleTlsModes(dr))
 
-    MtlsUtil.TlsModeExtractor.init(globalClientMtlsModes)
+    MtlsUtil.TlsModeExtractor.init(allToAllMtlsModes)
     globalRules.filter(dr => dr.host === "*.svc.cluster.local")
       .forEach(dr => MtlsUtil.TlsModeExtractor.extractDestinationRuleTlsModes(dr))
 
 
     Object.keys(allToNSRules).forEach(targetNS => {
-      if(!nsToNSMtlsModes[""][targetNS]) {
-        nsToNSMtlsModes[""][targetNS] = {}
+      if(!allToNSMtlsModes[targetNS]) {
+        allToNSMtlsModes[targetNS] = {}
       }
-      if(!nsToNSPriorityMtlsModes[""][targetNS]) {
-        nsToNSPriorityMtlsModes[""][targetNS] = {}
-      }
-      MtlsUtil.TlsModeExtractor.init(nsToNSMtlsModes[""][targetNS], nsToNSPriorityMtlsModes[""][targetNS])
+      MtlsUtil.TlsModeExtractor.init(allToNSMtlsModes[targetNS])
       allToNSRules[targetNS].forEach(dr => MtlsUtil.TlsModeExtractor.extractDestinationRuleTlsModes(dr))
     })
 
+    Object.keys(allToServiceRules).forEach(targetService => {
+      if(!allToServiceMtlsModes[targetService]) {
+        allToServiceMtlsModes[targetService] = {}
+      }
+      MtlsUtil.TlsModeExtractor.init(allToServiceMtlsModes[targetService])
+      allToServiceRules[targetService].forEach(dr => MtlsUtil.TlsModeExtractor.extractDestinationRuleTlsModes(dr))
+    })
+
     Object.keys(nsToAllRules).forEach(sourceNS => {
-      if(!nsToNSMtlsModes[sourceNS]) {
-        nsToNSMtlsModes[sourceNS] = {}
+      if(!nsToAllMtlsModes[sourceNS]) {
+        nsToAllMtlsModes[sourceNS] = {}
       }
-      if(!nsToNSPriorityMtlsModes[sourceNS]) {
-        nsToNSPriorityMtlsModes[sourceNS] = {}
-      }
-      if(!nsToNSMtlsModes[sourceNS][""]) {
-        nsToNSMtlsModes[sourceNS][""] = {}
-      }
-      if(!nsToNSPriorityMtlsModes[sourceNS][""]) {
-        nsToNSPriorityMtlsModes[sourceNS][""] = {}
-      }
-      MtlsUtil.TlsModeExtractor.init(nsToNSMtlsModes[sourceNS][""], nsToNSPriorityMtlsModes[sourceNS][""])
+      MtlsUtil.TlsModeExtractor.init(nsToAllMtlsModes[sourceNS])
       nsToAllRules[sourceNS].forEach(dr => MtlsUtil.TlsModeExtractor.extractDestinationRuleTlsModes(dr))
     })
 
@@ -299,27 +294,13 @@ export class MtlsUtil {
       if(!nsToNSMtlsModes[sourceNS]) {
         nsToNSMtlsModes[sourceNS] = {}
       }
-      if(!nsToNSPriorityMtlsModes[sourceNS]) {
-        nsToNSPriorityMtlsModes[sourceNS] = {}
-      }
       Object.keys(nsToNSRules[sourceNS]).forEach(targetNS => {
         if(!nsToNSMtlsModes[sourceNS][targetNS]) {
           nsToNSMtlsModes[sourceNS][targetNS] = {}
         }
-        if(!nsToNSPriorityMtlsModes[sourceNS][targetNS]) {
-          nsToNSPriorityMtlsModes[sourceNS][targetNS] = {}
-        }
-        MtlsUtil.TlsModeExtractor.init(nsToNSMtlsModes[sourceNS][targetNS], nsToNSPriorityMtlsModes[sourceNS][targetNS])
+        MtlsUtil.TlsModeExtractor.init(nsToNSMtlsModes[sourceNS][targetNS])
         nsToNSRules[sourceNS][targetNS].forEach(dr => MtlsUtil.TlsModeExtractor.extractDestinationRuleTlsModes(dr))
       })
-    })
-
-    Object.keys(allToServiceRules).forEach(targetService => {
-      if(!nsToServiceMtlsModes[""][targetService]) {
-        nsToServiceMtlsModes[""][targetService] = {}
-      }
-      MtlsUtil.TlsModeExtractor.init(nsToServiceMtlsModes[""][targetService])
-      allToServiceRules[targetService].forEach(dr => MtlsUtil.TlsModeExtractor.extractDestinationRuleTlsModes(dr))
     })
 
     Object.keys(nsToServiceRules).forEach(sourceNS => {
@@ -334,13 +315,16 @@ export class MtlsUtil {
         nsToServiceRules[sourceNS][targetService].forEach(dr => MtlsUtil.TlsModeExtractor.extractDestinationRuleTlsModes(dr))
       })
     })
-
     return {
-      globalClientMtlsModes,
+      allToAllMtlsModes,
+      allToNSMtlsModes,
+      allToServiceMtlsModes,
+      nsToAllMtlsModes,
       nsToNSMtlsModes,
       nsToServiceMtlsModes
     }
   }
+
   static getServiceMtlsStatus = async (k8sClient: K8sClient, namespace: string, service?: ServiceDetails) => {
     return MtlsUtil.getNamespaceServiceMtlsStatuses(k8sClient, [namespace], service && [service])
   }
@@ -365,14 +349,15 @@ export class MtlsUtil {
       if(namespaceDefaultMtlsMode) {
         serviceMtlsStatus[namespace]["namespaceDefaultMtlsMode"] = namespaceDefaultMtlsMode
       }
-      const isNSDefaultMtlsStrict = namespaceDefaultMtlsMode && namespaceDefaultMtlsMode === 'STRICT'
-
       const nsServices = services ? services.filter(s => s.namespace === namespace)
                           : (await K8sFunctions.getServices('', namespace, k8sClient)) as ServiceDetails[]
       for(const service of nsServices) {
         const servicePoliciesMtlsStatus = MtlsUtil.getServicePoliciesMtlsStatus(
                 service, servicesWithMtlsPolicies, namespaceDefaultMtlsMode, globalMtlsStatus)
-        const serviceDestRulesMtlsStatus = MtlsUtil.getServiceDestinationRulesMtlsStatus(service, mtlsDestinationRules, mtlsModes)
+        const effectiveServicePortClientMtlsModes = MtlsUtil.getClientMtlsModeForServicePorts(service, mtlsModes)
+        const servicePortClientNamespaceMtlsConflicts = MtlsUtil.getClientMtlsConflicsForServicePorts(effectiveServicePortClientMtlsModes)
+        const servicePortDefaultMtlsDestinationRuleStatus = MtlsUtil.getDefaultDestinationRulesMtlsStatusForServicePorts(effectiveServicePortClientMtlsModes)
+        const applicableDestinationRules = MtlsUtil.getApplicableDestinationRules(service, mtlsDestinationRules)
         const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(service, k8sClient)
         const containers = podsAndContainers.containers ? podsAndContainers.containers as any[] : []
         const hasSidecar = containers.filter(c => c === "istio-proxy").length > 0
@@ -381,39 +366,34 @@ export class MtlsUtil {
         service.ports.forEach(p => {
           const servicePortMtlsModeHasConflict = servicePoliciesMtlsStatus.effectiveServicePortMtlsModes[p.port]
               && servicePoliciesMtlsStatus.effectiveServicePortMtlsModes[p.port].length > 1
+
           const servicePortMtlsEnabled = hasSidecar 
               && servicePoliciesMtlsStatus.effectiveServicePortMtlsModes[p.port]
               && (servicePoliciesMtlsStatus.effectiveServicePortMtlsModes[p.port].length > 0
-                  && servicePoliciesMtlsStatus.effectiveServicePortMtlsModes[p.port][0].length > 0)
+                  && servicePoliciesMtlsStatus.effectiveServicePortMtlsModes[p.port][0].length > 0
+                  && servicePoliciesMtlsStatus.effectiveServicePortMtlsModes[p.port][0] !== ServiceMtlsMode.DISABLE)
 
           const servicePortMtlsMode = servicePortMtlsEnabled && !servicePortMtlsModeHasConflict &&
                                         servicePoliciesMtlsStatus.effectiveServicePortMtlsModes[p.port][0]
-          const servicePortMtlsPermissive = servicePortMtlsMode && 
-                  servicePortMtlsMode.toLowerCase() === 'permissive'
+          const servicePortMtlsPermissive = servicePortMtlsEnabled && servicePortMtlsMode === ServiceMtlsMode.PERMISSIVE 
 
-          const clientNamespacesWithMtlsConflicts = serviceDestRulesMtlsStatus.servicePortClientNamespaceMtlsConflicts[p.port]
-          const effectiveClientModes = serviceDestRulesMtlsStatus.effectiveServicePortClientMtlsModes[p.port]
+          const clientNamespacesWithMtlsConflicts = servicePortClientNamespaceMtlsConflicts[p.port]
+          const effectiveClientModes = effectiveServicePortClientMtlsModes[p.port]
           const noDestinationRules = Object.keys(effectiveClientModes).length === 0
           const mtlsAccessOnly = servicePortMtlsEnabled && !servicePortMtlsPermissive
           const sidecarAccessNamespaces: any[] = []
           const clientNamespacesInConflictWithMtlsPolicy = {}
-          let globalClientMtlsMode = effectiveClientModes[""] && effectiveClientModes[""][0].mode
-          let clientNSWithMtlsDestRules = 0
-          Object.keys(effectiveClientModes)
-            .forEach(sourceNS => {
-              if(sourceNS !== "") {
-                clientNSWithMtlsDestRules++
-              }
+          Object.keys(effectiveClientModes).forEach(sourceNS => {
               if(effectiveClientModes[sourceNS].length === 1) {
                 const sourceNSMtlsMode = effectiveClientModes[sourceNS][0].mode
                 const sourceDR = effectiveClientModes[sourceNS][0].dr
-                if((sourceNSMtlsMode === 'DISABLE' && mtlsAccessOnly)
-                  || (sourceNSMtlsMode === 'ISTIO_MUTUAL' && !servicePortMtlsEnabled)) {
+                if((sourceNSMtlsMode === ClientMtlsMode.DISABLE && mtlsAccessOnly)
+                  || (sourceNSMtlsMode === ClientMtlsMode.ISTIO_MUTUAL && !servicePortMtlsEnabled)) {
                   if(!clientNamespacesInConflictWithMtlsPolicy[sourceNS]) {
                     clientNamespacesInConflictWithMtlsPolicy[sourceNS] = []
                   }
                   clientNamespacesInConflictWithMtlsPolicy[sourceNS].push(sourceDR)
-                } else if(sourceNSMtlsMode === 'ISTIO_MUTUAL') {
+                } else if(sourceNSMtlsMode === ClientMtlsMode.ISTIO_MUTUAL) {
                   sidecarAccessNamespaces.push({namespace: sourceNS, dr: sourceDR})
                 }
               } else if(effectiveClientModes[sourceNS].length === 0) {
@@ -424,9 +404,13 @@ export class MtlsUtil {
             })
           const clientHasConflicts = clientNamespacesWithMtlsConflicts.length > 0 
                 || Object.keys(clientNamespacesInConflictWithMtlsPolicy).length > 0
-          const allAccess = sidecarAccessNamespaces.length === 0
+          const allAccess = !servicePortMtlsEnabled || servicePortMtlsPermissive
           const noAccess = mtlsAccessOnly && noDestinationRules
-          const nonSidecarOnly = !servicePortMtlsEnabled || (servicePortMtlsPermissive && noDestinationRules)
+          const portDefaultMtlsDestinationRuleStatus = servicePortDefaultMtlsDestinationRuleStatus[p.port]
+          const nonSidecarOnly = !servicePortMtlsEnabled && portDefaultMtlsDestinationRuleStatus
+                && portDefaultMtlsDestinationRuleStatus.onlyDefaultMtlsDestinationRuleDefined
+                && portDefaultMtlsDestinationRuleStatus.defaultDestinationRuleMtlsMode === ClientMtlsMode.ISTIO_MUTUAL
+
 
           servicePortAccess[p.port] = {
             service: {
@@ -450,8 +434,12 @@ export class MtlsUtil {
         })
         serviceMtlsStatus[namespace][service.name] = {
           hasSidecar,
-          servicePoliciesMtlsStatus, 
-          serviceDestRulesMtlsStatus, 
+          mtlsPolicies: servicePoliciesMtlsStatus.mtlsPolicies,
+          effectiveServicePortMtlsModes:  servicePoliciesMtlsStatus.effectiveServicePortMtlsModes,
+          mtlsDestinationRules: applicableDestinationRules,
+          effectiveServicePortClientMtlsModes,
+          servicePortDefaultMtlsDestinationRuleStatus,
+          servicePortClientNamespaceMtlsConflicts,
           servicePortAccess
         }
 
@@ -528,9 +516,10 @@ export class MtlsUtil {
     }
   }
 
-  static getServiceDestinationRulesMtlsStatus(service, mtlsDestinationRules, mtlsModes) {
+  static getApplicableDestinationRules(service, mtlsDestinationRules) {
     const serviceNS = service.namespace
     const serviceFqdn = service.name+"."+serviceNS+".svc.cluster.local"
+    FqdnMatcher.initWithService(service.name, serviceNS)
     
     let applicableDestinationRules : any[] = []
     applicableDestinationRules = applicableDestinationRules.concat(mtlsDestinationRules.globalRules)
@@ -542,6 +531,7 @@ export class MtlsUtil {
       applicableDestinationRules = applicableDestinationRules.concat(
         mtlsDestinationRules.allToServiceRules[serviceFqdn])
     }
+
     Object.keys(mtlsDestinationRules.nsToAllRules).forEach(sourceNS => {
       applicableDestinationRules = applicableDestinationRules.concat(
         mtlsDestinationRules.nsToAllRules[sourceNS])
@@ -572,41 +562,99 @@ export class MtlsUtil {
     })
     applicableDestinationRules = _.uniqBy(applicableDestinationRules, dr => dr.name+"."+dr.namespace)
 
+    return applicableDestinationRules
+  }
+
+  static getClientMtlsModeForServicePorts(service, mtlsModes) {
+    const serviceNS = service.namespace
+    FqdnMatcher.initWithService(service.name, serviceNS)
+
     const effectiveServicePortClientMtlsModes = {}
     service.ports.forEach(p => {
       effectiveServicePortClientMtlsModes[p.port] = {}
       const sourcePortModes = new Set
-      mtlsModes.globalClientMtlsModes[p.port] &&
-        mtlsModes.globalClientMtlsModes[p.port].forEach(data => 
-          sourcePortModes.add(data))
-      mtlsModes.globalClientMtlsModes[p.name] &&
-        mtlsModes.globalClientMtlsModes[p.name].forEach(data => 
-          sourcePortModes.add(data))
-      if(sourcePortModes.size === 0) {
-        mtlsModes.globalClientMtlsModes[""] &&
-          mtlsModes.globalClientMtlsModes[""].forEach(data => 
-            sourcePortModes.add(data))
+      mtlsModes.allToAllMtlsModes[p.port] &&
+        mtlsModes.allToAllMtlsModes[p.port].forEach(data => sourcePortModes.add(data))
+
+      mtlsModes.allToAllMtlsModes[p.name] &&
+        mtlsModes.allToAllMtlsModes[p.name].forEach(data =>  sourcePortModes.add(data))
+
+      if(sourcePortModes.size === 0) { //specific port data not found, use default port data
+        mtlsModes.allToAllMtlsModes[""] &&
+          mtlsModes.allToAllMtlsModes[""].forEach(data =>  sourcePortModes.add(data))
       }
       if(sourcePortModes.size > 0) {
         effectiveServicePortClientMtlsModes[p.port][""] = Array.from(sourcePortModes.values())
       }
+
+      Object.keys(mtlsModes.allToNSMtlsModes).forEach(targetNS => {
+        if(targetNS === serviceNS) {
+          const sourcePortModes = new Set
+          mtlsModes.allToNSMtlsModes[targetNS][p.port] && 
+            mtlsModes.allToNSMtlsModes[targetNS][p.port].forEach(data => sourcePortModes.add(data))
+
+          mtlsModes.allToNSMtlsModes[targetNS][p.name] && 
+            mtlsModes.allToNSMtlsModes[targetNS][p.name].forEach(data => sourcePortModes.add(data))
+
+          if(sourcePortModes.size === 0) {
+            mtlsModes.allToNSMtlsModes[targetNS][""] &&
+              mtlsModes.allToNSMtlsModes[targetNS][""].forEach(data => sourcePortModes.add(data))
+          }
+          if(sourcePortModes.size > 0) {
+            effectiveServicePortClientMtlsModes[p.port][""] = Array.from(sourcePortModes.values())
+          }
+        }
+      })
+
+      Object.keys(mtlsModes.allToServiceMtlsModes).forEach(targetService => {
+        if(FqdnMatcher.matchService(targetService)) {
+          const sourcePortModes = new Set
+          mtlsModes.allToServiceMtlsModes[targetService][p.port] && 
+            mtlsModes.allToServiceMtlsModes[targetService][p.port].forEach(data => sourcePortModes.add(data))
+
+          mtlsModes.allToServiceMtlsModes[targetService][p.name] && 
+            mtlsModes.allToServiceMtlsModes[targetService][p.name].forEach(data => sourcePortModes.add(data))
+
+          if(sourcePortModes.size === 0) {
+            mtlsModes.allToServiceMtlsModes[targetService][""] &&
+              mtlsModes.allToServiceMtlsModes[targetService][""].forEach(data => sourcePortModes.add(data))
+          }
+          if(sourcePortModes.size > 0) {
+            effectiveServicePortClientMtlsModes[p.port][""] = Array.from(sourcePortModes.values())
+          }
+        }
+      })
+
+      Object.keys(mtlsModes.nsToAllMtlsModes).forEach(sourceNS => {
+        const sourcePortModes = new Set
+        mtlsModes.nsToAllMtlsModes[sourceNS][p.port] && 
+          mtlsModes.nsToAllMtlsModes[sourceNS][p.port].forEach(data => sourcePortModes.add(data))
+
+        mtlsModes.nsToAllMtlsModes[sourceNS][p.name] && 
+          mtlsModes.nsToAllMtlsModes[sourceNS][p.name].forEach(data => sourcePortModes.add(data))
+
+        if(sourcePortModes.size === 0) {
+          mtlsModes.nsToAllMtlsModes[sourceNS][""] &&
+            mtlsModes.nsToAllMtlsModes[sourceNS][""].forEach(data => sourcePortModes.add(data))
+        }
+        if(sourcePortModes.size > 0) {
+          effectiveServicePortClientMtlsModes[p.port][sourceNS] = Array.from(sourcePortModes.values())
+        }
+      })
 
       Object.keys(mtlsModes.nsToNSMtlsModes).forEach(sourceNS => {
         Object.keys(mtlsModes.nsToNSMtlsModes[sourceNS]).forEach(targetNS => {
           if(targetNS === serviceNS) {
             const sourcePortModes = new Set
             mtlsModes.nsToNSMtlsModes[sourceNS][targetNS][p.port] && 
-              mtlsModes.nsToNSMtlsModes[sourceNS][targetNS][p.port].forEach(data =>
-                sourcePortModes.add(data))
+              mtlsModes.nsToNSMtlsModes[sourceNS][targetNS][p.port].forEach(data => sourcePortModes.add(data))
 
             mtlsModes.nsToNSMtlsModes[sourceNS][targetNS][p.name] && 
-              mtlsModes.nsToNSMtlsModes[sourceNS][targetNS][p.name].forEach(data =>
-                sourcePortModes.add(data))
+              mtlsModes.nsToNSMtlsModes[sourceNS][targetNS][p.name].forEach(data => sourcePortModes.add(data))
 
             if(sourcePortModes.size === 0) {
               mtlsModes.nsToNSMtlsModes[sourceNS][targetNS][""] &&
-                mtlsModes.nsToNSMtlsModes[sourceNS][targetNS][""].forEach(data => 
-                  sourcePortModes.add(data))
+                mtlsModes.nsToNSMtlsModes[sourceNS][targetNS][""].forEach(data => sourcePortModes.add(data))
             }
             if(sourcePortModes.size > 0) {
               effectiveServicePortClientMtlsModes[p.port][sourceNS] = Array.from(sourcePortModes.values())
@@ -617,20 +665,17 @@ export class MtlsUtil {
 
       Object.keys(mtlsModes.nsToServiceMtlsModes).forEach(sourceNS => {
         Object.keys(mtlsModes.nsToServiceMtlsModes[sourceNS]).forEach(targetService => {
-          if(targetService === serviceFqdn) {
+          if(FqdnMatcher.matchService(targetService)) {
             const sourcePortModes = new Set
             mtlsModes.nsToServiceMtlsModes[sourceNS][targetService][p.port] && 
-              mtlsModes.nsToServiceMtlsModes[sourceNS][targetService][p.port].forEach(data =>
-                sourcePortModes.add(data))
+              mtlsModes.nsToServiceMtlsModes[sourceNS][targetService][p.port].forEach(data => sourcePortModes.add(data))
 
             mtlsModes.nsToServiceMtlsModes[sourceNS][targetService][p.name] && 
-              mtlsModes.nsToServiceMtlsModes[sourceNS][targetService][p.name].forEach(data =>
-                sourcePortModes.add(data))
+              mtlsModes.nsToServiceMtlsModes[sourceNS][targetService][p.name].forEach(data => sourcePortModes.add(data))
 
             if(sourcePortModes.size === 0) {
               mtlsModes.nsToServiceMtlsModes[sourceNS][targetService][""] &&
-                mtlsModes.nsToServiceMtlsModes[sourceNS][targetService][""].forEach(data => 
-                  sourcePortModes.add(data))
+                mtlsModes.nsToServiceMtlsModes[sourceNS][targetService][""].forEach(data => sourcePortModes.add(data))
             }
             if(sourcePortModes.size > 0) {
               effectiveServicePortClientMtlsModes[p.port][sourceNS] = Array.from(sourcePortModes.values())
@@ -640,20 +685,38 @@ export class MtlsUtil {
       })
     })
 
+    return effectiveServicePortClientMtlsModes
+  }
+
+  static getClientMtlsConflicsForServicePorts(effectiveServicePortClientMtlsModes) {
     const servicePortClientNamespaceMtlsConflicts = {}
     Object.keys(effectiveServicePortClientMtlsModes).forEach(port => {
       servicePortClientNamespaceMtlsConflicts[port] = []
-      Object.keys(effectiveServicePortClientMtlsModes[port]).forEach(sourceNS => {
+      const portSourceNamespaces = Object.keys(effectiveServicePortClientMtlsModes[port])
+      portSourceNamespaces.forEach(sourceNS => {
         effectiveServicePortClientMtlsModes[port][sourceNS].length > 1 && 
         servicePortClientNamespaceMtlsConflicts[port].push(sourceNS)
       })
     })
 
-    return {
-      servicePortClientNamespaceMtlsConflicts, 
-      effectiveServicePortClientMtlsModes, 
-      mtlsDestinationRules: applicableDestinationRules
-    }
+    return servicePortClientNamespaceMtlsConflicts
+  }
+
+  static getDefaultDestinationRulesMtlsStatusForServicePorts(effectiveServicePortClientMtlsModes) {
+    const servicePortDefaultMtlsDestinationRuleStatus = {}
+    Object.keys(effectiveServicePortClientMtlsModes).forEach(port => {
+      const portSourceNamespaces = Object.keys(effectiveServicePortClientMtlsModes[port])
+      servicePortDefaultMtlsDestinationRuleStatus[port] = {}
+      servicePortDefaultMtlsDestinationRuleStatus[port].defaultMtlsDestinationRuleDefined = 
+          effectiveServicePortClientMtlsModes[port][""] && effectiveServicePortClientMtlsModes[port][""].length > 0
+      servicePortDefaultMtlsDestinationRuleStatus[port].defaultDestinationRuleMtlsMode = 
+          effectiveServicePortClientMtlsModes[port][""] && effectiveServicePortClientMtlsModes[port][""].length === 1 ?
+            effectiveServicePortClientMtlsModes[port][""][0] : undefined
+      servicePortDefaultMtlsDestinationRuleStatus[port].onlyDefaultMtlsDestinationRuleDefined = 
+          servicePortDefaultMtlsDestinationRuleStatus[port].defaultMtlsDestinationRuleDefined && portSourceNamespaces.length === 1
+    })
+
+    return servicePortDefaultMtlsDestinationRuleStatus
   }
 
 }

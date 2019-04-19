@@ -114,7 +114,10 @@ const plugin : ActionGroupSpec = {
           await outputConfigMaps(namespace.name, cluster.k8sClient, this.onStreamOutput)
         }
         this.showOutputLoading && this.showOutputLoading(false)
-      }
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
+      },
     },
     {
       name: "View Namespace ConfigMaps",

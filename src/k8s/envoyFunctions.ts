@@ -209,7 +209,7 @@ export default class EnvoyFunctions {
 
     configsByType[EnvoyConfigType.Listeners] = configsByType[EnvoyConfigType.Listeners].map(l => {
       if(l.matchingFilterChains && l.matchingFilterChains.length > 0) {
-        l.listener['filter_chains(matches)'] = l.matchingFilterChains
+        l.listener['filter_chains(applicable)'] = l.matchingFilterChains
         delete l.listener.filter_chains
         delete l.matchingFilterChains
       }
