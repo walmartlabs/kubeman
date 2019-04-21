@@ -7,11 +7,12 @@ import { ContainerInfo, PodDetails, ServiceDetails } from '../k8s/k8sObjectTypes
 import { K8sClient } from '../k8s/k8sClient';
 import JsonUtil from '../util/jsonUtil';
 import {matchSubsetHosts} from '../util/matchUtil'
+import {outputIngressVirtualServicesAndGatewaysForService} from './istioIngressConfigAnalysis'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
   title: "Analysis Recipes",
-  order: ActionContextOrder.Istio+5,
+  order: ActionContextOrder.Analysis,
   actions: [
     {
       name: "Analyze Service Details and Routing",
@@ -102,49 +103,11 @@ const plugin : ActionGroupSpec = {
     return podsAndContainers
   },
 
-  async outputVirtualServicesAndGateways(service: ServiceDetails, k8sClient: K8sClient, asSubgroups: boolean = false) {
-    const virtualServices = await IstioFunctions.getVirtualServicesForService(service.name, service.namespace, k8sClient)
-    const gateways = await IstioFunctions.getGatewaysForVirtualServices(virtualServices, k8sClient)
+  async outputVirtualServicesAndGateways(service: ServiceDetails, k8sClient: K8sClient) {
     const output: ActionOutput = []
-    output.push([(asSubgroups ? ">>" : ">") + "Referencing VirtualServices + Gateways: "])
-    virtualServices.length === 0 && output.push(["No VirtualServices/Gateways"])
-    
-    const ingressCerts: {[key: string] : string} = {}
-    virtualServices.forEach(vs => {
-      const vsGateways = gateways.map(g => {
-        const matchingServers = g.servers
-        .filter(server => server.port && 
-          (vs.http && server.port.protocol === 'HTTP') ||
-          (vs.tls && server.port.protocol === 'HTTPS') ||
-          (vs.tcp && server.port.protocol === 'TCP'))
-        .filter(server => server.hosts && matchSubsetHosts(server.hosts, vs.hosts))
-        if(matchingServers.length > 0) {
-          if(g.selector && g.selector.istio && g.selector.istio === 'ingressgateway') {
-            matchingServers.filter(s => s.tls && s.tls.serverCertificate && s.tls.privateKey)
-              .forEach(s => ingressCerts[s.tls.privateKey]=s.tls.serverCertificate)
-          }
-          const gateway = {...g}
-          g.matchingPorts = _.uniqBy((g.matchingPorts || []).concat(matchingServers.map(s => s.port.number)))
-          return gateway
-        } else {
-          return {}
-        }
-      }).filter(g => g.name)
-
-      const gateway = vsGateways.length > 0 ? vsGateways[0] : undefined
-      delete vs.yaml
-      output.push([">>VirtualService: " + vs.name + (gateway ? " via Gateway: " + (gateway.name || "None") : "")])
-      gateway && output.push([">>>VirtualService: " + vs.name])
-      output.push([vs])
-      gateway && output.push([">>>Gateway: " + (gateway.name || "None")]),
-      gateway && output.push([gateway])
-    })
+    const result = await outputIngressVirtualServicesAndGatewaysForService(service.name, service.namespace, k8sClient, output, true)
     this.onStreamOutput && this.onStreamOutput(output) 
-    return {
-      virtualServices,
-      gateways,
-      ingressCerts: Object.keys(ingressCerts).map(key => [key, ingressCerts[key]])
-    }
+    return result
   },
 
   async outputRoutingAnalysis(service: ServiceDetails, podsAndContainers: any, vsGateways: any, ingressPods: any[], 

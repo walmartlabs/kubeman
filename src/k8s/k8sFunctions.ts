@@ -309,12 +309,30 @@ export default class K8sFunctions {
           type: item.type,
           kind: item.kind,
           stringData: item.stringData,
-          yaml: item
+          data: item.data
         }
         secrets.push(secret)
       })
     }
     return secrets
+  }
+
+  static getNamespaceSecret = async (secret, namespace, k8sClient) => {
+    console.log(secret)
+    console.log(namespace)
+    const result = namespace ? await k8sClient.namespaces(namespace).secrets(secret).get() : undefined
+    console.log(result)
+    if(result && result.body) {
+      const metas = K8sFunctions.extractMetadata(result.body)
+      return {
+        ...metas,
+        type: result.body.type,
+        kind: result.body.kind,
+        stringData: result.body.stringData,
+        data: result.body.data
+      }
+    }
+    return undefined
   }
 
   static getNamespaceConfigMaps: GetItemsFunction = async (cluster, namespace, k8sClient) => {

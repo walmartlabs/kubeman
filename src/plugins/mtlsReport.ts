@@ -5,7 +5,7 @@ import { MtlsUtil } from '../k8s/mtlsUtil';
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
   title: "Analysis Recipes",
-  order: ActionContextOrder.Istio+5,
+  order: ActionContextOrder.Analysis,
   actions: [
     {
       name: "Cluster mTLS Report",
@@ -53,7 +53,7 @@ const plugin : ActionGroupSpec = {
           }
 
           const outputDestinationRules = (source, target, drules) => {
-            output.push([">>>Rule Type: [Source "+source+"] [Target "+target+"]", ""])
+            output.push([">>>From: [Source "+source+"], To: [Target "+target+"]", ""])
             drules.map(dr => {
               delete dr.data
               output.push([dr.name+" @ "+dr.namespace, dr])
@@ -76,7 +76,7 @@ const plugin : ActionGroupSpec = {
 
           let targetNamespaces = Object.keys(mtlsDestinationRules.allToNSRules)
           if(targetNamespaces.length > 0) {
-            output.push([">>From All to Namespace mTLS DestinationRules", ""])
+            output.push([">>mTLS DestinationRules for requests from anywhere to a Namespace ", ""])
             targetNamespaces.forEach(targetNS => {
               outputDestinationRules(": All Namespaces", "Namespace : "+targetNS, 
                 mtlsDestinationRules.allToNSRules[targetNS])
@@ -85,7 +85,7 @@ const plugin : ActionGroupSpec = {
 
           let targetServices = Object.keys(mtlsDestinationRules.allToServiceRules)
           if(targetServices.length > 0) {
-            output.push([">>From All to Service mTLS DestinationRules", ""])
+            output.push([">>mTLS DestinationRules for requests from anywhere to a Service", ""])
             targetServices.forEach(targetService => {
               outputDestinationRules(": All Namespaces", "Service : "+targetService, 
                 mtlsDestinationRules.allToServiceRules[targetService])
@@ -94,7 +94,7 @@ const plugin : ActionGroupSpec = {
 
           let sourceNamespaces = Object.keys(mtlsDestinationRules.nsToAllRules)
           if(sourceNamespaces.length > 0) {
-            output.push([">>From Namespace to All mTLS DestinationRules", ""])
+            output.push([">>mTLS DestinationRules for requests from a Namespace to anywhere", ""])
             sourceNamespaces.forEach(sourceNS => {
               outputDestinationRules("Namespace : "+sourceNS, ": All Namespaces", 
                 mtlsDestinationRules.nsToAllRules[sourceNS])
@@ -103,7 +103,7 @@ const plugin : ActionGroupSpec = {
 
           sourceNamespaces = Object.keys(mtlsDestinationRules.nsToNSRules)
           if(sourceNamespaces.length > 0) {
-            output.push([">>From Namespace to Namespace mTLS DestinationRules", ""])
+            output.push([">>mTLS DestinationRules for requests from a Namespace to a Namespace", ""])
             sourceNamespaces.forEach(sourceNS => {
               const nsDestRrules = mtlsDestinationRules.nsToNSRules[sourceNS]
               Object.keys(nsDestRrules).forEach(targetNS => {
@@ -114,7 +114,7 @@ const plugin : ActionGroupSpec = {
 
           sourceNamespaces = Object.keys(mtlsDestinationRules.nsToServiceRules)
           if(sourceNamespaces.length > 0) {
-            output.push([">>From Namespace to Service mTLS DestinationRules", ""])
+            output.push([">>mTLS DestinationRules for requests from a Namespace to a Service", ""])
             sourceNamespaces.forEach(sourceNS => {
               const serviceDestRrules = mtlsDestinationRules.nsToServiceRules[sourceNS]
               Object.keys(serviceDestRrules).forEach(targetService => {

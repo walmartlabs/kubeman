@@ -8,7 +8,7 @@ import { MtlsUtil, ClientMtlsMode } from '../k8s/mtlsUtil';
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
   title: "Analysis Recipes",
-  order: ActionContextOrder.Istio+5,
+  order: ActionContextOrder.Analysis,
   actions: [
     {
       name: "Analyze Service mTLS Status",

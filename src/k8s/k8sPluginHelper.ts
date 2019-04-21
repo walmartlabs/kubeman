@@ -1,6 +1,7 @@
 import _ from 'lodash'
 import ChoiceManager from '../actions/choiceManager'
 import {ActionOutput, ActionOutputStyle} from '../actions/actionSpec'
+import K8sFunctions from './k8sFunctions';
 
 export default class K8sPluginHelper {
   static async generateComparisonOutput(actionContext, onOutput, name, ...fields) {
@@ -34,5 +35,8 @@ export default class K8sPluginHelper {
     output.push(outputHeaders)
     output = output.concat(outputRows)
     onOutput(output, "Compare")
+  }
+  static async chooseService(actionContext, min, max) {
+    ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", min, max, true, "name")
   }
 }

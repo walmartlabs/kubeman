@@ -209,7 +209,7 @@ export default class EnvoyFunctions {
 
     configsByType[EnvoyConfigType.Listeners] = configsByType[EnvoyConfigType.Listeners].map(l => {
       if(l.matchingFilterChains && l.matchingFilterChains.length > 0) {
-        l.listener['filter_chains(applicable)'] = l.matchingFilterChains
+        l.listener['filter_chains(applicable)'] = _.uniqBy(l.matchingFilterChains, fc => fc.filter_chain_match)
         delete l.listener.filter_chains
         delete l.matchingFilterChains
       }
@@ -219,23 +219,27 @@ export default class EnvoyFunctions {
   }
 
   private static filterClustersForFqdn(clusters: any[]) {
-    const nameMatches = clusters.filter(c => FqdnMatcher.matchDomain(getFqdnFromCluster(c.cluster.name)))
-    const hostMatches = clusters
-      .filter(c => c.cluster.hosts && 
-        c.cluster.hosts.filter(h => FqdnMatcher.matchDomain(h.socket_address.address)).length > 0)
+    if(clusters) {
+      const nameMatches = clusters.filter(c => FqdnMatcher.matchDomain(getFqdnFromCluster(c.cluster.name)))
+      const hostMatches = clusters
+        .filter(c => c.cluster.hosts && 
+          c.cluster.hosts.filter(h => FqdnMatcher.matchDomain(h.socket_address.address)).length > 0)
 
-    const lbEndpointMatches = clusters
-      .filter(c => c.cluster.load_assignment)
-      .filter(c => {
-        const endpoints = _.flatten(c.cluster.load_assignment.endpoints.map(e => e.lb_endpoints))
-                            .map(e => e.endpoint.address.socket_address.address)
-        return endpoints.filter(e => FqdnMatcher.matchDomain(e)).length > 0
-      })
-    return getUniqueResourcesByField("title", nameMatches, hostMatches, lbEndpointMatches)
+      const lbEndpointMatches = clusters
+        .filter(c => c.cluster.load_assignment)
+        .filter(c => {
+          const endpoints = _.flatten(c.cluster.load_assignment.endpoints.map(e => e.lb_endpoints))
+                              .map(e => e.endpoint.address.socket_address.address)
+          return endpoints.filter(e => FqdnMatcher.matchDomain(e)).length > 0
+        })
+      return getUniqueResourcesByField("title", nameMatches, hostMatches, lbEndpointMatches)
+    } else {
+      return []
+    }
   }
 
   private static filterListenersByDomainMatch(listeners: any[]) {
-    return listeners.filter(l => {
+    return listeners ? listeners.filter(l => {
       const matchingFilterChains = l.listener.filter_chains.filter(fc => {
         const serverNames = fc.filter_chain_match && fc.filter_chain_match.server_names ? fc.filter_chain_match.server_names : []
         return serverNames.filter(n => FqdnMatcher.matchDomain(n)).length > 0
@@ -248,55 +252,57 @@ export default class EnvoyFunctions {
       matchingFilterChains.length > 0 && 
         (l.matchingFilterChains = (l.matchingFilterChains||[]).concat(matchingFilterChains))
       return matchingFilterChains.length > 0
-    })
+    }) : []
   }
 
   private static filterListenersByClusterMatch(listeners: any[]) {
-    return listeners.filter(l => {
+    return listeners ? listeners.filter(l => {
       const matchingFilterChains = l.listener.filter_chains.filter(fc =>
         fc.filters && fc.filters.filter(f => f.config.cluster && 
           FqdnMatcher.matchDomain(getFqdnFromCluster(f.config.cluster))).length > 0)
       matchingFilterChains.length > 0 && 
         (l.matchingFilterChains = (l.matchingFilterChains||[]).concat(matchingFilterChains))
       return matchingFilterChains.length > 0
-    })
+    }) : []
   }
 
   private static filterRoutesByDomainMatch(routes: any[]) {
-    return routes.filter(r => {
+    return routes ? routes.filter(r => {
       return r.domains && r.domains.filter(domain => FqdnMatcher.matchDomain(domain)).length > 0
-    })
+    }) : []
   }
 
   private static filterRoutesByClusterMatch(routes: any[]) {
-    return routes.filter(r => {
+    return routes ? routes.filter(r => {
       return r.routes && r.routes.filter(rt => rt.route && rt.route.cluster)
         .filter(rt => FqdnMatcher.matchDomain(getFqdnFromCluster(rt.route.cluster))).length > 0
-    })
+    }) : []
   }
 
   private static filterClustersForListeners(clusters: any[], listeners: any[]) {
-    return clusters.filter(c =>
-      _.flatten(_.flatten(listeners.filter(l => l.matchingFilterChains && l.matchingFilterChains.length > 0)
+    return clusters ? clusters.filter(c =>
+        _.flatten(_.flatten(listeners.filter(l => l.matchingFilterChains && l.matchingFilterChains.length > 0)
                     .map(l => l.matchingFilterChains))
                 .map(fc => fc.filters || []))
         .map(f => f.config.cluster)
         .filter(c => c)
         .filter(lc => c.title === lc)
-        .length > 0)
+        .length > 0
+    ) : []
   }
 
   private static filterClustersForRoutes(clusters: any[], routes: any[]) {
-    return clusters.filter(c =>
-      _.flatten(routes.map(r => r.routes))
+    return clusters ? clusters.filter(c =>
+        _.flatten(routes.map(r => r.routes))
         .map(r => r.route && r.route.cluster)
         .filter(c => c)
         .filter(lc => c.title === lc)
-        .length > 0)
+        .length > 0
+    ) : []
   }
 
   private static filterListenersForClusters(listeners: any[], clusters: any[]) {
-    return listeners.filter(l => {
+    return listeners ? listeners.filter(l => {
       const matchingFilterChains = l.listener.filter_chains.filter(fc =>
         fc.filters && fc.filters.filter(f => 
           f.config.cluster && clusters.filter(c => c.title === f.config.cluster).length > 0
@@ -310,33 +316,33 @@ export default class EnvoyFunctions {
       matchingFilterChains.length > 0 && 
         (l.matchingFilterChains = (l.matchingFilterChains||[]).concat(matchingFilterChains))
       return matchingFilterChains.length > 0
-    })
+    }) : []
   }
 
   private static filterListenersForRoutes(listeners: any[], routes: any[]) {
-    return listeners.filter(l => {
+    return listeners ? listeners.filter(l => {
       const matchingFilterChains = l.listener.filter_chains.filter(fc =>
         fc.filters && fc.filters.filter(f => f.config.rds && 
             routes.filter(r => r.title.includes(f.config.rds.route_config_name)).length > 0).length > 0)
       matchingFilterChains.length > 0 && 
         (l.matchingFilterChains = (l.matchingFilterChains||[]).concat(matchingFilterChains))
       return matchingFilterChains.length > 0
-    })
+    }) : []
   }
 
   private static filterRoutesForClusters(routes: any[], clusters: any[]) {
-    return routes.filter(route => {
+    return routes ? routes.filter(route => {
       const routeClusters = route.routes.map(r => r.route && r.route.cluster).filter(c => c)
       return clusters.filter(c => routeClusters.includes(c.title)).length > 0
-    })
+    }) : []
   }
 
   private static filterRoutesForListeners(routes: any[], listeners: any[]) {
-    return routes.filter(route => 
+    return routes ? routes.filter(route => 
       _.flatten(_.flatten(listeners.map(l => l.listener.filter_chains))
         .map(fc => fc.filters || []))
         .filter(f => f.config.rds && f.config.rds.route_config_name 
                 && f.config.rds.route_config_name.includes(route.title)).length > 0
-    )
+    ) : []
   }
 }

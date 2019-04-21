@@ -1,11 +1,12 @@
 import {Cluster, Namespace} from "../k8s/k8sObjectTypes";
 import Context from "../context/contextStore";
-import {ActionOnChoice, Choice, BoundActionAct} from './actionSpec'
+import {ActionOnChoice, Choice, BoundActionAct, ActionChoiceMaker} from './actionSpec'
 
 export default class ActionContext {
   context?: Context
   inputText?: string
   onActionInitChoices? : ActionOnChoice
+  onActionInitChoicesUnbound? : ActionChoiceMaker
   onSkipChoices? : BoundActionAct
 
   getClusters: () => Cluster[] = () => this.context ? this.context.clusters : []

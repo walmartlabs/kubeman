@@ -3,6 +3,24 @@ import K8sFunctions from '../k8s/k8sFunctions'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import IstioFunctions from '../k8s/istioFunctions';
 
+async function outputIngressGatewaysAndVirtualServices(k8sClient, output) {
+  const gateways = await IstioFunctions.listAllIngressGateways(k8sClient, false)
+  output.push([">>Gateways"])
+  gateways.length === 0 && output.push(["No Gateways"])
+  gateways.forEach(g => {
+    output.push([">>>"+g.name])
+    output.push([g])
+  })
+
+  const virtualServices = await IstioFunctions.listAllIngressVirtualServices(k8sClient, false)
+  output.push([">>VirtualServices"])
+  virtualServices.length === 0 && output.push(["No VirtualServices"])
+  virtualServices.forEach(vs => {
+    output.push([">>>"+vs.name])
+    output.push([vs])
+  })
+}
+
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
   title: "Istio Ingress Recipes",
@@ -10,7 +28,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "View Ingress Details",
-      order: 10,
+      order: 1,
       
       async act(actionContext) {
         const clusters = actionContext.getClusters()
@@ -62,21 +80,7 @@ const plugin : ActionGroupSpec = {
             output.push([pod])
           })
 
-          const gateways = await IstioFunctions.listAllIngressGateways(k8sClient, false)
-          output.push([">>Gateways"])
-          gateways.length === 0 && output.push(["No Gateways"])
-          gateways.forEach(g => {
-            output.push([">>>"+g.name])
-            output.push([g])
-          })
-
-          const virtualServices = await IstioFunctions.listAllIngressVirtualServices(k8sClient, false)
-          output.push([">>VirtualServices"])
-          virtualServices.length === 0 && output.push(["No VirtualServices"])
-          virtualServices.forEach(vs => {
-            output.push([">>>"+vs.name])
-            output.push([vs])
-          })
+          await outputIngressGatewaysAndVirtualServices(k8sClient, output)
 
           output.push([">>Service and Deployment YAMLs"])
           output.push([">>>Ingress Service Yaml"])
@@ -85,6 +89,30 @@ const plugin : ActionGroupSpec = {
           output.push([">>>Ingress Deployment Yaml"])
           output.push([ingressDeployment.yaml])
 
+          this.onStreamOutput  && this.onStreamOutput(output)
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
+      },
+    },
+    {
+      name: "View Ingress Gateways and VirtualServices ",
+      order: 2,
+      
+      async act(actionContext) {
+        const clusters = actionContext.getClusters()
+        this.onOutput &&
+          this.onOutput([["Ingress Gateways and VirtualServices"]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
+
+        for(const cluster of clusters) {
+          this.onStreamOutput  && this.onStreamOutput([[">Cluster: " + cluster.name]])
+          if(!cluster.hasIstio) {
+            this.onStreamOutput  && this.onStreamOutput([["Istio not installed"]])
+            continue
+          }
+          const output: ActionOutput = []
+          const k8sClient = cluster.k8sClient
+          await outputIngressGatewaysAndVirtualServices(k8sClient, output)
           this.onStreamOutput  && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)

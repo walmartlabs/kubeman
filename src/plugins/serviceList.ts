@@ -6,14 +6,7 @@ import { Namespace } from '../k8s/k8sObjectTypes';
 function outputServices(services: any[], output) {
   services.length === 0 && output.push(["No services found"])
   services.forEach(service => {
-    output.push([">>>"+service.name], [{
-      type: service.type,
-      clusterIP: service.clusterIP,
-      labels: service.labels,
-      annotations: service.annotations,
-      ports: service.ports,
-      selector: service.selector
-    }])
+    output.push([">>>"+service.name+"."+service.namespace], [service.yaml])
   })
 }
 

@@ -32,8 +32,7 @@ export class ClusterContext {
 
 
 export default class Context {
-  private clusterMap: Map<string, Cluster> = new Map
-  private _clusters: Map<Cluster, ClusterContext> = new Map
+  private clusterMap: Map<string, [Cluster, ClusterContext]> = new Map
   hasClusters: boolean = false
   hasNamespaces: boolean = false
   selections: any[] = []
@@ -42,7 +41,7 @@ export default class Context {
   errorMessage: string = ''
 
   updateFlags() {
-    this.hasClusters = this._clusters.size > 0
+    this.hasClusters = this.clusterMap.size > 0
     this.hasNamespaces = this.namespaces.length > 0
   }
 
@@ -59,25 +58,25 @@ export default class Context {
   }
 
   private storeNamespaces(namespaces: Map<string, Namespace>) {
-    namespaces.forEach(this.addNamespace)
+    namespaces.forEach(ns => this.addNamespace(ns))
   }
 
   private clear() {
-    this._clusters.clear()
+    this.clusterMap.forEach(clusterRec => clusterRec[0].namespaces = [])
     this.clusterMap.clear()
     this.updateFlags()
   }
 
-  addCluster = async (cluster: Cluster) => {
+  async addCluster(cluster: Cluster) {
     cluster.clearNamespaces()
     cluster.k8sClient = await k8s.getClientForCluster(cluster)
-    this._clusters.set(cluster, new ClusterContext)
-    this.clusterMap.set(cluster.name, cluster)
+    this.clusterMap.set(cluster.name, [cluster, new ClusterContext])
     this.updateFlags()
   }
 
-  addNamespace = (namespace: Namespace) => {
-    const clusterContext = this._clusters.get(namespace.cluster)
+  addNamespace(namespace: Namespace) {
+    const clusterRec = this.clusterMap.get(namespace.cluster.name)
+    const clusterContext = clusterRec && clusterRec[1]
     if(!clusterContext) {
       console.log("Cluster %s not found for ns %s", namespace.cluster.name, namespace.name)
       throw new ReferenceError("Cluster not found: " + namespace.cluster)
@@ -88,15 +87,16 @@ export default class Context {
   }
 
   get clusters() : Cluster[] {
-    return Array.from(this.clusterMap.values())
+    return Array.from(this.clusterMap.values()).map(rec => rec[0])
   }
 
   cluster(clusterName: string) {
-    return this.clusterMap.get(clusterName)
+    const clusterRec = this.clusterMap.get(clusterName)
+    return clusterRec && clusterRec[0]
   }
 
   get namespaces() : Namespace[] {
-    return _.flatMap(Array.from(this.clusterMap.values()), c => c.namespaces)
+    return _.flatMap(Array.from(this.clusterMap.values()), rec => rec[0].namespaces)
   }
 
   namespace(clusterName: string, nsName: string) {

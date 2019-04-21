@@ -124,6 +124,7 @@ export class ActionLoader {
           })) {
             if(action.choose) {
               this.actionContext.onActionInitChoices = this.onActionInitChoices.bind(this, action.act.bind(action, this.actionContext))
+              this.actionContext.onActionInitChoicesUnbound = this.onActionInitChoices
               this.actionContext.onSkipChoices = action.act.bind(action, this.actionContext)
               action.choose(this.actionContext)
             } else {

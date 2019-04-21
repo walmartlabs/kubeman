@@ -408,8 +408,6 @@ export class TableBox extends React.Component<IProps, IState> {
       inputMessage += " (enter /help to see available commands)"
     }
     let hiddenIndicatorShown = false
-    let parentIsGroup = false
-    let parentIsSubGroup = false
     let parentIsSection = false
     let isAppendedRow = false
 
@@ -421,8 +419,6 @@ export class TableBox extends React.Component<IProps, IState> {
     rows.forEach((row, index) => {
       if(row.isGroupOrSubgroupOrSection) {
         hiddenIndicatorShown = false
-        parentIsGroup = parentIsGroup || row.isGroup
-        parentIsSubGroup = row.isGroup ? false : (parentIsSubGroup || row.isSubGroup)
         parentIsSection = (row.isGroup || row.isSubGroup) ? false : (parentIsSection || row.isSection)
         if(row.isGroup) {
           if(openParents.length > 0 && openParents[openParents.length-1].isGroup) {
@@ -467,12 +463,12 @@ export class TableBox extends React.Component<IProps, IState> {
             currentParent.children.push(
               <TableRow key={index+"hidden"} className={classes.tableRowHidden}>
                 <TableCell className={classes.tableCellHidden}
-                          style={{cursor: parentIsGroup || parentIsSubGroup || parentIsSection ? 'pointer' : 'inherit'}}
+                          style={{cursor: 'pointer'}}
                           colSpan={columnCount}
                           onClick={() => 
-                            parentIsSection ? this.onSectionClick(row.sectionIndex) :
-                            parentIsSubGroup ? this.onSubGroupClick(row.subGroupIndex) : 
-                            parentIsGroup ? this.onGroupClick(row.groupIndex) :
+                            currentParent.isSection ? this.onSectionClick(row.sectionIndex) :
+                            currentParent.isSubGroup ? this.onSubGroupClick(row.subGroupIndex) : 
+                            currentParent.isGroup ? this.onGroupClick(row.groupIndex) :
                             undefined}
                 >
                 ...

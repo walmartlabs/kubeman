@@ -48,7 +48,7 @@ const plugin : ActionGroupSpec = {
       name: "View All Resources in a Namespace",
       order: 20,
 
-      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 1),
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 3),
       
       async act(actionContext) {
         const namespaces = await ChoiceManager.getSelections(actionContext).map(s => s.item)

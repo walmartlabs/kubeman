@@ -2,12 +2,10 @@
 
 import { app, BrowserWindow, Menu } from 'electron'
 import installExtension, { REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS } from 'electron-devtools-installer';
-
 import fs from 'fs'
 import path from 'path'
 import { format as formatUrl } from 'url'
-
-import appMenu from './menu'
+import AppMenu from './menu'
 import './main.ipc'
 import '../logger/server'
 
@@ -25,44 +23,51 @@ if (isDevelopment) {
 }
 
 // global reference to mainWindow (necessary to prevent window from being garbage collected)
-let mainWindow : BrowserWindow|null
+const windows : (BrowserWindow|null)[] = []
 
 async function createWindow() {
-  mainWindow = new BrowserWindow({
+  const window = new BrowserWindow({
     show: false,
     backgroundColor: '#000',
     width: 1200, 
     height: 1000,
     icon: path.join(__dirname, 'build/icon-48x48.icns')
   })
-  appMenu.setMainWindow(mainWindow)
-  const menu = Menu.buildFromTemplate(appMenu.menuTemplate)
-  Menu.setApplicationMenu(menu)
 
+  const isMainWindow = windows.length === 0
+  window['index'] = windows.length
+  windows.push(window)
+
+  if(isMainWindow) {
+    AppMenu.init(window, createWindow)
+    const menu = Menu.buildFromTemplate(AppMenu.menuTemplate)
+    Menu.setApplicationMenu(menu)
+  }
+  
   if (isDevelopment) {
     //await installExtensions();
-    mainWindow.webContents.openDevTools({ mode: 'detach' })
-    mainWindow.loadURL(`http://localhost:${process.env.ELECTRON_WEBPACK_WDS_PORT}`)
+    isMainWindow && window.webContents.openDevTools({ mode: 'detach' })
+    window.loadURL(`http://localhost:${process.env.ELECTRON_WEBPACK_WDS_PORT}`)
   } else {
-    mainWindow.loadURL(formatUrl({
+    window.loadURL(formatUrl({
       pathname: path.join(__dirname, 'index.html'),
       protocol: 'file',
       slashes: true
     }))
   }
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow && mainWindow.show()
+  window.once('ready-to-show', () => {
+    window && window.show()
   })
 
-  mainWindow.on('closed', () => {
-    mainWindow = null
+  window.on('closed', () => {
+    windows[window['index']] = null
   })
 
-  mainWindow.webContents.on('devtools-opened', () => {
-    mainWindow && mainWindow.focus()
+  window.webContents.on('devtools-opened', () => {
+    window && window.focus()
     setImmediate(() => {
-      mainWindow && mainWindow.focus()
+      window && window.focus()
     })
   })
 }
@@ -72,12 +77,14 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
-  if (mainWindow === null) {
+  if (windows.length === 0) {
     createWindow()
   }
 })
 
 app.on('ready', function () {
-  createWindow()
+  if (windows.length === 0) {
+    createWindow()
+  }
 })
 

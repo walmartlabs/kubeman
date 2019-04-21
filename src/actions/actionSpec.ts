@@ -16,7 +16,8 @@ export enum ActionContextOrder {
   Service = 200,
   Pod = 300,
   Istio = 500,
-  Other = 100,
+  Analysis = 1000,
+  Other = 10000,
 }
 
 export enum ActionOutputStyle {

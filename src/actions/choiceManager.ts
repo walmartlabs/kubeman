@@ -198,6 +198,10 @@ export default class ChoiceManager {
     return actionContext.getSelections().map(selection => selection.data)
   }
 
+  static getDoubleSelections(actionContext: ActionContext) : ItemSelection[][] {
+    return actionContext.getSelections().map(selection => selection.data)
+  }
+
   static async chooseClusters(actionContext: ActionContext, min: number = 2, max: number = 3) {
     const clusters = actionContext.getClusters()
     const context = actionContext.context
@@ -338,5 +342,23 @@ export default class ChoiceManager {
       podSelections.push(selection.data)
     }
     return podSelections
+  }
+
+  static async doubleChoices(action, actionContext, choose1, getSelections1, choose2, getSelections2) {
+    let selections: any[] = []
+    actionContext.onActionInitChoices = actionContext.onActionInitChoicesUnbound.bind(actionContext, 
+      async (...args) => {
+        selections.push({data: await getSelections1()})
+        actionContext.onActionInitChoices = actionContext.onActionInitChoicesUnbound.bind(actionContext, 
+          async (...args) => {
+            selections.push({data: await getSelections2()})
+            actionContext.context.selections = selections
+            action.act(actionContext)
+          }
+        )
+        await choose2()
+      }
+    )
+    await choose1()
   }
 }
