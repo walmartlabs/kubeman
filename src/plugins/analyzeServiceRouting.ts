@@ -46,7 +46,7 @@ const plugin : ActionGroupSpec = {
           const sidecarResources = await plugin.outputSidecarResources.call(this, service, cluster.k8sClient)
           const vsGateways = await plugin.outputVirtualServicesAndGateways.call(this, service, cluster.k8sClient)
           const ingressPods = await IstioFunctions.getIngressGatewayPods(cluster.k8sClient, true)
-          if(vsGateways.ingressCerts.length > 0) {
+          if(Object.keys(vsGateways.ingressCerts).length > 0) {
             await plugin.outputCertsStatus.call(this, vsGateways.ingressCerts, ingressPods, cluster.k8sClient)
           }
           await plugin.outputPolicies.call(this, service, cluster.k8sClient)
@@ -190,41 +190,46 @@ const plugin : ActionGroupSpec = {
     this.onStreamOutput && this.onStreamOutput(output)
   },
 
-  async outputCertsStatus(ingressCerts: [[string,  string]], ingressPods: any[], k8sClient: K8sClient) {
-    this.onStreamOutput && this.onStreamOutput([[">Service Ingress Certs"], [JsonUtil.convertObjectToArray(ingressCerts)]])
+  async outputCertsStatus(ingressCerts: any, ingressPods: any[], k8sClient: K8sClient) {
+    const output: ActionOutput = []
+    output.push([">Service Ingress Certs"], [ingressCerts])
 
-    this.onStreamOutput && this.onStreamOutput([[">Service Ingress Certs Deployment Status"]])
+    output.push([">Service Ingress Certs Deployment Status"])
     const certPaths: string[] = []
-    ingressCerts.forEach(pair => {
-      certPaths.push(pair[0].trim())
-      certPaths.push(pair[1].trim())
+    Object.keys(ingressCerts).forEach(key => {
+      const cert = (ingressCerts[key] || "").trim()
+      if(cert.length > 0) {
+        certPaths.push(key)
+        certPaths.push(cert)
+      } else {
+        output.push([key + ": Loaded via SDS"])
+      }
     })
-    for(const pod of ingressPods) {
-      this.onStreamOutput && this.onStreamOutput([[">>Pod: " + pod.name]])
-      try {
-        const certsLoadedOnIngress = _.flatten((await IstioFunctions.getIngressCertsFromPod(pod.name, k8sClient))
-                                      .filter(c => c.cert_chain)
-                                      .map(c => c.cert_chain)
-                                      .map(certChain => certChain instanceof Array ? certChain : [certChain]))
+    if(certPaths.length > 0) {
+      for(const pod of ingressPods) {
+        output.push([">>Pod: " + pod.name])
+        try {
+          const certsLoadedOnIngress = _.flatten((await IstioFunctions.getIngressCertsFromPod(pod.name, k8sClient))
+                                        .filter(c => c.cert_chain)
+                                        .map(c => c.cert_chain)
+                                        .map(certChain => certChain instanceof Array ? certChain : [certChain]))
 
-        for(const path of certPaths) {
-          const result = (await K8sFunctions.podExec("istio-system", pod.name, "istio-proxy", k8sClient, ["ls", path])).trim()
-          const isPathFound = path === result
-          const certLoadedInfo = certsLoadedOnIngress.filter(info => (info.path || info).includes(path))[0]
-          const isPrivateKey = path.indexOf(".key") > 0
-          const certStatusOutput = {}
-          certStatusOutput[path] = []
-          certStatusOutput[path].push((isPathFound ? "Present " : "NOT present ") + "on the pod filesystem")
-          if(!isPrivateKey) {
-            certStatusOutput[path].push("Loaded on pod >> " + 
-                (certLoadedInfo ? JSON.stringify(certLoadedInfo) : "NOT loaded on ingress gateway pod"))
+          for(const path of certPaths) {
+            const result = (await K8sFunctions.podExec("istio-system", pod.name, "istio-proxy", k8sClient, ["ls", path])).trim()
+            const isPathFound = path === result
+            const certLoadedInfo = certsLoadedOnIngress.filter(info => (info.path || info).includes(path))[0]
+            const isPrivateKey = path.indexOf(".key") > 0
+            output.push([path + (isPathFound ? " is present " : " is NOT present ") + "on the pod filesystem"])
+            if(!isPrivateKey) {
+              output.push([path + (certLoadedInfo ? " is loaded on pod >> " +JSON.stringify(certLoadedInfo) : " is NOT loaded on ingress gateway pod")])
+            }
           }
-          this.onStreamOutput && this.onStreamOutput([[certStatusOutput]])
+        } catch(error) {
+          output.push(["Failed to check cert status due to error: " + error.message])
         }
-      } catch(error) {
-        this.onStreamOutput && this.onStreamOutput([["Failed to check cert status due to error: " + error.message]])
       }
     }
+    this.onStreamOutput && this.onStreamOutput(output)
   },
 
   async outputPolicies(service: ServiceDetails, k8sClient: K8sClient) {

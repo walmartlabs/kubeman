@@ -52,14 +52,18 @@ export default class IstioFunctions {
             .filter(gateway => gateway.selector.istio === 'egressgateway')
   }
 
-  static getGatewaysForVirtualServices = async (virtualServices: any[], k8sClient: K8sClient, yaml: boolean = false) => {
-    const allGateways = await IstioFunctions.listAllGateways(k8sClient, yaml)
-    return allGateways.filter(g => 
-      virtualServices.filter(vs => vs.gateways)
-      .filter(vs => 
-        vs.gateways.filter(vsg => vsg === g.name || vsg.includes(g.name+".")).length > 0
-      ).length > 0
-    )
+  static getIngressGatewaysForVirtualServices = async (virtualServices: any[], k8sClient: K8sClient, yaml: boolean = false) => {
+    const allGateways = (await IstioFunctions.listAllGateways(k8sClient, yaml))
+                        .filter(g => g.selector && g.selector.istio && g.selector.istio === 'ingressgateway')
+    return virtualServices.map(vs => {
+      return {
+        virtualService: vs,
+        gateways: allGateways.filter(g => vs.gateways && vs.gateways.filter(vsg => 
+                      vsg === g.name && vs.namespace === g.namespace
+                      || vsg === g.name+"."+g.namespace
+                      || vsg.includes(g.name+"."+g.namespace+".")).length > 0)
+      }
+    })
   }
 
   static getGatewaysForFqdn = async (fqdn: string, k8sClient: K8sClient) => {

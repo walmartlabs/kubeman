@@ -20,47 +20,67 @@ export async function outputIngressVirtualServicesAndGatewaysForService(service:
 }
 
 async function outputIngressVirtualServicesAndGateways(virtualServices: any[], k8sClient: K8sClient, output, asGroup: boolean = false) {
-  const gateways = await IstioFunctions.getGatewaysForVirtualServices(virtualServices, k8sClient)
+  const vsGateways = await IstioFunctions.getIngressGatewaysForVirtualServices(virtualServices, k8sClient)
   output.push([(asGroup?">":">>") + "Relevant VirtualServices + Gateways: "])
-  virtualServices.length === 0 && output.push(["No VirtualServices/Gateways"])
-  
-  const ingressCerts: {[key: string] : string} = {}
-  virtualServices.forEach(vs => {
-    const vsGateways = gateways.map(g => {
-      const matchingServers = g.servers
-      .filter(server => server.port && 
-        (vs.http && server.port.protocol === 'HTTP') ||
-        (vs.tls && server.port.protocol === 'HTTPS') ||
-        (vs.tcp && server.port.protocol === 'TCP'))
-      .filter(server => server.hosts && matchSubsetHosts(server.hosts, vs.hosts))
-      if(matchingServers.length > 0) {
-        if(g.selector && g.selector.istio && g.selector.istio === 'ingressgateway') {
-          matchingServers.filter(s => s.tls && s.tls.serverCertificate && s.tls.privateKey)
-            .forEach(s => ingressCerts[s.tls.privateKey]=s.tls.serverCertificate)
-        }
-        const gateway = {...g}
-        g.matchingPorts = _.uniqBy((g.matchingPorts || []).concat(matchingServers.map(s => s.port.number)))
-        return gateway
-      } else {
-        return {}
-      }
-    }).filter(g => g.name)
+  vsGateways.length === 0 && output.push(["No VirtualServices/Gateways"])
 
-    const gateway = vsGateways.length > 0 ? vsGateways[0] : undefined
-    delete vs.yaml
-    const vsTitle = vs.name+"."+vs.namespace
+  const vsGatewayMatchingServers = getVSAndGatewaysWithMatchingServers(vsGateways)
+  const ingressCerts: {[key: string] : string} = {}
+  for(const vsg of vsGatewayMatchingServers) {
+    vsg.matchingServers.filter(s => s.tls && s.tls.serverCertificate && s.tls.privateKey)
+        .forEach(s => ingressCerts[s.tls.privateKey]=s.tls.serverCertificate)
+
+    const sdsCredentials = vsg.matchingServers.filter(s => s.tls && s.tls.credentialName).map(s => s.tls.credentialName)
+    for(const credentialName of sdsCredentials) {
+      const secret = await K8sFunctions.getNamespaceSecret(credentialName, "istio-system", k8sClient)
+      if(secret) {
+        ingressCerts[secret.name+"."+secret.namespace]=""
+      }
+      //const cert = secret && Buffer.from(secret.data.cert)
+      //cert && console.log(cert.toString('base64'))
+    }
+    const gateway = {...vsg.gateway}
+    vsg.gateway.matchingPorts = _.uniqBy((vsg.gateway.matchingPorts || []).concat(vsg.matchingServers.map(s => s.port.number)))
+
+    delete vsg.virtualService.yaml
+    const vsTitle = vsg.virtualService.name+"."+vsg.virtualService.namespace
     const gatewayTitle = gateway ? gateway.name+"."+gateway.namespace : "None"
     output.push([">>>VirtualService: " + vsTitle + (gateway ? " via Gateway: " + gatewayTitle : "")])
     gateway && output.push(["++", "VirtualService: " + vsTitle])
-    output.push([vs])
+    output.push([vsg.virtualService])
     gateway && output.push(["++", "Gateway: " + gatewayTitle]),
     gateway && output.push([gateway])
-  })
+  }
+
   return {
     virtualServices,
-    gateways,
-    ingressCerts: Object.keys(ingressCerts).map(key => [key, ingressCerts[key]])
+    gateways: _.uniqBy(_.flatten(vsGateways.map(vsg => vsg.gateways)), g => g.name+"."+g.namespace),
+    vsGateways,
+    ingressCerts
   }
+}
+
+function getVSAndGatewaysWithMatchingServers(vsGateways: any[]) {
+  const vsGatewayMatchingServers: any[] = []
+  vsGateways.forEach(vsg => {
+      const vs = vsg.virtualService
+      vsg.gateways.forEach(g => {
+        const matchingServers = g.servers
+          .filter(server => server.port && 
+            (vs.http && server.port.protocol === 'HTTP') ||
+            ((vs.http || vs.tls) && server.port.protocol === 'HTTPS') ||
+            (vs.tcp && server.port.protocol === 'TCP'))
+          .filter(server => server.hosts && matchSubsetHosts(server.hosts, vs.hosts))
+        if(matchingServers.length > 0) {
+          vsGatewayMatchingServers.push({
+            virtualService: vs,
+            gateway: g,
+            matchingServers
+          })
+        }
+      })
+  })
+  return vsGatewayMatchingServers
 }
 
 const plugin : ActionGroupSpec = {

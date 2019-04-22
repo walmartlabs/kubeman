@@ -31,7 +31,7 @@ async function createWindow() {
     backgroundColor: '#000',
     width: 1200, 
     height: 1000,
-    icon: path.join(__dirname, 'build/icon-48x48.icns')
+    icon: path.join(__dirname, 'build/icon.icns')
   })
 
   const isMainWindow = windows.length === 0
