@@ -13,6 +13,7 @@ import BlackBox from '../output/blackbox'
 import TableOutput, {TableBox} from '../output/tableBox'
 import {ActionOutput, ActionOutputStyle, ActionOutputCollector, ActionStreamOutputCollector,
         ActionChoiceMaker, Choice, BoundActionAct, BoundAction} from '../actions/actionSpec'
+import ChoiceManager from "../actions/choiceManager"
 
 import styles from './workspace.styles'
 
@@ -182,6 +183,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   onUpdateContext = (context: Context) => {
     this.streamOutput = []
+    ChoiceManager.clear()
     this.setState({context: context, output: []})
   }
 

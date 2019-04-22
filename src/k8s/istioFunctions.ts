@@ -633,7 +633,7 @@ export default class IstioFunctions {
                                   ["curl", "-s", "localhost:8080/debug/adsz"])
     if(result) {
       const pilotCDSData = JSON.parse(result) as any[]
-      const sidecars = pilotCDSData.filter(cds => cds.node.startsWith("sidecar~"))
+      const sidecars = pilotCDSData.filter(cds => cds.node.startsWith("sidecar~") || cds.node.startsWith("router~"))
                           .map(cds => cds.node.split("~"))
                           .map(pieces => {
                             const podAndNamespace = pieces[2].split(".")

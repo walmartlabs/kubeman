@@ -35,12 +35,15 @@ export default class ChoiceManager {
     if(this.clearItemsTimer) {
       clearTimeout(this.clearItemsTimer)
     }
-    this.clearItemsTimer = setTimeout(() => {
-      this.items = {}
-      this.useNamespace = true
-      this.cacheKey = undefined
-      this.clearItemsTimer = undefined
-    }, this.clearSelectionsDelay)
+    this.clearItemsTimer = setTimeout(() => this.clear.bind(this), this.clearSelectionsDelay)
+  }
+
+  static clear() {
+    this.items = {}
+    this.useNamespace = true
+    this.showChoiceSubItems = true
+    this.cacheKey = undefined
+    this.clearItemsTimer = undefined
   }
 
   static createChoices(items, namespace, cluster, ...fields) {
