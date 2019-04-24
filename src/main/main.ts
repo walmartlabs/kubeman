@@ -1,5 +1,3 @@
-'use strict'
-
 import { app, BrowserWindow, Menu } from 'electron'
 import installExtension, { REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS } from 'electron-devtools-installer';
 import fs from 'fs'

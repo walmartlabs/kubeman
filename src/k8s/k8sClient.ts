@@ -4,9 +4,9 @@ import Yaml from 'js-yaml'
 import jp from 'jsonpath'
 import fs from 'fs'
 import * as k8s from 'kubernetes-client'
-import {Cluster} from "./k8sObjectTypes";
+import {Cluster} from "./k8sObjectTypes"
 
-const homedir = os.homedir();
+const homedir = os.homedir()
 const defaultConfig = k8s.config.fromKubeconfig()
 
 export interface K8sClient extends k8s.ApiV1 {
@@ -19,7 +19,7 @@ export interface K8sClient extends k8s.ApiV1 {
 export type K8sAdminClient = k8s.Api
 
 function getUserKubeConfig() {
-  return Yaml.safeLoad(fs.readFileSync(homedir + '/.kube/config', 'utf8'));
+  return Yaml.safeLoad(fs.readFileSync(homedir + '/.kube/config', 'utf8'))
 }
 
 export async function getClientForCluster(cluster: Cluster) {

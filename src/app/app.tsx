@@ -1,19 +1,13 @@
 import {ipcRenderer as ipc, webFrame, screen} from 'electron'
 import React, { Component } from 'react'
 import ReactDOM from 'react-dom'
-
 import { withStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
-
-import Typography from '@material-ui/core/Typography';
-
+import { CssBaseline } from '@material-ui/core'
 import '../logger/client'
 import StyledWorkspace, {Workspace} from '../workspace/workspace'
 import {appTheme} from '../theme/theme'
-
 import 'roboto-fontface/css/roboto/roboto-fontface.css'
 import 'typeface-roboto/index.css'
-import { CssBaseline } from '@material-ui/core';
-
 import styles from './app.styles'
 
 
@@ -22,12 +16,6 @@ window["__MUI_USE_NEXT_TYPOGRAPHY_VARIANTS__"] = true
 const darkTheme = createMuiTheme(appTheme.darkTheme)
 const lightTheme = createMuiTheme(appTheme.lightTheme)
 global['useDarkTheme'] = false
-
-
-const TabContainer = (props) =>
-    <Typography component="div" style={{ padding: 8 * 3, color: 'white'  }}>
-      {props.children}
-    </Typography>
 
 
 interface IState {
@@ -130,7 +118,7 @@ class extends Component<IProps, IState> {
   }
 })
 
-ReactDOM.render(<App/>, document.getElementById("app"));
+ReactDOM.render(<App/>, document.getElementById("app"))
 
 window.addEventListener('contextmenu', (event) => {
   event.preventDefault()

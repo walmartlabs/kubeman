@@ -176,6 +176,7 @@ const plugin : ActionGroupSpec = {
             }
           }
           if(drConflictsItems.length > 0) {
+            drConflictsItems = _.uniqBy(drConflictsItems)
             drConflicts.push(drConflictsItems)
           } else {//if(!portStatus.client.conflict && clientNamespacesWithConflicts.length === 0) {
             drConflicts.push("No Conflicts")

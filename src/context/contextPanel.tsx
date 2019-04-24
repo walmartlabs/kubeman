@@ -116,11 +116,10 @@ class ContextPanel extends React.Component<IProps, IState> {
               <Grid item xs={12} md={12} className={classes.gridItem}>
                 <Card className={classes.card}>
                   <CardContent>
-                    Select clusters, namespaces and pods to build the context to work with.
+                    Select clusters and namespaces to build the context to work with.
                   </CardContent>
                 </Card>
               </Grid>
-
           }
           </Grid>  
         </Paper>
