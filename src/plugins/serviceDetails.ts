@@ -2,7 +2,7 @@ import {ActionGroupSpec, ActionContextOrder, ActionContextType, ActionOutputStyl
 import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
 import K8sFunctions from '../k8s/k8sFunctions'
 import K8sPluginHelper from '../k8s/k8sPluginHelper'
-import IstioFunctions from '../k8s/istioFunctions';
+import { PodDetails } from '../k8s/k8sObjectTypes';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
@@ -37,7 +37,7 @@ const plugin : ActionGroupSpec = {
           output.push([">>Backing Pods"])
           const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(service, cluster.k8sClient, true)
           if(podsAndContainers && podsAndContainers.pods && podsAndContainers.pods.length > 0) {
-            podsAndContainers.pods.forEach(pod => {
+            (podsAndContainers.pods as PodDetails[]).forEach(pod => {
               output.push([{
                 name: pod.name,
                 labels: pod.labels,
