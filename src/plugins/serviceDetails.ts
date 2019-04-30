@@ -2,6 +2,7 @@ import {ActionGroupSpec, ActionContextOrder, ActionContextType, ActionOutputStyl
 import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
 import K8sFunctions from '../k8s/k8sFunctions'
 import K8sPluginHelper from '../k8s/k8sPluginHelper'
+import IstioFunctions from '../k8s/istioFunctions';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
@@ -24,21 +25,20 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
         }
-        this.onOutput && this.onOutput([["Keys", "Data"]], ActionOutputStyle.Table)
+        this.onOutput && this.onOutput([["Service Details"]], ActionOutputStyle.Table)
 
         for(const selection of selections) {
+          const service = selection.item
           const cluster = actionContext.getClusters().filter(c => c.name === selections[0].cluster)[0]
           const output: ActionOutput = []
-          output.push([">" + selection.title, ""])
-          output.push(["cluster", selection.cluster])
-          const service = selection.item
-          if(service) {
-            Object.keys(service).forEach((key, index) => output.push([key, service[key] ||'']))
-          }
+          output.push([">" + service.name+"."+service.namespace + " @ " + cluster.name])
+          output.push([">>Service Yaml"], [service.yaml])
+
+          output.push([">>Backing Pods"])
           const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(service, cluster.k8sClient, true)
-          if(podsAndContainers && podsAndContainers.pods) {
-            const pods = (podsAndContainers.pods as any[]).map(pod => {
-              return {
+          if(podsAndContainers && podsAndContainers.pods && podsAndContainers.pods.length > 0) {
+            podsAndContainers.pods.forEach(pod => {
+              output.push([{
                 name: pod.name,
                 labels: pod.labels,
                 node: pod.nodeName,
@@ -48,9 +48,10 @@ const plugin : ActionGroupSpec = {
                 startTime: pod.startTime,
                 conditions: pod.conditions,
                 containerStatuses: pod.containerStatuses
-              }
+              }])
             })
-            output.push(["Backing Pods", pods])
+          } else {
+            output.push(["No pods found for the service"])
           }
           this.onStreamOutput && this.onStreamOutput(output)
         }

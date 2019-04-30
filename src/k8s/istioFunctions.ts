@@ -37,80 +37,120 @@ export default class IstioFunctions {
   }
 
   static listAllGateways = async (k8sClient: K8sClient, yaml: boolean = true) => {
-    const keys = ["selector", "servers"]
-    yaml && keys.push("yaml")
-    return IstioFunctions.extractResource(await k8sClient.istio.gateways.get(), ...keys) as any[]
+    if(k8sClient.istio) {
+      const keys = ["selector", "servers"]
+      yaml && keys.push("yaml")
+      return IstioFunctions.extractResource(await k8sClient.istio.gateways.get(), ...keys) as any[]
+    } else {
+      return []
+    }
   }
 
   static listAllIngressGateways = async (k8sClient: K8sClient, yaml: boolean = true) => {
-    return (await IstioFunctions.listAllGateways(k8sClient, yaml) as any[])
+    if(k8sClient.istio) {
+      return (await IstioFunctions.listAllGateways(k8sClient, yaml) as any[])
             .filter(gateway => gateway.selector.istio === 'ingressgateway')
+    } else {
+      return []
+    }
   }
 
   static listAllEgressGateways = async (k8sClient: K8sClient, yaml: boolean = true) => {
-    return (await IstioFunctions.listAllGateways(k8sClient, yaml) as any[])
+    if(k8sClient.istio) {
+      return (await IstioFunctions.listAllGateways(k8sClient, yaml) as any[])
             .filter(gateway => gateway.selector.istio === 'egressgateway')
+    } else {
+      return []
+    }
   }
 
   static getIngressGatewaysForVirtualServices = async (virtualServices: any[], k8sClient: K8sClient, yaml: boolean = false) => {
-    const allGateways = (await IstioFunctions.listAllGateways(k8sClient, yaml))
+    if(k8sClient.istio) {
+      const allGateways = (await IstioFunctions.listAllGateways(k8sClient, yaml))
                         .filter(g => g.selector && g.selector.istio && g.selector.istio === 'ingressgateway')
-    return virtualServices.map(vs => {
-      return {
-        virtualService: vs,
-        gateways: allGateways.filter(g => vs.gateways && vs.gateways.filter(vsg => 
-                      vsg === g.name && vs.namespace === g.namespace
-                      || vsg === g.name+"."+g.namespace
-                      || vsg.includes(g.name+"."+g.namespace+".")).length > 0)
-      }
-    })
+      return virtualServices.map(vs => {
+        return {
+          virtualService: vs,
+          gateways: allGateways.filter(g => vs.gateways && vs.gateways.filter(vsg => 
+                        vsg === g.name && vs.namespace === g.namespace
+                        || vsg === g.name+"."+g.namespace
+                        || vsg.includes(g.name+"."+g.namespace+".")).length > 0)
+        }
+      })
+    } else {
+      return []
+    }
   }
 
   static getGatewaysForFqdn = async (fqdn: string, k8sClient: K8sClient) => {
-    FqdnMatcher.init(fqdn)
-    return (await IstioFunctions.listAllGateways(k8sClient, true))
+    if(k8sClient.istio) {
+      FqdnMatcher.init(fqdn)
+      return (await IstioFunctions.listAllGateways(k8sClient, true))
             .filter(g => g.servers.filter(server => 
               server.hosts.filter(host => FqdnMatcher.matchDomain(host)).length > 0
             ).length > 0)
+    } else {
+      return []
+    }
   }
 
   static getGatewaysForPorts = async (ports: number[], k8sClient: K8sClient) => {
-    const allGateways = await IstioFunctions.listAllGateways(k8sClient, false)
-    return allGateways.filter(g => {
-      const gatewayPorts = g.servers.map(s => s.port.number)
-              .filter(p => ports.includes(p))
-      if(gatewayPorts.length > 0) {
-        g.gatewayPorts = gatewayPorts
-        return true
-      }
-      return false
-    })
+    if(k8sClient.istio) {
+      const allGateways = await IstioFunctions.listAllGateways(k8sClient, false)
+      return allGateways.filter(g => {
+        const gatewayPorts = g.servers.map(s => s.port.number)
+                .filter(p => ports.includes(p))
+        if(gatewayPorts.length > 0) {
+          g.gatewayPorts = gatewayPorts
+          return true
+        }
+        return false
+      })
+    } else {
+      return []
+    }
   }
 
   static getNamespaceGateways = async (namespace: string, k8sClient: K8sClient) => {
-    const allGateways = await IstioFunctions.listAllGateways(k8sClient, true)
-    return allGateways.filter(g => g.namespace === namespace)
+    if(k8sClient.istio) {
+      const allGateways = await IstioFunctions.listAllGateways(k8sClient, true)
+      return allGateways.filter(g => g.namespace === namespace)
+    } else {
+      return []
+    }
   }
 
   static listAllVirtualServices = async (k8sClient: K8sClient, yaml: boolean = true) => {
-    const keys = ["gateways", "hosts", "http", "tls", "tcp"]
-    yaml && keys.push("yaml")
-    return IstioFunctions.extractResource(await k8sClient.istio.virtualservices.get(), ...keys) as any[]
+    if(k8sClient.istio) {
+      const keys = ["gateways", "hosts", "http", "tls", "tcp"]
+      yaml && keys.push("yaml")
+      return IstioFunctions.extractResource(await k8sClient.istio.virtualservices.get(), ...keys) as any[]
+    } else {
+      return []
+    }
   }
 
   static listAllIngressVirtualServices = async (k8sClient: K8sClient, yaml: boolean = true) => {
-    const ingressGateways = (await IstioFunctions.listAllIngressGateways(k8sClient))
+    if(k8sClient.istio) {
+      const ingressGateways = (await IstioFunctions.listAllIngressGateways(k8sClient))
                             .map(g => g.name)
-    return (await IstioFunctions.listAllVirtualServices(k8sClient, yaml))
-            .filter(v => v.gateways && v.gateways.filter(g => 
-              ingressGateways.filter(ig => g === ig || g.includes(ig+".")).length > 0).length > 0)
+      return (await IstioFunctions.listAllVirtualServices(k8sClient, yaml))
+              .filter(v => v.gateways && v.gateways.filter(g => 
+                ingressGateways.filter(ig => g === ig || g.includes(ig+".")).length > 0).length > 0)
+    } else {
+      return []
+    }
   }
 
   static listAllEgressVirtualServices = async (k8sClient: K8sClient, yaml: boolean = true) => {
-    const egressGateways = (await IstioFunctions.listAllEgressGateways(k8sClient))
+    if(k8sClient.istio) {
+      const egressGateways = (await IstioFunctions.listAllEgressGateways(k8sClient))
                             .map(g => g.name)
-    return (await IstioFunctions.listAllVirtualServices(k8sClient, yaml))
-            .filter(v => v.gateways && v.gateways.filter(g => egressGateways.includes(g)).length > 0)
+      return (await IstioFunctions.listAllVirtualServices(k8sClient, yaml))
+              .filter(v => v.gateways && v.gateways.filter(g => egressGateways.includes(g)).length > 0)
+    } else {
+      return []
+    }
   }
 
   static getVirtualServices = async (cluster, namespace, k8sClient) => {
@@ -139,14 +179,18 @@ export default class IstioFunctions {
   }
 
   static getVirtualServicesForService = async (service: string, namespace: string, k8sClient: K8sClient) => {
-    const allVirtualServices = await IstioFunctions.listAllVirtualServices(k8sClient)
-    const httpVirtualServices = IstioFunctions.filterVirtualServicesByRouteForService(
-                                allVirtualServices, service, namespace, 'http')
-    const tlsVirtualServices = IstioFunctions.filterVirtualServicesByRouteForService(
-                                allVirtualServices, service, namespace, 'tls')
-    const tcpVirtualServices = IstioFunctions.filterVirtualServicesByRouteForService(
-                                allVirtualServices, service, namespace, 'tcp')
-    return getUniqueResources(httpVirtualServices, tlsVirtualServices, tcpVirtualServices)
+    if(k8sClient.istio) {
+      const allVirtualServices = await IstioFunctions.listAllVirtualServices(k8sClient)
+      const httpVirtualServices = IstioFunctions.filterVirtualServicesByRouteForService(
+                                  allVirtualServices, service, namespace, 'http')
+      const tlsVirtualServices = IstioFunctions.filterVirtualServicesByRouteForService(
+                                  allVirtualServices, service, namespace, 'tls')
+      const tcpVirtualServices = IstioFunctions.filterVirtualServicesByRouteForService(
+                                  allVirtualServices, service, namespace, 'tcp')
+      return getUniqueResources(httpVirtualServices, tlsVirtualServices, tcpVirtualServices)
+    } else {
+      return []
+    }
   }
 
   static filterVirtualServicesByRouteForFqdn(virtualServices: any[], fqdn: string, routeType: string) {
@@ -165,58 +209,68 @@ export default class IstioFunctions {
   }
 
   static getVirtualServicesForFqdn = async (fqdn: string, k8sClient: K8sClient) => {
-    FqdnMatcher.init(fqdn)
-    const allVirtualServices = await IstioFunctions.listAllVirtualServices(k8sClient)
-    const vsMatchingHosts = IstioFunctions.filterVirtualServicesByHostsForFqdn(allVirtualServices, fqdn)
-    const httpVirtualServices = IstioFunctions.filterVirtualServicesByRouteForFqdn(
-                                allVirtualServices, fqdn, 'http')
-    const tlsVirtualServices = IstioFunctions.filterVirtualServicesByRouteForFqdn(
-                                allVirtualServices, fqdn, 'tls')
-    const tcpVirtualServices = IstioFunctions.filterVirtualServicesByRouteForFqdn(
-                                allVirtualServices, fqdn, 'tcp')
-    return getUniqueResources(vsMatchingHosts, httpVirtualServices, tlsVirtualServices, tcpVirtualServices)
+    if(k8sClient.istio) {
+      FqdnMatcher.init(fqdn)
+      const allVirtualServices = await IstioFunctions.listAllVirtualServices(k8sClient)
+      const vsMatchingHosts = IstioFunctions.filterVirtualServicesByHostsForFqdn(allVirtualServices, fqdn)
+      const httpVirtualServices = IstioFunctions.filterVirtualServicesByRouteForFqdn(
+                                  allVirtualServices, fqdn, 'http')
+      const tlsVirtualServices = IstioFunctions.filterVirtualServicesByRouteForFqdn(
+                                  allVirtualServices, fqdn, 'tls')
+      const tcpVirtualServices = IstioFunctions.filterVirtualServicesByRouteForFqdn(
+                                  allVirtualServices, fqdn, 'tcp')
+      return getUniqueResources(vsMatchingHosts, httpVirtualServices, tlsVirtualServices, tcpVirtualServices)
+    } else {
+      return []
+    }
   }
 
   static getVirtualServicesForPorts = async (ports: number[], k8sClient: K8sClient) => {
     const portsOutput = {}
-    const matchRoutePorts = (port, routeConfigs) => {
-      const matchPorts = _.flatten(routeConfigs.map(rc => rc.match ? rc.match.map(m => m.port) : [])).filter(p => p)
-      const matchesMatchPort = matchPorts.includes(port)
-      const destinationPorts = _.flatten(routeConfigs.map(rc => rc.route ? rc.route.map(r => 
-              r.destination && r.destination.port && r.destination.port.number) : [])).filter(p => p)
-      const matchesDestPort = destinationPorts.includes(port)
+    if(k8sClient.istio) {
+      const matchRoutePorts = (port, routeConfigs) => {
+        const matchPorts = _.flatten(routeConfigs.map(rc => rc.match ? rc.match.map(m => m.port) : [])).filter(p => p)
+        const matchesMatchPort = matchPorts.includes(port)
+        const destinationPorts = _.flatten(routeConfigs.map(rc => rc.route ? rc.route.map(r => 
+                r.destination && r.destination.port && r.destination.port.number) : [])).filter(p => p)
+        const matchesDestPort = destinationPorts.includes(port)
 
-      if(matchesDestPort) {
-        portsOutput[port].matchPorts = _.uniqBy(portsOutput[port].matchPorts.concat(matchPorts))
-        if(!portsOutput[port].destinationPorts.includes(port)) {
-          portsOutput[port].destinationPorts.push(port)
+        if(matchesDestPort) {
+          portsOutput[port].matchPorts = _.uniqBy(portsOutput[port].matchPorts.concat(matchPorts))
+          if(!portsOutput[port].destinationPorts.includes(port)) {
+            portsOutput[port].destinationPorts.push(port)
+          }
         }
-      }
-      if(matchesMatchPort) {
-        portsOutput[port].destinationPorts = _.uniqBy(portsOutput[port].destinationPorts.concat(destinationPorts))
-        if(!portsOutput[port].matchPorts.includes(port)) {
-          portsOutput[port].matchPorts.push(port)
+        if(matchesMatchPort) {
+          portsOutput[port].destinationPorts = _.uniqBy(portsOutput[port].destinationPorts.concat(destinationPorts))
+          if(!portsOutput[port].matchPorts.includes(port)) {
+            portsOutput[port].matchPorts.push(port)
+          }
         }
+        return matchesMatchPort || matchesDestPort
       }
-      return matchesMatchPort || matchesDestPort
-    }
 
-    const allVirtualServices = await IstioFunctions.listAllVirtualServices(k8sClient, false)
-    ports.forEach(port => {
-      portsOutput[port] = {matchPorts: [], destinationPorts: [], vs: []}
-      portsOutput[port].vs = allVirtualServices.filter(vs => {
-        const matchHttp = vs.http && matchRoutePorts(port, vs.http)
-        const matchTls = vs.tls && matchRoutePorts(port, vs.tls)
-        const matchTcp = vs.tcp && matchRoutePorts(port, vs.tcp)
-        return matchHttp || matchTls || matchTcp
+      const allVirtualServices = await IstioFunctions.listAllVirtualServices(k8sClient, false)
+      ports.forEach(port => {
+        portsOutput[port] = {matchPorts: [], destinationPorts: [], vs: []}
+        portsOutput[port].vs = allVirtualServices.filter(vs => {
+          const matchHttp = vs.http && matchRoutePorts(port, vs.http)
+          const matchTls = vs.tls && matchRoutePorts(port, vs.tls)
+          const matchTcp = vs.tcp && matchRoutePorts(port, vs.tcp)
+          return matchHttp || matchTls || matchTcp
+        })
       })
-    })
+    }
     return portsOutput
   }
 
   static getNamespaceVirtualServices = async (namespace: string, k8sClient: K8sClient) => {
-    const allVirtualServices = await IstioFunctions.listAllVirtualServices(k8sClient, true)
-    return allVirtualServices.filter(vs => vs.namespace === namespace)
+    if(k8sClient.istio) {
+      const allVirtualServices = await IstioFunctions.listAllVirtualServices(k8sClient, true)
+      return allVirtualServices.filter(vs => vs.namespace === namespace)
+    } else {
+      return []
+    }
   }
 
   static listAllSidecarResources = async (k8sClient: K8sClient) => {
@@ -239,15 +293,19 @@ export default class IstioFunctions {
   }
 
   static getServiceEgressSidecarResources = async (service: ServiceDetails, k8sClient: K8sClient) => {
-    const allSidecarResources = await IstioFunctions.listAllSidecarResources(k8sClient)
-    const nsSidecarResources = allSidecarResources.filter(sc => sc.namespace === service.namespace)
-    const serviceSidecarResources = nsSidecarResources.filter(sc => 
-      sc.workloadSelector && sc.workloadSelector.labels 
-      && matchObjects(sc.workloadSelector.labels, service.selector))
-    if(serviceSidecarResources.length > 0) {
-      return serviceSidecarResources
+    if(k8sClient.istio) {
+      const allSidecarResources = await IstioFunctions.listAllSidecarResources(k8sClient)
+      const nsSidecarResources = allSidecarResources.filter(sc => sc.namespace === service.namespace)
+      const serviceSidecarResources = nsSidecarResources.filter(sc => 
+        sc.workloadSelector && sc.workloadSelector.labels 
+        && matchObjects(sc.workloadSelector.labels, service.selector))
+      if(serviceSidecarResources.length > 0) {
+        return serviceSidecarResources
+      } else {
+        return nsSidecarResources.filter(sc => !sc.workloadSelector)
+      }
     } else {
-      return nsSidecarResources.filter(sc => !sc.workloadSelector)
+      return []
     }
   }
 
@@ -269,21 +327,33 @@ export default class IstioFunctions {
   }
 
   static getServiceIncomingSidecarResources = async (service: ServiceDetails, k8sClient: K8sClient) => {
-    FqdnMatcher.initWithService(service.name, service.namespace)
-    const allSidecarResources = await IstioFunctions.listAllSidecarResources(k8sClient)
-    return allSidecarResources.filter(sc => IstioFunctions.matchSidecarEgressHost(sc, true))
+    if(k8sClient.istio) {
+      FqdnMatcher.initWithService(service.name, service.namespace)
+      const allSidecarResources = await IstioFunctions.listAllSidecarResources(k8sClient)
+      return allSidecarResources.filter(sc => IstioFunctions.matchSidecarEgressHost(sc, true))
+    } else {
+      return []
+    }
   }
 
   static getSidecarResourcesForFqdn = async (fqdn: string, k8sClient: K8sClient) => {
-    FqdnMatcher.init(fqdn)
-    const allSidecarResources = await IstioFunctions.listAllSidecarResources(k8sClient)
-    return allSidecarResources.filter(sc => 
-      FqdnMatcher.matchNamespace(sc.namespace) || IstioFunctions.matchSidecarEgressHost(sc, false)
-    )
+    if(k8sClient.istio) {
+      FqdnMatcher.init(fqdn)
+      const allSidecarResources = await IstioFunctions.listAllSidecarResources(k8sClient)
+      return allSidecarResources.filter(sc => 
+        FqdnMatcher.matchNamespace(sc.namespace) || IstioFunctions.matchSidecarEgressHost(sc, false)
+      )
+    } else {
+      return []
+    }
   }
 
   static listAllDestinationRules = async (k8sClient: K8sClient) => {
-    return IstioFunctions.extractResource(await k8sClient.istio.destinationrules.get(), "yaml") as any[]
+    if(k8sClient.istio) {
+      return IstioFunctions.extractResource(await k8sClient.istio.destinationrules.get(), "yaml") as any[]
+    } else {
+      return []
+    }
   }
 
   static extractDestinationRules(result) {
@@ -291,104 +361,168 @@ export default class IstioFunctions {
   }
 
   static getServiceDestinationRules = async (service: ServiceDetails, k8sClient: K8sClient) => {
-    FqdnMatcher.initWithService(service.name, service.namespace)
-    const allDestinationRules = IstioFunctions.extractDestinationRules(await k8sClient.istio.destinationrules.get())
-    const applicableDestinationRules = allDestinationRules.filter(r => FqdnMatcher.matchHost(r.host))
-    return applicableDestinationRules
+    if(k8sClient.istio) {
+      FqdnMatcher.initWithService(service.name, service.namespace)
+      const allDestinationRules = IstioFunctions.extractDestinationRules(await k8sClient.istio.destinationrules.get())
+      const applicableDestinationRules = allDestinationRules.filter(r => FqdnMatcher.matchHost(r.host))
+      return applicableDestinationRules
+    } else {
+      return []
+    }
   }
 
   static getClientNamespaceDestinationRules = async (namespace: string, k8sClient: K8sClient) => {
-    return (IstioFunctions.extractDestinationRules(await k8sClient.istio.destinationrules.get()))
+    if(k8sClient.istio) {
+      return (IstioFunctions.extractDestinationRules(await k8sClient.istio.destinationrules.get()))
             .filter(dr => dr.namespace === namespace)
+    } else {
+      return []
+    }
   }
 
   static getNamespaceDestinationRules = async (namespace: string, k8sClient: K8sClient) => {
-    return (await IstioFunctions.listAllDestinationRules(k8sClient))
+    if(k8sClient.istio) {
+      return (await IstioFunctions.listAllDestinationRules(k8sClient))
             .filter(dr => dr.namespace === namespace)
+    } else {
+      return []
+    }
   }
 
   static getDestinationRulesForFqdn = async (fqdn: string, k8sClient: K8sClient) => {
-    FqdnMatcher.init(fqdn)
-    return (await IstioFunctions.listAllDestinationRules(k8sClient))
-            .filter(dr => FqdnMatcher.matchDomain(dr.yaml.spec.host))
+    if(k8sClient.istio) {
+      FqdnMatcher.init(fqdn)
+      return (await IstioFunctions.listAllDestinationRules(k8sClient))
+              .filter(dr => FqdnMatcher.matchDomain(dr.yaml.spec.host))
+    } else {
+      return []
+    }
   }
 
   static listAllServiceEntries = async (k8sClient: K8sClient, yaml: boolean = true) => {
-    const fields = ["hosts", "addresses", "ports", "location", "resolution", "endpoints"]
-    yaml && fields.push("yaml")
-    return IstioFunctions.extractResource(await k8sClient.istio.serviceentries.get(), ...fields) as any[]
+    if(k8sClient.istio) {
+      const fields = ["hosts", "addresses", "ports", "location", "resolution", "endpoints"]
+      yaml && fields.push("yaml")
+      return IstioFunctions.extractResource(await k8sClient.istio.serviceentries.get(), ...fields) as any[]
+    } else {
+      return []
+    }
   }
 
   static getNamespaceServiceEntries = async (namespace: string, k8sClient: K8sClient) => {
-    return (await IstioFunctions.listAllServiceEntries(k8sClient))
+    if(k8sClient.istio) {
+      return (await IstioFunctions.listAllServiceEntries(k8sClient))
             .filter(se => se.namespace === namespace)
+    } else {
+      return []
+    }
   }
 
   static getServiceServiceEntries = async (service: ServiceDetails, k8sClient: K8sClient) => {
-    FqdnMatcher.initWithService(service.name, service.namespace)
-    const allServiceEntries = await IstioFunctions.listAllServiceEntries(k8sClient, false)
-    return allServiceEntries.filter(se => 
-      se.hosts && se.hosts.filter(host => FqdnMatcher.matchHost(host)).length > 0
-      || se.endpoints && se.endpoints.filter(e => FqdnMatcher.matchHost(e.address)).length > 0
-    )
+    if(k8sClient.istio) {
+      FqdnMatcher.initWithService(service.name, service.namespace)
+      const allServiceEntries = await IstioFunctions.listAllServiceEntries(k8sClient, false)
+      return allServiceEntries.filter(se => 
+        se.hosts && se.hosts.filter(host => FqdnMatcher.matchHost(host)).length > 0
+        || se.endpoints && se.endpoints.filter(e => FqdnMatcher.matchHost(e.address)).length > 0
+      )
+    } else {
+      return []
+    }
   }
 
   static getServiceEntriesForFqdn = async (fqdn: string, k8sClient: K8sClient) => {
-    FqdnMatcher.init(fqdn)
-    return (await IstioFunctions.listAllServiceEntries(k8sClient, true))
-      .filter(se =>
-        se.hosts && se.hosts.filter(host => FqdnMatcher.matchDomain(host)).length > 0
-        || se.endpoints && se.endpoints.filter(e => FqdnMatcher.matchDomain(e.address)).length > 0)
+    if(k8sClient.istio) {
+      FqdnMatcher.init(fqdn)
+      return (await IstioFunctions.listAllServiceEntries(k8sClient, true))
+        .filter(se =>
+          se.hosts && se.hosts.filter(host => FqdnMatcher.matchDomain(host)).length > 0
+          || se.endpoints && se.endpoints.filter(e => FqdnMatcher.matchDomain(e.address)).length > 0)
+    } else {
+      return []
+    }
   }
 
   static listAllEnvoyFilters = async (k8sClient: K8sClient) => {
-    return IstioFunctions.extractResource(await k8sClient.istio.envoyfilters.get(),
+    if(k8sClient.istio) {
+      return IstioFunctions.extractResource(await k8sClient.istio.envoyfilters.get(),
                                 "workloadLabels", "filters", "yaml") as any[]
+    } else {
+      return []
+    }
   }
 
   static listAllPolicies = async (k8sClient: K8sClient, yaml: boolean = true) => {
-    const fields = ["targets", "peers", "peerIsOptional", "origins", 
+    if(k8sClient.istio) {
+      const fields = ["targets", "peers", "peerIsOptional", "origins", 
                     "originIsOptional", "principalBinding"]
-    yaml && fields.push("yaml")
-    return IstioFunctions.extractResource(await k8sClient.istio.policies.get(), ...fields) as any[]
+      yaml && fields.push("yaml")
+      return IstioFunctions.extractResource(await k8sClient.istio.policies.get(), ...fields) as any[]
+    } else {
+      return []
+    }
   }
 
   static getServicePolicies = async (service: ServiceDetails, k8sClient: K8sClient) => {
-    const allPolicies = await IstioFunctions.listAllPolicies(k8sClient, false)
-    return allPolicies.filter(p => 
-      (p.name === "default" && p.namespace === service.namespace && !p.targets)
-      || 
-      (p.targets && p.targets.filter(target => 
-          target.name === service.name || target.name.includes(service+".")).length > 0)
-    )
+    if(k8sClient.istio) {
+      const allPolicies = await IstioFunctions.listAllPolicies(k8sClient, false)
+      return allPolicies.filter(p => 
+        (p.name === "default" && p.namespace === service.namespace && !p.targets)
+        || 
+        (p.targets && p.targets.filter(target => 
+            target.name === service.name || target.name.includes(service+".")).length > 0)
+      )
+    } else {
+      return []
+    }
   }
 
   static getNamespacePolicies = async (namespace: string, k8sClient: K8sClient) => {
-    return (await IstioFunctions.listAllPolicies(k8sClient, true))
+    if(k8sClient.istio) {
+      return (await IstioFunctions.listAllPolicies(k8sClient, true))
             .filter(p => p.namespace === namespace)
+    } else {
+      return []
+    }
   }
 
   static getPoliciesForFqdn = async (fqdn: string, k8sClient: K8sClient) => {
-    FqdnMatcher.init(fqdn)
-    return (await IstioFunctions.listAllPolicies(k8sClient, true))
-            .filter(p => FqdnMatcher.matchNamespace(p.namespace) &&
-              (!p.targets || p.targets.filter(t => FqdnMatcher.matchService(t.name)).length > 0))
+    if(k8sClient.istio) {
+      FqdnMatcher.init(fqdn)
+      return (await IstioFunctions.listAllPolicies(k8sClient, true))
+              .filter(p => FqdnMatcher.matchNamespace(p.namespace) &&
+                (!p.targets || p.targets.filter(t => FqdnMatcher.matchService(t.name)).length > 0))
+    } else {
+      return []
+    }
   }
 
   static listAllMeshPolicies = async (k8sClient: K8sClient) => {
-    return IstioFunctions.extractResource(await k8sClient.istio.meshpolicies.get(),
+    if(k8sClient.istio) {
+      return IstioFunctions.extractResource(await k8sClient.istio.meshpolicies.get(),
             "targets", "peers", "peerIsOptional", "origins", 
             "originIsOptional", "principalBinding", "yaml") as any[]
+    } else {
+      return []
+    }
   }
 
   static listAllRules = async (k8sClient: K8sClient) => {
-    return IstioFunctions.extractResource(await k8sClient.istio.rules.get(),
+    if(k8sClient.istio) {
+      return IstioFunctions.extractResource(await k8sClient.istio.rules.get(),
                                 "match", "actions", "yaml") as any[]
+    } else {
+      return []
+    }
   }
 
   static getNamespaceRules = async (namespace: string, k8sClient: K8sClient) => {
-    const allRules = await IstioFunctions.listAllRules(k8sClient)
-    return allRules.filter(r => r.namespace === namespace)
+    if(k8sClient.istio) {
+      const allRules = await IstioFunctions.listAllRules(k8sClient)
+      return allRules.filter(r => r.namespace === namespace)
+    } else {
+      return []
+    }
   }
 
   static listAnyResource = async (resource: string, k8sClient: K8sClient) => {

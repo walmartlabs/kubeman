@@ -7,7 +7,6 @@ import * as k8s from 'kubernetes-client'
 import {Cluster} from "./k8sObjectTypes"
 
 const homedir = os.homedir()
-const defaultConfig = k8s.config.fromKubeconfig()
 
 export interface K8sClient extends k8s.ApiV1 {
   apps: k8s.ApisAppsV1

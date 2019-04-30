@@ -481,29 +481,7 @@ export default class K8sFunctions {
     const meta = K8sFunctions.extractMetadata(podTemplate) as Metadata
     return {
       ...meta,
-      activeDeadlineSeconds: podTemplate.spec.activeDeadlineSeconds,
-      affinity: podTemplate.spec.affinity,
-      dnsConfig: podTemplate.spec.dnsConfig,
-      dnsPolicy: podTemplate.spec.dnsPolicy,
-      hostAliases: podTemplate.spec.hostAliases,
-      hostIPC: podTemplate.spec.hostIPC,
-      hostNetwork: podTemplate.spec.hostNetwork,
-      hostPID: podTemplate.spec.hostPID,
-      hostName: podTemplate.spec.hostname,
-      nodeName: podTemplate.spec.nodeName,
-      nodeSelector: podTemplate.spec.nodeSelector,
-      priority: podTemplate.spec.priority,
-      priorityClassName: podTemplate.spec.priorityClassName,
-      readinessGates: podTemplate.spec.readinessGates,
-      restartPolicy: podTemplate.spec.restartPolicy,
-      runtimeClassName: podTemplate.spec.runtimeClassName,
-      schedulerName: podTemplate.spec.schedulerName,
-      securityContext: podTemplate.spec.securityContext,
-      serviceAccount: podTemplate.spec.serviceAccount,
-      serviceAccountName: podTemplate.spec.serviceAccountName,
-      shareProcessNamespace: podTemplate.spec.shareProcessNamespace,
-      subdomain: podTemplate.spec.subdomain,
-      terminationGracePeriodSeconds: podTemplate.spec.terminationGracePeriodSeconds,
+      ...podTemplate.spec
     }
   }
 
@@ -518,13 +496,7 @@ export default class K8sFunctions {
     const initContainerStatuses: ContainerStatus[] = jsonUtil.extractMulti(pod, "$.status.initContainerStatuses[*]", "name", "state", "message")
 
     return {
-      podIP: pod.status.podIP,
-      hostIP: pod.status.hostIP,
-      message: pod.status.message,
-      reason: pod.status.reason,
-      phase: pod.status.phase,
-      qosClass: pod.status.qosClass,
-      startTime: pod.status.startTime,
+      ...pod.status,
       conditions,
       containerStatuses,
       initContainerStatuses,

@@ -8,17 +8,25 @@ import {Cluster, Namespace, PodTemplate} from "./k8sObjectTypes"
 import k8sFunctions from './k8sFunctions'
 
 const homedir = os.homedir();
-const defaultConfig = k8s.config.fromKubeconfig()
 
 function getUserKubeConfig() {
-  return Yaml.safeLoad(fs.readFileSync(homedir + '/.kube/config', 'utf8'));
+  try {
+    return Yaml.safeLoad(fs.readFileSync(homedir + '/.kube/config', 'utf8'))
+  } catch(error) {
+    console.log(error)
+  }
+  return undefined
 }
 
 export function getAllClusters() : Cluster[] {
   const kubeConfig = getUserKubeConfig()
-  return jp.query(kubeConfig, '$.contexts[*].context.cluster')
+  if(kubeConfig) {
+    return jp.query(kubeConfig, '$.contexts[*].context.cluster')
                     .filter((item, index, arr) => arr.indexOf(item) === index)
                     .map(name => new Cluster(name))
+  } else {
+    return []
+  }
 }
 
 function getClientForCluster(cluster: Cluster) {
