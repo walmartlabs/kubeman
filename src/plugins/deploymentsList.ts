@@ -58,10 +58,39 @@ const plugin : ActionGroupSpec = {
       order: 1,
       loadingMessage: "Loading Namespaces...",
 
-      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 10),
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 5),
 
       async act(actionContext: ActionContext) {
-        this.onOutput && this.onOutput([["Deployments List", ""]], ActionOutputStyle.Table)
+        this.onOutput && this.onOutput([["Deployments List"]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
+        const clusters = actionContext.getClusters()
+        const selections = await ChoiceManager.getSelections(actionContext)
+        for(const selection of selections) {
+          const output: ActionOutput = []
+          const cluster = clusters.filter(c => c.name === selection.cluster)[0]
+          const namespace = selection.item as Namespace
+          const deployments = await K8sFunctions.getNamespaceDeployments(cluster.name, namespace.name, cluster.k8sClient)
+
+          output.push([">Namespace " + namespace.name + ", Cluster: " + cluster.name])
+          for(const deployment of deployments) {
+            output.push([">>"+deployment.name], [deployment.yaml])
+          }
+          deployments.length === 0 && output.push([">>>No Deployments"])
+          this.onStreamOutput && this.onStreamOutput(output)
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
+      }
+    },
+    {
+      name: "Container Resource Configs for Deployments",
+      order: 2,
+      loadingMessage: "Loading Namespaces...",
+      showJSON: true,
+
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 5),
+
+      async act(actionContext: ActionContext) {
+        this.onOutput && this.onOutput([["Container Resource Configs for Deployments", ""]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
         const clusters = actionContext.getClusters()
         const selections = await ChoiceManager.getSelections(actionContext)
@@ -74,25 +103,23 @@ const plugin : ActionGroupSpec = {
           output.push([">Namespace " + namespace.name + ", Cluster: " + cluster.name, ""])
           for(const deployment of deployments) {
             output.push([">>"+deployment.name, ""])
-            output.push(["status", deployment.status])
-            output.push(["creationTimestamp", deployment.creationTimestamp])
-            output.push(["labels", deployment.labels])
-            output.push(["annotations", deployment.annotations])
-            output.push(["replicas", deployment.replicas])
-            output.push(["strategy", deployment.strategy])
-          }
+            const containers = deployment.template.containers
+            containers.forEach(c => {
+              output.push([c.name, c.resources])
+            })
+        }
           deployments.length === 0 && output.push([">>>No Deployments", ""])
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
-      },
+      }
     },
     {
       name: "Compare Namespace Deployments",
-      order: 2,
+      order: 3,
       loadingMessage: "Loading Namespaces...",
 
-      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, true, 1, 10),
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, true, 1, 5),
 
       async act(actionContext: ActionContext) {
         const clusters = actionContext.getClusters()

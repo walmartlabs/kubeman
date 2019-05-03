@@ -68,7 +68,7 @@ const plugin : ActionGroupSpec = {
             secrets.forEach(secretIndex => {
               const clusterMap = secretToClusterMap[secretIndex]
               const row = [secretIndexToNameMap[secretIndex]]
-              clusters.forEach(cluster => {
+              clusters.length > 1 && clusters.forEach(cluster => {
                 row.push(clusterMap[cluster.name] ? "Yes" : "No")
               })
               output.push(row)

@@ -8,7 +8,7 @@ async function outputIngressGatewaysAndVirtualServices(k8sClient, output) {
   output.push([">>Gateways"])
   gateways.length === 0 && output.push(["No Gateways"])
   gateways.forEach(g => {
-    output.push([">>>"+g.name])
+    output.push([">>>"+g.name+"."+g.namespace])
     output.push([g])
   })
 
@@ -16,7 +16,7 @@ async function outputIngressGatewaysAndVirtualServices(k8sClient, output) {
   output.push([">>VirtualServices"])
   virtualServices.length === 0 && output.push(["No VirtualServices"])
   virtualServices.forEach(vs => {
-    output.push([">>>"+vs.name])
+    output.push([">>>"+vs.name+"."+vs.namespace])
     output.push([vs])
   })
 }

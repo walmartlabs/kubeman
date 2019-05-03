@@ -152,29 +152,41 @@ export class Cell {
   }
 
   match(filters: string[]) : string[] {
-    const appliedFilters : string[] = []
+    const appliedFilters: Set<string> = new Set
     this.isMatched = false
     this.filteredIndexes = []
+    let negated = false
+    let isExcluded = false;
     filters.map(filter => {
-      if(this.isArray) {
-        (this.content as any[]).forEach((item,index) => {
-          item = JSON.stringify(item).toLowerCase()
-          if(item.includes(filter)) {
-            if(!this.filteredIndexes.includes(index)) {
-              this.filteredIndexes.push(index)
+      const isNot = filter === "!"
+      negated = negated || isNot
+      if(!isNot) {
+        if(this.isArray) {
+          (this.content as any[]).forEach((item,index) => {
+            item = JSON.stringify(item).toLowerCase()
+            const isMatched = item.includes(filter)
+            isExcluded = isExcluded || negated && isMatched
+            if(!isExcluded && (negated && !isMatched || !negated && isMatched)) {
+              negated && appliedFilters.add("!")
+              appliedFilters.add(filter)
+              if(!this.filteredIndexes.includes(index)) {
+                this.filteredIndexes.push(index)
+              }
             }
+          })
+          this.isMatched = !isExcluded && this.filteredIndexes.length > 0
+        } else {
+          const isMatched = this.stringContent.includes(filter)
+          isExcluded = isExcluded || negated && isMatched
+          if(negated && !isMatched || !negated && isMatched) {
+            negated && appliedFilters.add("!")
+            appliedFilters.add(filter)
+            this.isMatched = true
           }
-        })
-        if(this.filteredIndexes.length > 0) {
-          this.isMatched = true
-          appliedFilters.push(filter)
         }
-      } else if(this.stringContent.includes(filter)) {
-        appliedFilters.push(filter)
-        this.isMatched = true
       }
     })
-    return appliedFilters
+    return isExcluded ? [] : Array.from(appliedFilters)
   }
 
   clearFilter() {

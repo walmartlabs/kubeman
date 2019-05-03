@@ -122,7 +122,8 @@ const plugin : ActionGroupSpec = {
     } else {
       const containerPorts = podsAndContainers.containers ? 
               _.flatten((podsAndContainers.containers as ContainerInfo[])
-                  .map(c => c.ports ? c.ports.map(p => p.containerPort) : [])) : []
+                  .map(c => c.ports ? _.flatten(c.ports.map(p => [p.containerPort, p.name])) : [])) : []
+
       const serviceTargetPorts = service.ports.map(p => p.targetPort)
       const invalidServiceTargetPorts = serviceTargetPorts.filter(p => !containerPorts.includes(p))
       output.push([

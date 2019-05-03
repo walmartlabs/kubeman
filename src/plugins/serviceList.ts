@@ -73,13 +73,20 @@ const plugin : ActionGroupSpec = {
 
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
-          this.onStreamOutput && this.onStreamOutput([[">Cluster: "+cluster.name]])
-          const externalServices = await K8sFunctions.getClusterExternalServices(cluster.k8sClient)
           const output: ActionOutput = []
+          output.push([">Cluster: "+cluster.name])
+
+          const externalServices = await K8sFunctions.getClusterExternalServices(cluster.k8sClient)
           externalServices.length === 0 && output.push(["No external services found"])
-          externalServices.forEach(service => {
-            output.push([">>"+service.name+"."+service.namespace], [service.yaml])
-          })
+
+          let clusterNamespaces = await K8sFunctions.getClusterNamespaces(cluster.k8sClient)
+          for(const namespace of clusterNamespaces) {
+            const nsServices = externalServices.filter(s => s.namespace === namespace.name)
+            nsServices.length > 0 && output.push([">>Namespace: "+namespace.name])
+            nsServices.forEach(service => {
+              output.push([">>>"+service.name+"."+service.namespace], [service.yaml])
+            })
+          }
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)

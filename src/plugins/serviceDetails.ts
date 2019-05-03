@@ -38,17 +38,7 @@ const plugin : ActionGroupSpec = {
           const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(service, cluster.k8sClient, true)
           if(podsAndContainers && podsAndContainers.pods && podsAndContainers.pods.length > 0) {
             (podsAndContainers.pods as PodDetails[]).forEach(pod => {
-              output.push([{
-                name: pod.name,
-                labels: pod.labels,
-                node: pod.nodeName,
-                podIP: pod.podIP,
-                hostIP: pod.hostIP,
-                status: pod.phase,
-                startTime: pod.startTime,
-                conditions: pod.conditions,
-                containerStatuses: pod.containerStatuses
-              }])
+              output.push([">>>"+pod.name], [pod.yaml])
             })
           } else {
             output.push(["No pods found for the service"])

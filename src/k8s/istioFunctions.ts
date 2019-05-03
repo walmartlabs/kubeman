@@ -274,7 +274,7 @@ export default class IstioFunctions {
   }
 
   static listAllSidecarResources = async (k8sClient: K8sClient) => {
-    if(k8sClient.istio.sidecars) {
+    if(k8sClient.istio && k8sClient.istio.sidecars) {
       return IstioFunctions.extractResource(await k8sClient.istio.sidecars.get(), 
                       "workloadSelector", "ingress", "egress", "yaml") as any[]
     } else {
@@ -283,7 +283,7 @@ export default class IstioFunctions {
   }
 
   static getNamespaceSidecarResources = async (namespace: string, k8sClient: K8sClient) => {
-    if(k8sClient.istio.sidecars) {
+    if(k8sClient.istio && k8sClient.istio.sidecars) {
       return (IstioFunctions.extractResource(await k8sClient.istio.sidecars.get(), 
                       "workloadSelector", "ingress", "egress", "yaml") as any[])
             .filter(sc => sc.namespace === namespace)

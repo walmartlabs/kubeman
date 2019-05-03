@@ -12,9 +12,9 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "View Pod(s) Status",
-      order: 2,
+      order: 5,
       autoRefreshDelay: 15,
-      loadingMessage: "Loading Pods...",
+      loadingMessage: "Loading Namespaces...",
 
       choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 10),
 
@@ -45,6 +45,44 @@ const plugin : ActionGroupSpec = {
       },
       refresh(actionContext) {
         this.act(actionContext)
+      },
+      clear() {
+        this.onOutput && this.onOutput([["Pod", "Status"]], ActionOutputStyle.Table)
+      }
+    },
+    {
+      name: "View Pod(s) Resource Configurations",
+      order: 6,
+      loadingMessage: "Loading Namespaces...",
+
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 10),
+
+      async act(actionContext) {
+        this.clear && this.clear(actionContext)
+        this.showOutputLoading && this.showOutputLoading(true)
+
+
+        const clusters = actionContext.getClusters()
+        const selections = await ChoiceManager.getSelections(actionContext)
+        for(const cluster of clusters) {
+          this.onStreamOutput && this.onStreamOutput([[">Cluster: "+cluster.name, ""]])
+      
+          let clusterNamespaces = selections.filter(s => s.cluster === cluster.name).map(s => s.item) as Namespace[]
+          for(const namespace of clusterNamespaces) {
+            const output: ActionOutput = []
+            output.push([">>Namespace: "+namespace.name, ""])
+            const pods = await K8sFunctions.getAllPodsForNamespace(namespace.name, cluster.k8sClient)
+            pods.length === 0 && output.push(["No pods found", ""])
+            pods.forEach(pod => {
+              output.push([">>>Pod: "+pod.name+"."+pod.namespace, ""])
+              pod.containers.forEach(c => {
+                output.push([c.name, c.resources])
+              })
+            })
+            this.onStreamOutput && this.onStreamOutput(output)
+          }
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
       },
       clear() {
         this.onOutput && this.onOutput([["Pod", "Status"]], ActionOutputStyle.Table)

@@ -31,14 +31,17 @@ const plugin : ActionGroupSpec = {
                 portHostGatewayMap[gs.server.port.number][host].push(gs.gateway)
               })
             })
+            let count = 0
             Object.keys(portHostGatewayMap).forEach(port => {
               Object.keys(portHostGatewayMap[port]).forEach(host => {
                 if(portHostGatewayMap[port][host].length > 1) {
+                  count++
                   output.push([">>Host: " + host + " in multiple gateways for port " + port])
                   portHostGatewayMap[port][host].forEach(g => output.push([">>>Gateway: " + g.name+"."+g.namespace], [g.yaml]))
                 }
               })
             })
+            count === 0 && output.push(["No overlapping gateways"])
           } else {
             output.push(["Istio not installed"])
           }

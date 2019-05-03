@@ -18,15 +18,14 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const clusters = ChoiceManager.getSelectedClusters(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
-        const allNamespaces = {}
-        for(const ci in clusters) {
-          const cluster  = clusters[ci]
+        const nsClusterMap = {}
+        for(const cluster of clusters) {
           const namespaces = await k8sFunctions.getClusterNamespaces(cluster.k8sClient)
           namespaces.forEach(ns => {
-            if(!allNamespaces[ns.name]) {
-              allNamespaces[ns.name] = []
+            if(!nsClusterMap[ns.name]) {
+              nsClusterMap[ns.name] = []
             }
-            allNamespaces[ns.name][ci]=true
+            nsClusterMap[ns.name][cluster.name]=true
           })
         }
         const output: ActionOutput = []
@@ -35,11 +34,12 @@ const plugin : ActionGroupSpec = {
           headers.push("Cluster: " + cluster.name)
         })
         output.push(headers)
-        const clusterCount = clusters.length
-        Object.keys(allNamespaces).forEach(ns => {
+
+        const namespaces = Object.keys(nsClusterMap).sort()
+        namespaces.forEach(ns => {
           const row: any[] = [ns]
-          for(let i = 0; i < clusterCount; i++) {
-            row.push(allNamespaces[ns][i] ? "Yes" : "No")
+          for(const cluster of clusters) {
+            row.push(nsClusterMap[ns][cluster.name] ? "Yes" : "No")
           }
           output.push(row)
         })
