@@ -205,7 +205,7 @@ export default class ChoiceManager {
     return actionContext.getSelections().map(selection => selection.data)
   }
 
-  static async chooseClusters(actionContext: ActionContext, min: number = 2, max: number = 3) {
+  static async chooseClusters(min: number = 2, max: number = 3, actionContext: ActionContext) {
     const clusters = actionContext.getClusters()
     const context = actionContext.context
     const getCluster = async (cluster) => [context && context.cluster(cluster)]

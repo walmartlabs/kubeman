@@ -17,9 +17,15 @@ const plugin : ActionGroupSpec = {
       order: 11,
 
       logStreams: [],
+      buffer: [],
+      renderTimer: undefined,
 
-      choose: async (actionContext) => ChoiceManager.chooseClusters(actionContext, 1, 1),
+      choose: ChoiceManager.chooseClusters.bind(ChoiceManager, 1, 1),
       
+      renderLog() {
+        this.onStreamOutput && this.onStreamOutput(this.buffer)
+      },
+
       async act(actionContext) {
         const cluster = ChoiceManager.getSelectedClusters(actionContext)[0]
         const ingressPods = await IstioFunctions.getIngressGatewayPods(cluster.k8sClient, true)
@@ -35,12 +41,18 @@ const plugin : ActionGroupSpec = {
         for(const ingressPodAndContainer of ingressPodsAndContainers) {
           const title = ingressPodAndContainer[1] + "@" + ingressPodAndContainer[0]
           const logStream = await K8sFunctions.getPodLog("istio-system", ingressPodAndContainer[0], 
-                                    ingressPodAndContainer[1], cluster.k8sClient, true, 50)
+                                    ingressPodAndContainer[1], cluster.k8sClient, true, 20)
           logStream.onLog(lines => {
             lines = lines.split("\n")
                     .filter(line => line.length > 0)
+                    .slice(-50)
                     .map(line => [title, line])
-            this.onStreamOutput && this.onStreamOutput(lines)
+            this.buffer = this.buffer.length > 50 ? this.buffer.slice(-50) : this.buffer
+            this.buffer = this.buffer.concat(lines)
+            if(this.renderTimer) {
+              clearTimeout(this.renderTimer)
+            }
+            this.renderTimer = setTimeout(this.renderLog.bind(this), 2000)
           })
           this.logStreams.push(logStream)
         }

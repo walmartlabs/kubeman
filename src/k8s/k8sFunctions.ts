@@ -37,10 +37,21 @@ export default class K8sFunctions {
         const meta = K8sFunctions.extractMetadata(item) as Metadata
         const spec = jsonUtil.extract(item, "$.spec", "podCIDR")
         const status = jsonUtil.extract(item, "$.status", "addresses", "conditions", "nodeInfo", "capacity")
+
+        const nodeProxy = k8sClient.nodes(meta.name).proxy('')
+        const connection = nodeProxy['backend'] || nodeProxy['http']
+        let baseUrl = connection ? connection.requestOptions.baseUrl as string : ''
+        const firstIndex = baseUrl.indexOf(":")
+        const lastIndex = baseUrl.lastIndexOf(":")
+        if(firstIndex !== lastIndex) {
+          baseUrl = baseUrl.slice(0,baseUrl.lastIndexOf(":"))
+        }
+
         const node = {
           ...meta,
+          baseUrl,
           network: {
-            ipCIDR: spec.podCIDR,
+            podCIDR: spec.podCIDR,
           },
           condition: {},
           info: {

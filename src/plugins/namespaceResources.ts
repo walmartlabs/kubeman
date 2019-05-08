@@ -1,10 +1,7 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import K8sFunctions from '../k8s/k8sFunctions'
 import IstioFunctions from '../k8s/istioFunctions';
-import ActionContext from '../actions/actionContext';
-import IstioPluginHelper from '../k8s/istioPluginHelper';
 import ChoiceManager from '../actions/choiceManager';
-import { Namespace } from '../k8s/k8sObjectTypes';
 import { K8sClient } from '../k8s/k8sClient';
 
 export async function listResources(type: string, namespace: string, k8sClient: K8sClient,

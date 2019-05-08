@@ -35,12 +35,14 @@ export default class Context {
   private clusterMap: Map<string, [Cluster, ClusterContext]> = new Map
   hasClusters: boolean = false
   hasNamespaces: boolean = false
+  hasIstio: boolean = false
   selections: any[] = []
   cachedSelections = {}
   cacheKey: string = ''
   errorMessage: string = ''
 
   updateFlags() {
+    this.hasIstio = Array.from(this.clusterMap.values()).map(pair => pair[0].hasIstio).reduce((v1,v2) => v1||v2, false)
     this.hasClusters = this.clusterMap.size > 0
     this.hasNamespaces = this.namespaces.length > 0
   }
@@ -70,6 +72,7 @@ export default class Context {
   async addCluster(cluster: Cluster) {
     cluster.clearNamespaces()
     cluster.k8sClient = await k8s.getClientForCluster(cluster)
+    this.hasIstio = this.hasIstio || cluster.hasIstio
     this.clusterMap.set(cluster.name, [cluster, new ClusterContext])
     this.updateFlags()
   }

@@ -13,7 +13,7 @@ const plugin : ActionGroupSpec = {
       name: "Compare Cluster Namespaces",
       order: 11,
       
-      choose: ChoiceManager.chooseClusters,
+      choose: ChoiceManager.chooseClusters.bind(ChoiceManager, 1, 3),
 
       async act(actionContext) {
         const clusters = ChoiceManager.getSelectedClusters(actionContext)

@@ -24,15 +24,7 @@ const plugin : ActionGroupSpec = {
           output.push([">Cluster: " + cluster.name, "", ""])
           const nodes = await k8sFunctions.getClusterNodes(cluster.name, cluster.k8sClient)
           if(nodes.length > 0) {
-            const nodeProxy = cluster.k8sClient.nodes(nodes[0].name).proxy('')
-            const connection = nodeProxy['backend'] || nodeProxy['http']
-            let baseUrl = connection ? connection.requestOptions.baseUrl as string : ''
-            const firstIndex = baseUrl.indexOf(":")
-            const lastIndex = baseUrl.lastIndexOf(":")
-            if(firstIndex !== lastIndex) {
-              baseUrl = baseUrl.slice(0,baseUrl.lastIndexOf(":"))
-            }
-            output.push([">>>Cluster URL: " + baseUrl, "", ""])
+            output.push([">>>Cluster URL: " + nodes[0].baseUrl, "", ""])
           }
           nodes.forEach(node => {
             const nodeInfo = JsonUtil.flattenObject(node.info)

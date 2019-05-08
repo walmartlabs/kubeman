@@ -37,7 +37,7 @@ const plugin : ActionGroupSpec = {
       order: 2,
       name: "Compare All CRDs",
       
-      choose: ChoiceManager.chooseClusters,
+      choose: ChoiceManager.chooseClusters.bind(ChoiceManager, 1, 3),
 
       async act(actionContext) {
         const clusters = ChoiceManager.getSelectedClusters(actionContext)

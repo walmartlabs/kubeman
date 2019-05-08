@@ -13,7 +13,7 @@ const plugin : ActionGroupSpec = {
       order: 12,
       comparisonMap: {},
       
-      choose: ChoiceManager.chooseClusters,
+      choose: ChoiceManager.chooseClusters.bind(ChoiceManager, 2, 2),
       
       async act(actionContext) {
         const clusters = ChoiceManager.getSelectedClusters(actionContext)

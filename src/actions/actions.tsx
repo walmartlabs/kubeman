@@ -249,8 +249,8 @@ export class Actions extends React.Component<IProps, IState> {
     const actionShowNoShow : Map<ActionContextType, boolean> = new Map
     actionShowNoShow.set(ActionContextType.Cluster, context.hasClusters)
     actionShowNoShow.set(ActionContextType.Namespace, context.hasClusters)
-    actionShowNoShow.set(ActionContextType.Istio, context.hasClusters)
-    actionShowNoShow.set(ActionContextType.Other, context.hasClusters)
+    actionShowNoShow.set(ActionContextType.Istio, context.hasIstio)
+    actionShowNoShow.set(ActionContextType.Other, true)
 
     return (
       <MuiThemeProvider theme={theme}>
