@@ -328,7 +328,7 @@ export default class K8sFunctions {
     return secrets
   }
 
-  static getNamespaceSecret = async (secret, namespace, k8sClient) => {
+  static getNamespaceSecret = async (secret: string, namespace: string, k8sClient) => {
     const result = namespace ? await k8sClient.namespaces(namespace).secrets(secret).get() : undefined
     if(result && result.body) {
       const meta = K8sFunctions.extractMetadata(result.body) as Metadata

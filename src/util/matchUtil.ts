@@ -115,7 +115,10 @@ export class FqdnMatcher {
       return serviceFqdn.includes("*")
     } else {
       const service = extractServiceFromFqdn(serviceFqdn)
-      const namespace = extractNamespaceFromFqdn(serviceFqdn)
+      let namespace = extractNamespaceFromFqdn(serviceFqdn)
+      if(namespace === service) {
+        namespace = undefined
+      }
       return this.service === "*" || service === "*" || 
               this.service === service && (!namespace || this.namespace === namespace)
     }

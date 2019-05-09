@@ -119,7 +119,7 @@ export class ActionLoader {
         action.chooseAndAct = () => {
           action.stopped = false
           if(this.checkSelections({
-            checkClusters: true,
+            checkClusters: action.context !== ActionContextType.Other,
             checkNamespaces: false
           })) {
             if(action.choose) {

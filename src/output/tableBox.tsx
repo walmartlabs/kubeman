@@ -85,6 +85,7 @@ interface IProps extends WithStyles<typeof styles> {
   acceptInput: boolean
   allowRefresh: boolean
   scrollMode: boolean
+  rowLimit: number
   onActionTextInput: (text: string) => void
 }
 
@@ -111,7 +112,7 @@ export class TableBox extends React.Component<IProps, IState> {
   componentWillReceiveProps(props: IProps) {
     this.isScrolled = false
     this.lastScrollTop = -1
-    this.outputManager.setOutput(props.output, props.log)
+    this.outputManager.setOutput(props.output, props.log, props.rowLimit)
     if(this.filterText.length > 0 && this.isFilterInput(this.filterText)) {
       this.filter()
     }

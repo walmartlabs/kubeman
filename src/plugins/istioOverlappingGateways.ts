@@ -9,17 +9,18 @@ const plugin : ActionGroupSpec = {
   order: ActionContextOrder.Istio+1,
   actions: [
     {
-      name: "Find Overlapping Gateways",
+      name: "Overlapping Gateways",
       order: 3,
       async act(actionContext) {
         this.onOutput && this.onOutput([["Overlapping Gateways"]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
 
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
           const output: ActionOutput = []
           output.push([">Cluster: " + cluster.name])
           if(cluster.hasIstio) {
-            const gateways = await IstioFunctions.listAllGateways(cluster.k8sClient)
+            const gateways = await IstioFunctions.listAllIngressGateways(cluster.k8sClient)
             const gatewayServerCombis = _.flatten(gateways.map(g => g.servers.map(s => {
               return {gateway: g, server: s}
             })))
@@ -47,6 +48,7 @@ const plugin : ActionGroupSpec = {
           }
           this.onStreamOutput && this.onStreamOutput(output)
         }
+        this.showOutputLoading && this.showOutputLoading(false)
       }
     },
   ]

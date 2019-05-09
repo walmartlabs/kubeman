@@ -187,6 +187,10 @@ export class Actions extends React.Component<IProps, IState> {
     this.currentAction && this.currentAction.clear && this.currentAction.clear()
   }
 
+  onStopAction = () => {
+    this.currentAction && this.currentAction.stop && this.currentAction.stop()
+  }
+
   onFilterChange = (event: ChangeEvent<HTMLInputElement>) => {
     const {actionGroupSpecs} = this.state
     let text = event.target.value
@@ -305,6 +309,14 @@ export class Actions extends React.Component<IProps, IState> {
                   onClick={this.onClearOutput}
               >
               Clear
+            </Button>
+          }
+          {this.currentAction && this.currentAction.stop && 
+            <Button color="primary" variant="contained" size="small"
+                  className={classes.actionButton}
+                  onClick={this.onStopAction}
+              >
+              Stop
             </Button>
           }
           {this.currentAction && 

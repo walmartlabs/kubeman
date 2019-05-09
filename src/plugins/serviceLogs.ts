@@ -3,6 +3,7 @@ import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionSpec, } fro
 import ChoiceManager from '../actions/choiceManager'
 import ActionContext from '../actions/actionContext';
 import { ServiceDetails } from '../k8s/k8sObjectTypes';
+import StreamLogger from '../logger/streamLogger'
 
 
 const plugin : ActionGroupSpec = {
@@ -11,7 +12,6 @@ const plugin : ActionGroupSpec = {
 
   selectedServices: undefined,
   selectedPodAndContainers: undefined,
-  logStreams: [],
 
   getSelectionAsText() {
     if(this.selectedPodAndContainers) {
@@ -40,26 +40,23 @@ const plugin : ActionGroupSpec = {
   },
 
   async getServicePodLogs(actionContext: ActionContext, action: ActionSpec, tail: boolean) {
-    action.onOutput && action.onOutput([["Pod", "Logs for: " + this.getSelectionAsText()]], ActionOutputStyle.Log)
-    const lineCount = (50/this.selectedPodAndContainers.length) < 20 ? 20 : (50/this.selectedPodAndContainers.length)
+    const podRowLimit = Math.ceil((action.outputRowLimit || 200)/this.selectedPodAndContainers.length)
+    action.onOutput && action.onOutput([["Logs for: " + this.getSelectionAsText()]], ActionOutputStyle.Log)
+    StreamLogger.init(action.outputRowLimit, action.onStreamOutput)
+
     for(const pc of this.selectedPodAndContainers) {
       action.showOutputLoading && action.showOutputLoading(true)
+      const title = pc.container+"@"+pc.pod
       const logStream = await k8sFunctions.getPodLog(pc.namespace, 
-                              pc.pod, pc.container, pc.k8sClient, tail, lineCount)
-      logStream.onLog(lines => {
-        lines = lines.split("\n")
-                .filter(line => line.length > 0)
-                .map(line => [pc.container+"@"+pc.pod, line])
-        action.onStreamOutput && action.onStreamOutput(lines)
-      })
-      if(tail) {
-        this.logStreams.push(logStream)
-        action.showOutputLoading && action.showOutputLoading(false)
-      } else {
+                              pc.pod, pc.container, pc.k8sClient, tail, podRowLimit)
+      StreamLogger.captureLogStream(title, logStream)
+      if(!tail) {
         setTimeout(() => {
           action.showOutputLoading && action.showOutputLoading(false)
-          logStream.stop()
-        }, 10000)
+          StreamLogger.stop()
+        }, 5000)
+      } else {
+        action.showOutputLoading && action.showOutputLoading(false)
       }
     }
   },
@@ -69,7 +66,7 @@ const plugin : ActionGroupSpec = {
       action.onOutput && action.onOutput([["No service selected"]], ActionOutputStyle.Text)
       return
     }
-    action.setScrollMode && action.setScrollMode(true)
+    action.setScrollMode && action.setScrollMode(false)
     this.storeSelectedServices(actionContext, action)
     this.selectedPodAndContainers = []
     for(const s of this.selectedServices) {
@@ -115,6 +112,7 @@ const plugin : ActionGroupSpec = {
       order: 40,
       autoRefreshDelay: 60,
       loadingMessage: "Loading Services...",
+      outputRowLimit: 200,
 
       async choose(actionContext) {
         await plugin.performChoose(actionContext, this)
@@ -133,6 +131,7 @@ const plugin : ActionGroupSpec = {
       name: "Tail Service Logs",
       order: 41,
       loadingMessage: "Loading Services...",
+      outputRowLimit: 200,
 
       async choose(actionContext) {
         await plugin.performChoose(actionContext, this)
@@ -141,10 +140,7 @@ const plugin : ActionGroupSpec = {
         await plugin.performAction(actionContext, this, true)
       },
       stop(actionContext) {
-        if(plugin.logStreams.length > 0) {
-          plugin.logStreams.forEach(stream => stream.stop())
-          plugin.logStreams = []
-        }
+        StreamLogger.stop()
       },
       clear() {
         this.onOutput && this.onOutput([["Pod", "Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)

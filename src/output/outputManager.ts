@@ -495,9 +495,11 @@ export default class OutputManager {
   private lastGroupVisibleCount: number = 0
   private lastSubGroupVisibleCount: number = 0
   private lastSectionVisibleCount: number = 0
+  private rowLimit: number = 0
 
-  setOutput(output: ActionOutput, isLog: boolean) {
+  setOutput(output: ActionOutput, isLog: boolean, rowLimit: number = 0) {
     this.clearContent()
+    this.rowLimit = rowLimit
     this.isLog = isLog || false
     this.headers = output && output.length > 0 ? output.slice(0, 1)[0] : []
     this.identifyHealthColumn()
@@ -518,11 +520,13 @@ export default class OutputManager {
 
   appendRows(rows: ActionOutput) {
     let lastRowIndex = this.rows.length-1
+    let appendedCount = 0
     this.rows.forEach(row => row.isFirstAppendedRow = false)
     let isFirstAppendedRow = false
     const currentGroupings = {}
     rows.forEach(rowContent => {
       lastRowIndex++
+      appendedCount++
       const row = new Row(lastRowIndex, rowContent, this.groupCount, this.subGroupCount, this.sectionCount,
                                 this.headers.length, this.healthColumnIndex, this.isLog)
       this.updateRowMetaData(row, currentGroupings)
@@ -544,6 +548,12 @@ export default class OutputManager {
         }
       }
     })
+    if(this.rowLimit > 0) {
+      this.filteredRows = this.filteredRows.slice(-this.rowLimit)
+    }
+    if(appendedCount > this.rowLimit) {
+      this.filteredRows[0].isFirstAppendedRow = true
+    }
   }
 
   clearContent() {
@@ -554,6 +564,7 @@ export default class OutputManager {
     this.groupCount = this.subGroupCount = this.sectionCount = 0
     this.lastGroupRow = this.lastSubGroupRow = this.lastSectionRow = undefined
     this.lastGroupVisibleCount = this.lastSubGroupVisibleCount = this.lastSectionVisibleCount = 0
+    this.rowLimit = 0
   }
 
   private updateRowMetaData(row: Row, currentGroupings: any) {

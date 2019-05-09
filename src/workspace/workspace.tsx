@@ -35,6 +35,7 @@ interface IState {
   infoTitle: string,
   info: any[]
   scrollMode: boolean
+  outputRowLimit: number
   deferredAction?: BoundActionAct
 }
 
@@ -69,6 +70,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     infoTitle: '',
     info: [],
     scrollMode: false,
+    outputRowLimit: 0,
   }
   commandHandler?: ((string) => void) = undefined
   tableBox?: TableBox
@@ -85,7 +87,11 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   onAction = (action: BoundAction) => {
     this.streamOutput = []
     this.tableBox && this.tableBox.outputManager.clearContent()
-    this.setState({scrollMode: false, output: []})
+    this.setState({
+      scrollMode: false, 
+      outputRowLimit: action.outputRowLimit || 0,
+      output: [], 
+    })
   }
 
   showOutputLoading = (loading: boolean) => {
@@ -196,7 +202,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     const { context, output, outputStyle, loading, loadingMessage, scrollMode,
           showActionInitChoices, showActionChoices, minChoices, maxChoices, 
           choiceTitle, choices, showChoiceSubItems, previousSelections,
-          showInfo, infoTitle, info } = this.state;
+          showInfo, infoTitle, info, outputRowLimit } = this.state;
 
     const showBlackBox = outputStyle === ActionOutputStyle.Text
     const log = outputStyle === ActionOutputStyle.Log || outputStyle === ActionOutputStyle.LogWithHealth
@@ -253,6 +259,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                                   compare={compare} 
                                   log={log}
                                   health={health}
+                                  rowLimit={outputRowLimit}
                                   acceptInput={acceptInput}
                                   allowRefresh={allowRefresh}
                                   scrollMode={scrollMode}
