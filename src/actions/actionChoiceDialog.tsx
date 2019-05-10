@@ -22,6 +22,7 @@ interface IProps extends WithStyles<typeof styles> {
   showChoiceSubItems: boolean
   previousSelections: Choice[]
   onSelection: (selections: any[]) => void
+  onRefresh: () => any
   onCancel: () => any
 }
 
@@ -92,10 +93,6 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
     this.props.onSelection(previousSelections.slice(0, maxChoices))
   }
 
-  onCancel = () => {
-    this.props.onCancel()
-  }
-
   onOk = () => {
     const {selections} = this.state
     this.props.onSelection(Array.from(selections.values()))
@@ -103,7 +100,7 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
 
   onKeyDown = (event) => {
     if(event.which === 27 /*Esc*/) {
-      this.onCancel()
+      this.props.onCancel()
     }
   }
 
@@ -119,7 +116,7 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
     const hasMorePreviousSelections = previousSelections.length > maxChoices
     return (
       <Dialog open={open} classes={{paper: classes.dialog}}
-              onClose={this.onCancel} >
+              onClose={this.props.onCancel} >
         <DialogTitle className={classes.dialogTitle}>
           <Typography className={classes.heading}>{title}</Typography>
           <Input fullWidth autoFocus
@@ -203,7 +200,10 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
                 hasEnoughPreviousSelections ? "Use Previous Selections" : "Not Enough Previous Selections"}
             </Button>
           }
-          <Button onClick={this.onCancel} className={classes.dialogButton} >
+          <Button onClick={this.props.onRefresh} className={classes.dialogButton} >
+            Refresh
+          </Button>
+          <Button onClick={this.props.onCancel} className={classes.dialogButton} >
             Cancel
           </Button>
           <Button onClick={this.onOk} className={minSelected ? classes.dialogButton : classes.dialogButtonDisabled} 

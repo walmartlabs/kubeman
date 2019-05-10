@@ -3,16 +3,15 @@ import Context from "../context/contextStore";
 import {ActionOnChoice, Choice, BoundActionAct, ActionChoiceMaker} from './actionSpec'
 
 export default class ActionContext {
-  context?: Context
   inputText?: string
   onActionInitChoices? : ActionOnChoice
   onActionInitChoicesUnbound? : ActionChoiceMaker
   onSkipChoices? : BoundActionAct
 
-  getClusters: () => Cluster[] = () => this.context ? this.context.clusters : []
+  getClusters: () => Cluster[] = () => Context.clusters || []
 
-  getNamespaces: () => Namespace[] = () => this.context ? this.context.namespaces : []
+  getNamespaces: () => Namespace[] = () => Context.namespaces || []
   
-  getSelections: () => Choice[] = () =>  this.context ? this.context.selections : []
+  getSelections: () => Choice[] = () =>  Context.selections || []
 
 }

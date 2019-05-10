@@ -4,6 +4,7 @@ import {Cluster, PodDetails, PodContainerDetails} from "../k8s/k8sObjectTypes"
 import { K8sClient } from '../k8s/k8sClient'
 import ActionContext from './actionContext'
 import {Choice} from './actionSpec'
+import Context from "../context/contextStore";
 
 export interface ItemSelection {
   title: string
@@ -24,7 +25,7 @@ export interface PodSelection {
 }
 
 export default class ChoiceManager {
-  static clearSelectionsDelay = 600000
+  static clearSelectionsDelay = 180000
   static items: StringStringArrayMap = {}
   static useNamespace: boolean = true
   static showChoiceSubItems: boolean = true
@@ -35,7 +36,7 @@ export default class ChoiceManager {
     if(this.clearItemsTimer) {
       clearTimeout(this.clearItemsTimer)
     }
-    this.clearItemsTimer = setTimeout(() => this.clear.bind(this), this.clearSelectionsDelay)
+    this.clearItemsTimer = setTimeout(this.clear.bind(this), this.clearSelectionsDelay)
   }
 
   static clear() {
@@ -44,6 +45,7 @@ export default class ChoiceManager {
     this.showChoiceSubItems = true
     this.cacheKey = undefined
     this.clearItemsTimer = undefined
+    Context.selections = []
   }
 
   static createChoices(items, namespace, cluster, ...fields) {
@@ -86,7 +88,6 @@ export default class ChoiceManager {
     const isCached = this.cacheKey === cacheKey
     if(cache) {
       if(!cacheKey || !isCached) {
-        this.startClearItemsTimer()
         this.cacheKey = cacheKey
         this.items = {}
       } else {
@@ -172,7 +173,7 @@ export default class ChoiceManager {
   static async _prepareChoices(cache: boolean, cacheKey: string|undefined, actionContext: ActionContext, k8sFunction: GetItemsFunction, 
                               name: string, min: number, max: number, useNamespace: boolean = true, ...fields) {
     const previousSelections = cache && this.cacheKey === cacheKey ? actionContext.getSelections() : []
-    this.cacheKey !== cacheKey && actionContext.context && (actionContext.context.selections = [])
+    this.cacheKey !== cacheKey && (Context.selections = [])
     const choices: any[] = await ChoiceManager._createAndStoreItems(cache, cacheKey, actionContext, k8sFunction, useNamespace, ...fields)
     let howMany = ""
     if(min === max && max > 0) {
@@ -197,6 +198,10 @@ export default class ChoiceManager {
     return this._prepareChoices(true, name, actionContext, k8sFunction, name, min, max, useNamespace, ...fields)
   }
 
+  static onActionChoiceCompleted() {
+    this.startClearItemsTimer()
+  }
+
   static getSelections(actionContext: ActionContext) : ItemSelection[] {
     return actionContext.getSelections().map(selection => selection.data)
   }
@@ -207,15 +212,13 @@ export default class ChoiceManager {
 
   static async chooseClusters(min: number = 2, max: number = 3, actionContext: ActionContext) {
     const clusters = actionContext.getClusters()
-    const context = actionContext.context
-    const getCluster = async (cluster) => [context && context.cluster(cluster)]
+    const getCluster = async (cluster) => [Context.cluster(cluster)]
     if(clusters.length > max) {
       ChoiceManager.showChoiceSubItems = false
       await ChoiceManager.prepareChoices(actionContext, getCluster, "Clusters", min, max, false, "name")
       ChoiceManager.showChoiceSubItems = true
     } else {
-      const selections = await ChoiceManager.storeItems(actionContext, getCluster, false, "name")
-      actionContext.context && (actionContext.context.selections = selections)
+      Context.selections = await ChoiceManager.storeItems(actionContext, getCluster, false, "name")
       actionContext.onSkipChoices && actionContext.onSkipChoices()
     }
   }
@@ -268,9 +271,8 @@ export default class ChoiceManager {
         "Namespaces", min, max, false, "name")
         ChoiceManager.showChoiceSubItems = true
     } else {
-      const selections = await ChoiceManager.storeCachedItems("namespaces", actionContext, 
+      Context.selections = await ChoiceManager.storeCachedItems("namespaces", actionContext, 
         async (cluster, namespace, k8sClient) => namespaces.filter(ns => ns.cluster.name === cluster), false, "name")
-      actionContext.context && (actionContext.context.selections = selections)
       actionContext.onSkipChoices && actionContext.onSkipChoices()
     }
   }

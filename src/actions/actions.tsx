@@ -25,7 +25,6 @@ interface IState {
 }
 
 interface IProps extends WithStyles<typeof styles> {
-  context: Context,
   showLoading: (string) => void
   onOutput: ActionOutputCollector
   onStreamOutput: ActionStreamOutputCollector
@@ -57,11 +56,9 @@ export class Actions extends React.Component<IProps, IState> {
   }
 
   componentWillReceiveProps(props: IProps) {
-    const {context} = props
     ActionLoader.setOnOutput(props.onOutput, props.onStreamOutput)
     ActionLoader.setOnActionChoices(props.onActionInitChoices, props.onActionChoices)
     ActionLoader.setOnShowInfo(props.onShowInfo)
-    ActionLoader.setContext(context)
     ActionLoader.setOnSetScrollMode(props.onSetScrollMode)
     ActionLoader.setOnOutputLoading(props.onOutputLoading)
   }
@@ -245,20 +242,20 @@ export class Actions extends React.Component<IProps, IState> {
   }
 
   render() {
-    const { context, classes } = this.props;
+    const { classes } = this.props;
     const {actionGroupSpecs, invalidAutoRefreshDelay, filteredActions} = this.state
     const useDarkTheme = global['useDarkTheme']
     const theme = createMuiTheme(actionsTheme.getTheme(useDarkTheme));
 
     const actionShowNoShow : Map<ActionContextType, boolean> = new Map
-    actionShowNoShow.set(ActionContextType.Cluster, context.hasClusters)
-    actionShowNoShow.set(ActionContextType.Namespace, context.hasClusters)
-    actionShowNoShow.set(ActionContextType.Istio, context.hasIstio)
+    actionShowNoShow.set(ActionContextType.Cluster, Context.hasClusters)
+    actionShowNoShow.set(ActionContextType.Namespace, Context.hasClusters)
+    actionShowNoShow.set(ActionContextType.Istio, Context.hasIstio)
     actionShowNoShow.set(ActionContextType.Other, true)
 
     return (
       <MuiThemeProvider theme={theme}>
-        {context.hasClusters &&
+        {Context.hasClusters &&
           <Paper  className={classes.filterContainer}>
             <Input fullWidth autoFocus
                 placeholder="Type here to find plugins" 

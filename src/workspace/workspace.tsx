@@ -18,7 +18,6 @@ import ChoiceManager from "../actions/choiceManager"
 import styles from './workspace.styles'
 
 interface IState {
-  context: Context
   output: ActionOutput|string[]
   outputStyle: ActionOutputStyle
   loading: boolean
@@ -53,7 +52,6 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     contextSelector: undefined,
   }
   state: IState = {
-    context: new Context,
     output: [],
     outputStyle: ActionOutputStyle.None,
     loading: false,
@@ -72,6 +70,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     scrollMode: false,
     outputRowLimit: 0,
   }
+  currentAction?: BoundAction
   commandHandler?: ((string) => void) = undefined
   tableBox?: TableBox
   actions?: Actions
@@ -85,6 +84,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
 
   onAction = (action: BoundAction) => {
+    this.currentAction = action
     this.streamOutput = []
     this.tableBox && this.tableBox.outputManager.clearContent()
     this.setState({
@@ -146,9 +146,15 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     })
   }
 
+  onRefreshActionChoices = () => {
+    ChoiceManager.clear()
+    this.currentAction && this.currentAction.chooseAndAct()
+  }
+
   onSelectActionChoice = (selections: Choice[]) => {
-    const {context, deferredAction} = this.state
-    context.selections = selections
+    const {deferredAction} = this.state
+    Context.selections = selections
+    ChoiceManager.onActionChoiceCompleted()
     this.setState({showActionInitChoices: false, showActionChoices: false, loading: false})
     deferredAction && deferredAction()
   }
@@ -187,10 +193,10 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     this.refs.contextSelector && this.refs.contextSelector.showContextDialog()
   }
 
-  onUpdateContext = (context: Context) => {
+  onUpdateContext = () => {
     this.streamOutput = []
     ChoiceManager.clear()
-    this.setState({context: context, output: []})
+    this.setState({output: []})
   }
 
   runAction = (name, ...params) => {
@@ -199,7 +205,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   render() {
     const { classes } = this.props;
-    const { context, output, outputStyle, loading, loadingMessage, scrollMode,
+    const { output, outputStyle, loading, loadingMessage, scrollMode,
           showActionInitChoices, showActionChoices, minChoices, maxChoices, 
           choiceTitle, choices, showChoiceSubItems, previousSelections,
           showInfo, infoTitle, info, outputRowLimit } = this.state;
@@ -218,7 +224,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
           <TableBody>
             <TableRow className={classes.upperRow}>
               <TableCell colSpan={2} className={classes.contextCell}>
-                <ContextPanel context={context} 
+                <ContextPanel
                     onUpdateContext={this.onUpdateContext}
                     onSelectContext={this.showContextDialog} 
                     runAction={this.runAction}
@@ -228,7 +234,6 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
             <TableRow className={classes.lowerRow}>
               <TableCell className={classes.actionCell}>
                 <StyledActions innerRef={ref => this.actions=ref}
-                        context={context}
                         showLoading={this.showLoading}
                         onOutput={this.showOutput}
                         onStreamOutput={this.showStreamOutput}
@@ -281,14 +286,13 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                   label="Dark Theme"
                 />
                 <div className={classes.statusMessage}>
-                  {context.errorMessage}
+                  {Context.errorMessage}
                 </div>
               </TableCell>
             </TableRow>
           </TableBody>
         </Table>
         <ContextSelector ref='contextSelector'
-            context={context} 
             onUpdateContext={this.onUpdateContext.bind(this)} />
         {
           (showActionInitChoices || showActionChoices) && 
@@ -301,6 +305,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
             showChoiceSubItems={showChoiceSubItems}
             previousSelections={previousSelections}
             onSelection={this.onSelectActionChoice}
+            onRefresh={this.onRefreshActionChoices}
             onCancel={this.onCancelActionChoice}
           />
         }

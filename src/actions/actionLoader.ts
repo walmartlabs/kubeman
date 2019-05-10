@@ -17,13 +17,7 @@ export class ActionLoader {
   static onShowInfo: ActionOnInfo
   static onSetScrollMode: (boolean) => void
   static onOutputLoading: (boolean) => void
-  static context: Context
   static actionContext: ActionContext = new ActionContext
-
-  static setContext(context: Context) {
-    this.context = context
-    this.actionContext.context = context
-  }
 
   static setOnLoad(callback: (ActionGroupSpecs) => void) {
     this.onLoad = callback
@@ -182,10 +176,10 @@ export class ActionLoader {
   static checkSelections({checkClusters, checkNamespaces}: 
                           {checkClusters?: boolean, checkNamespaces?: boolean}) {
     let result = true
-    if(checkClusters && this.context.clusters.length === 0) {
+    if(checkClusters && Context.clusters.length === 0) {
       result = false
       this.onOutput && this.onOutput(undefined, [["No clusters selected"]], ActionOutputStyle.Text)
-    } else if(checkNamespaces && this.context.namespaces.length === 0) {
+    } else if(checkNamespaces && Context.namespaces.length === 0) {
       result = false
       this.onOutput && this.onOutput(undefined, [["No namespaces selected"]], ActionOutputStyle.Text)
     }

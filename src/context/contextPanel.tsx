@@ -12,20 +12,17 @@ import Context from "./contextStore";
 import styles from './contextPanel.styles'
 
 interface IState {
-  context: Context
   activeTab: number
 }
 
 interface IProps extends WithStyles<typeof styles> {
-  context: Context,
-  onUpdateContext: (Context) => void
+  onUpdateContext: () => void
   onSelectContext: () => void
   runAction: (string, ...any) => void
 }
 
 class ContextPanel extends React.Component<IProps, IState> {
   state: IState = {
-    context: new Context,
     activeTab: 0,
   }
 
@@ -34,18 +31,15 @@ class ContextPanel extends React.Component<IProps, IState> {
   }
 
   componentWillReceiveProps(props: IProps) {
-    const {context} = props;
     const {activeTab} = this.state
-    const clusters = context.clusters
+    const clusters = Context.clusters
     if(activeTab >= clusters.length) {
       this.setState({ activeTab: 0});
     }
   }
 
   onTabChange = (event, value) => {
-    const {context} = this.props;
-    
-    if(value !== context.clusters.length) {
+    if(value !== Context.clusters.length) {
       this.setState({ activeTab: value });
     }
   };
@@ -60,9 +54,9 @@ class ContextPanel extends React.Component<IProps, IState> {
   }
 
   render() {
-    const {classes, context, onSelectContext} = this.props;
+    const {classes, onSelectContext} = this.props;
     const {activeTab} = this.state
-    const clusters = context.clusters
+    const clusters = Context.clusters
 
     return (
       <div>
@@ -82,7 +76,7 @@ class ContextPanel extends React.Component<IProps, IState> {
               />
             )
           }
-          <Tab label={context.hasClusters ? "Update Context" : "Select Cluster"} 
+          <Tab label={Context.hasClusters ? "Update Context" : "Select Cluster"} 
               classes={{labelContainer: classes.tabButton}}
               onClick={onSelectContext} />
         </Tabs>

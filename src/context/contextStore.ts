@@ -32,44 +32,44 @@ export class ClusterContext {
 
 
 export default class Context {
-  private clusterMap: Map<string, [Cluster, ClusterContext]> = new Map
-  hasClusters: boolean = false
-  hasNamespaces: boolean = false
-  hasIstio: boolean = false
-  selections: any[] = []
-  cachedSelections = {}
-  cacheKey: string = ''
-  errorMessage: string = ''
+  static clusterMap: Map<string, [Cluster, ClusterContext]> = new Map
+  static hasClusters: boolean = false
+  static hasNamespaces: boolean = false
+  static hasIstio: boolean = false
+  static selections: any[] = []
+  static cachedSelections = {}
+  static cacheKey: string = ''
+  static errorMessage: string = ''
 
-  updateFlags() {
+  static updateFlags() {
     this.hasIstio = Array.from(this.clusterMap.values()).map(pair => pair[0].hasIstio).reduce((v1,v2) => v1||v2, false)
     this.hasClusters = this.clusterMap.size > 0
     this.hasNamespaces = this.namespaces.length > 0
   }
 
-  async store(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>) {
+  static async store(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>) {
     await this.storeClusters(clusters)
     this.storeNamespaces(namespaces)
   }
 
-  private async storeClusters(clusters: Map<string, Cluster>) {
+  static async storeClusters(clusters: Map<string, Cluster>) {
     this.clear()
     for(const cluster of clusters.values()) {
       await this.addCluster(cluster)
     }
   }
 
-  private storeNamespaces(namespaces: Map<string, Namespace>) {
+  static storeNamespaces(namespaces: Map<string, Namespace>) {
     namespaces.forEach(ns => this.addNamespace(ns))
   }
 
-  private clear() {
+  static clear() {
     this.clusterMap.forEach(clusterRec => clusterRec[0].namespaces = [])
     this.clusterMap.clear()
     this.updateFlags()
   }
 
-  async addCluster(cluster: Cluster) {
+  static async addCluster(cluster: Cluster) {
     cluster.clearNamespaces()
     cluster.k8sClient = await k8s.getClientForCluster(cluster)
     this.hasIstio = this.hasIstio || cluster.hasIstio
@@ -77,7 +77,7 @@ export default class Context {
     this.updateFlags()
   }
 
-  addNamespace(namespace: Namespace) {
+  static addNamespace(namespace: Namespace) {
     const clusterRec = this.clusterMap.get(namespace.cluster.name)
     const clusterContext = clusterRec && clusterRec[1]
     if(!clusterContext) {
@@ -89,20 +89,20 @@ export default class Context {
     this.updateFlags()
   }
 
-  get clusters() : Cluster[] {
+  static get clusters() : Cluster[] {
     return Array.from(this.clusterMap.values()).map(rec => rec[0])
   }
 
-  cluster(clusterName: string) {
+  static cluster(clusterName: string) {
     const clusterRec = this.clusterMap.get(clusterName)
     return clusterRec && clusterRec[0]
   }
 
-  get namespaces() : Namespace[] {
+  static get namespaces() : Namespace[] {
     return _.flatMap(Array.from(this.clusterMap.values()), rec => rec[0].namespaces)
   }
 
-  namespace(clusterName: string, nsName: string) {
+  static namespace(clusterName: string, nsName: string) {
     const cluster = this.cluster(clusterName)
     const namespaces = cluster && cluster.namespaces.filter(ns => ns.name === nsName)
     return namespaces && namespaces.length > 0 && namespaces[0]

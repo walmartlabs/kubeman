@@ -6,11 +6,9 @@ import SelectionDialog, {ContextSelectionType} from './selectionDialog'
 
 
 interface IProps extends React.DOMAttributes<{}> {
-  context: Context
-  onUpdateContext: (Context) => void
+  onUpdateContext: () => void
 }
 interface IState {
-  context: Context
   showClusters: boolean
   showNamespaces: boolean
   forcedClusterSelection: boolean
@@ -23,7 +21,6 @@ interface IState {
 export default class ContextSelector extends React.Component<IProps, IState> {
 
   state: IState = {
-    context: new Context(),
     showClusters: false,
     showNamespaces: false,
     forcedClusterSelection: false,
@@ -38,16 +35,13 @@ export default class ContextSelector extends React.Component<IProps, IState> {
   }
 
   componentWillReceiveProps(nextProps: IProps) {
-    this.setState({context: nextProps.context})
   }
 
   
   async onSelection(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, filter: string) {
-    const {context} = this.state
-    await context.store(clusters, namespaces)
-    this.props.onUpdateContext(context)
+    await Context.store(clusters, namespaces)
+    this.props.onUpdateContext()
     this.setState({
-      context, 
       selectedClusters: clusters,
       selectedNamespaces: namespaces,
       filter,
@@ -56,10 +50,6 @@ export default class ContextSelector extends React.Component<IProps, IState> {
       forcedClusterSelection: false,
       forcedNamespaceSelection: false,
     })
-  }
-
-  onContextUpdate(context: Context) {
-    this.setState({context})
   }
 
   onCancelSelection() {
@@ -85,7 +75,7 @@ export default class ContextSelector extends React.Component<IProps, IState> {
   }
 
   render() {
-    const { context, showClusters, showNamespaces,
+    const { showClusters, showNamespaces,
             forcedClusterSelection, forcedNamespaceSelection,
             selectedClusters, selectedNamespaces, filter } = this.state;
     const showDialog = showClusters || showNamespaces
