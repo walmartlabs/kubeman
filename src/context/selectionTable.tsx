@@ -19,32 +19,111 @@ interface ItemsListProps extends WithStyles<typeof styles> {
   disbleSelection: boolean
   handleChange: (KubeComponent) => any
 }
+
+const JumpingItemsList = ({title, classes, list, newSelections, handleChange, disbleSelection} : ItemsListProps) => {
+  const selectedList = list.filter(item => !isNullOrUndefined(newSelections.get(item.text())))
+  const unselectedList = list.filter(item => isNullOrUndefined(newSelections.get(item.text())))
+  return (list.length === 0 ?
+    <FormHelperText>No {title} found</FormHelperText>
+    :  
+    <Table className={classes.table} aria-labelledby="tableTitle">
+      <TableBody>
+        {selectedList.map((item, index) => (
+              <TableRow key={index} hover>
+                <TableCell className={classes.tableCell}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox checked={true} 
+                                value={item.text()}
+                                onChange={() => handleChange(item)} />
+                    }
+                    label={item.name}
+                  />
+                </TableCell>
+              </TableRow>
+        ))}
+        {unselectedList.map((item, index) => (
+            <TableRow key={index} hover>
+              <TableCell className={classes.tableCell}>
+                <FormControlLabel
+                  control={
+                    <Checkbox checked={false} 
+                              value={item.text()}
+                              disabled={disbleSelection}
+                              indeterminate={disbleSelection}
+                              onChange={() => handleChange(item)} />
+                  }
+                  label={item.name}
+                />
+              </TableCell>
+            </TableRow>
+        ))}
+      </TableBody>
+    </Table>  
+  )
+}
+
+
 const ItemsList = ({title, classes, list, newSelections, handleChange, disbleSelection} : ItemsListProps) => {
   return (list.length === 0 ?
     <FormHelperText>No {title} found</FormHelperText>
     :  
     <Table className={classes.table} aria-labelledby="tableTitle">
       <TableBody>
-      {list.map((item, index) => 
-        <TableRow key={index} hover>
-          <TableCell className={classes.tableCell}>
-            <FormControlLabel
-              control={
-                <Checkbox checked={!isNullOrUndefined(newSelections.get(item.text()))} 
-                          value={item.text()}
-                          disabled={isNullOrUndefined(newSelections.get(item.text())) && disbleSelection}
-                          indeterminate={isNullOrUndefined(newSelections.get(item.text())) && disbleSelection}
-                          onChange={() => handleChange(item)} />
-              }
-              label={item.name}
-            />
-          </TableCell>
-        </TableRow>
-      )}
+      {list.map((item, index) => {
+        const selected = !isNullOrUndefined(newSelections.get(item.text()))
+        return (
+          <TableRow key={index} hover>
+            <TableCell className={classes.tableCell}>
+              <FormControlLabel
+                control={
+                  <Checkbox checked={selected} 
+                            value={item.text()}
+                            disabled={!selected && disbleSelection}
+                            indeterminate={!selected && disbleSelection}
+                            onChange={() => handleChange(item)} />
+                }
+                label={item.name}
+              />
+            </TableCell>
+          </TableRow>
+        )
+      })
+      }
       </TableBody>
     </Table>  
   )
 }
+
+const getGroupedItemsList = (title, group, classes, list, newSelections, selectedCount, disbleSelection, handleChange) => (
+  [
+    <ExpansionPanelSummary key="1" expandIcon={<ExpandMoreIcon />}>
+      <Typography className={classes.heading}>{group}</Typography>
+      <Typography className={classes.secondaryHeading}>({list.length} items, {selectedCount} selected)</Typography>
+    </ExpansionPanelSummary>,
+    <ExpansionPanelDetails key="2">
+      <ItemsList  title={title} 
+                  classes={classes} 
+                  newSelections={newSelections}
+                  list={list} 
+                  disbleSelection={disbleSelection}
+                  handleChange={handleChange} />
+    </ExpansionPanelDetails>
+  ]
+)
+
+const CollapsedGroupedItemsList = ({title, group, classes, list, newSelections, selectedCount, disbleSelection, handleChange}) => (
+  <ExpansionPanel defaultExpanded={false}>
+    {...getGroupedItemsList(title, group, classes, list, newSelections, selectedCount, disbleSelection, handleChange)}
+  </ExpansionPanel>
+)
+
+const ExpandedGroupedItemsList = ({title, group, classes, list, newSelections, selectedCount, disbleSelection, handleChange}) => (
+  <ExpansionPanel defaultExpanded={true}>
+    {...getGroupedItemsList(title, group, classes, list, newSelections, selectedCount, disbleSelection, handleChange)}
+  </ExpansionPanel>
+)
+
 
 interface SelectionTableProps extends WithStyles<typeof styles> {
   table: {[group: string]: KubeComponent[]}
@@ -57,8 +136,8 @@ interface SelectionTableProps extends WithStyles<typeof styles> {
 
 interface SelectionTableState {
   table: {[group: string]: KubeComponent[]}
+  filteredTable: {[group: string]: KubeComponent[]}
   newSelections: Map<string, KubeComponent>
-  filteredList: KubeComponent[]
   collapsedGroups: {}
   countSelected: number,
 }
@@ -70,7 +149,7 @@ class SelectionTable extends React.Component<SelectionTableProps, SelectionTable
 
   state: SelectionTableState = {
     table: {},
-    filteredList: [],
+    filteredTable: {},
     newSelections: new Map(),
     collapsedGroups: {},
     countSelected: 0,
@@ -83,13 +162,13 @@ class SelectionTable extends React.Component<SelectionTableProps, SelectionTable
   }
 
   componentWillReceiveProps(nextProps: SelectionTableProps) {
-    const {title, table, selections} = nextProps
+    const {table, selections} = nextProps
     const newSelections = new Map();
     Array.from(selections.values()).forEach(item => newSelections.set(item.text(), item))
     this.setState({
       newSelections: newSelections, 
       countSelected: selections.size, 
-      table
+      table,
     })
   }
 
@@ -122,15 +201,25 @@ class SelectionTable extends React.Component<SelectionTableProps, SelectionTable
   }
 
   onFilterChange = (event) => {
-    const {table} = this.state
+    const {table, newSelections} = this.state
+    const filteredTable = {}
     let text = event.target.value
     if(text && text.length > 0) {
       this.filterText = text
-      if(text.length > 1) {
-        const groups = Object.keys(table)
-        const list = table[groups[0]]
-        const filteredList = filter(text, list, "name")
-        this.setState({filteredList})
+      if(text.length > 0) {
+        Object.keys(table).forEach(group => {
+          const list = table[group]
+          let filteredList = filter(text, list, "name")
+          list.filter(item => !isNullOrUndefined(newSelections.get(item.text())))
+              .forEach(item => {
+                if(filteredList.includes(item)) {
+                  filteredList = filteredList.filter(i => i !== item)
+                }
+                filteredList.unshift(item)
+              })
+          filteredTable[group] = filteredList
+        })
+        this.setState({filteredTable})
       }
     } else {
       this.clearFilter()
@@ -140,7 +229,7 @@ class SelectionTable extends React.Component<SelectionTableProps, SelectionTable
 
   clearFilter() {
     this.filterText = ''
-    this.setState({filteredList: []})
+    this.setState({filteredTable: {}})
   }
 
   onKeyDown = (event) => {
@@ -150,60 +239,80 @@ class SelectionTable extends React.Component<SelectionTableProps, SelectionTable
   }
 
   render() {
-    const {table, filteredList, newSelections, countSelected, collapsedGroups} = this.state;
+    const {filteredTable, table, newSelections, countSelected, collapsedGroups} = this.state;
     const {title, classes, maxSelect, grouped} = this.props;
-    const groups = Object.keys(table)
-    const hasData = _.flatten(_.values(table)).length > 0
+    const isFiltered = Object.keys(filteredTable).length > 0
+    const dataTable = isFiltered ? filteredTable : table
+
+    const groups = Object.keys(dataTable)
+    const hasData = _.flatten(_.values(dataTable)).length > 0
     const disbleSelection = maxSelect > 0 && countSelected >= maxSelect
 
-    if(!hasData) {
-      return <FormHelperText>No {title} found</FormHelperText>
-    } else {
-      return (
-        <div>
-          {maxSelect > 0 && <FormHelperText>Select up to {maxSelect} {title}</FormHelperText>}
-          {
-          grouped ? 
+    let heading = ''
+    if(hasData) {
+      if(maxSelect > 0) {
+        heading = "Select up to " + maxSelect + " " + title + " "
+      } else {
+        heading = "Select " + title + " "
+      }
+      let totalItems = 0
+      Object.values(dataTable).forEach(list => totalItems += list.length)
+      heading += "(" + totalItems + " items, " + newSelections.size + " selected)"
+    }
+
+    return (
+      <div>
+        <Input fullWidth autoFocus
+                placeholder="Type here to search" 
+                value={this.filterText}
+                onChange={this.onFilterChange}
+                onKeyDown={this.onKeyDown}
+                className={classes.filterInput}
+        />
+        {!hasData && <FormHelperText>No {title} found</FormHelperText>}
+        {hasData && <FormHelperText>{heading}</FormHelperText>}
+        {hasData && grouped && 
             groups.map((group, index) => {
-              const list = table[group]
-              const tableSelected = list.filter(item => !isNullOrUndefined(newSelections.get(item.text()))).length
+              const list = dataTable[group]
+              const selectedCount = list.filter(item => !isNullOrUndefined(newSelections.get(item.text()))).length
               return (
-              <ExpansionPanel key={index} defaultExpanded={groups.length===1}>
-                <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography className={classes.heading}>{group}</Typography>
-                  <Typography className={classes.secondaryHeading}>({list.length} items, {tableSelected} selected)</Typography>
-                </ExpansionPanelSummary>
-                <ExpansionPanelDetails>
-                  <ItemsList  title={title} 
-                              classes={classes} 
-                              newSelections={newSelections}
-                              list={list} 
-                              disbleSelection={disbleSelection}
-                              handleChange={this.handleChange} />
-                </ExpansionPanelDetails>
-              </ExpansionPanel>
+                isFiltered || groups.length===1 ? 
+                <ExpandedGroupedItemsList 
+                    key={index}
+                    title={title}
+                    group={group}
+                    classes={classes} 
+                    list={list} 
+                    newSelections={newSelections}
+                    selectedCount={selectedCount}
+                    disbleSelection={disbleSelection}
+                    handleChange={this.handleChange}
+                />
+                :
+                <CollapsedGroupedItemsList 
+                    key={index}
+                    title={title}
+                    group={group}
+                    classes={classes} 
+                    list={list} 
+                    newSelections={newSelections}
+                    selectedCount={selectedCount}
+                    disbleSelection={disbleSelection}
+                    handleChange={this.handleChange}
+                />
               )
             })
-            :
-            <div>
-              <Input fullWidth autoFocus
-                  placeholder="Type here to search" 
-                  value={this.filterText}
-                  onChange={this.onFilterChange}
-                  onKeyDown={this.onKeyDown}
-                  className={classes.filterInput}
-              />
-              <ItemsList  title={title} 
-                          classes={classes} 
-                          newSelections={newSelections}
-                          list={filteredList.length > 0 ? filteredList : table[groups[0]]} 
-                          disbleSelection={disbleSelection}
-                          handleChange={this.handleChange} />
-            </div>
-          }
-        </div>
-      )
-    }
+        }
+        {hasData && !grouped && 
+            <ItemsList  title={title} 
+                        classes={classes} 
+                        newSelections={newSelections}
+                        list={dataTable[groups[0]]} 
+                        disbleSelection={disbleSelection}
+                        handleChange={this.handleChange} />
+        }
+      </div>
+    )
   }
 }
 

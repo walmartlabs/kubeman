@@ -15,6 +15,15 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     marginTop: '40%',
     marginLeft: 'auto',
     marginRight: 'auto',
+    backgroundColor: 'transparent',
+  },
+  updating: {
+    position: 'absolute',
+    top: '40%',
+    left: '50%',
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    backgroundColor: 'transparent',
   },
 })
 

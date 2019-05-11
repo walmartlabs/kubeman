@@ -153,21 +153,6 @@ export class Actions extends React.Component<IProps, IState> {
     }
   }
 
-  acceptInput() : boolean {
-    return this.currentAction && this.currentAction.react ? true : false
-  }
-
-  allowRefresh() : boolean {
-    return this.currentAction && this.currentAction.refresh ? true : false
-  }
-
-  onActionTextInput = (text: string) => {
-    if(this.currentAction && this.currentAction.react) {
-      ActionLoader.actionContext.inputText = text
-      this.currentAction.react()
-    }
-  }
-
   onReRun = () => {
     if(this.currentAction) {
       if(this.currentAction.canReact) {

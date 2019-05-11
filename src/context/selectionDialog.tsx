@@ -11,7 +11,6 @@ import {Cluster, Namespace, KubeComponent} from "../k8s/k8sObjectTypes";
 import * as k8s from '../k8s/k8sContextClient'
 import SelectionTable from './selectionTable'
 import {selectionDialogTheme} from '../theme/theme'
-import StyledSelectionFilter, {SelectionFilter} from './selectionFilter'
 import SelectionManager, {SelectedClusters, SelectedNamespaces} from './selectionManager'
 
 import styles from './selectionDialog.styles'
@@ -24,8 +23,7 @@ export enum ContextSelectionType {
 }
 enum SelectionTabs {
   Clusters = 0,
-  Pattern = 1,
-  Namespaces = 2,
+  Namespaces = 1,
 }
 
 enum SelectionStore {
@@ -49,6 +47,7 @@ interface SelectionDialogState {
   reportNamespaceError: boolean
   filter: string,
   initialLoading: boolean
+  updating: boolean
 }
 
 class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDialogState> {
@@ -65,8 +64,8 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     reportNamespaceError: false,
     filter: '',
     initialLoading: false,
+    updating: false,
   }
-  selectionFilter?: SelectionFilter
   closed: boolean = false
   activeTabIndex: number = 0
 
@@ -100,7 +99,6 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
       case SelectionTabs.Clusters:
         this.loadClusters()
         break
-      case SelectionTabs.Pattern:
       case SelectionTabs.Namespaces:
         this.loadNamespaces()
         break
@@ -159,19 +157,11 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     }
   }
 
-  onApplyFilter = (filter: string, namespaces: Namespace[]) => {
-    SelectionManager.setFilteredSelections(namespaces)
-    this.setState({filter})
-  }
-
   onEntering = () => {
     const {selection} = this.props
     switch(selection) {
       case ContextSelectionType.Clusters:
         this.setTab(SelectionTabs.Clusters)
-        break
-      case ContextSelectionType.Pattern:
-        this.setTab(SelectionTabs.Pattern)
         break
       case ContextSelectionType.Namespaces:
         this.setTab(SelectionTabs.Namespaces)
@@ -185,22 +175,20 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
 
   onOk = () => {
     let {filter} = this.state
-    if(this.selectionFilter) {
-      const {namespaces, filterText} = this.selectionFilter.getSelections()
-      SelectionManager.setFilteredSelections(namespaces)
-      filter = filterText
-    }
-    this.props.onSelection(
-      SelectionManager.selectedClusters, 
-      SelectionManager.selectedNamespaces, 
-      filter
-    )
+    this.setState({updating: true})
+    const update = async () => 
+      this.props.onSelection(
+        SelectionManager.selectedClusters, 
+        SelectionManager.selectedNamespaces, 
+        filter
+      )
+    update()
   }
 
   render() {
     const useDarkTheme = global['useDarkTheme']
     const { classes, open, forced } = this.props;
-    const { activeTab, initialLoading, filter, 
+    const { activeTab, initialLoading, filter, updating,
             reportClusterError, reportNamespaceError } = this.state
     const selectedClusters = SelectionManager.selectedClusters
     const selectedNamespaces = SelectionManager.selectedNamespaces
@@ -225,9 +213,7 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
               <Tabs value={activeTab}
                   onChange={this.onTabChange.bind(this)} >
                 <Tab label="Clusters" />
-                <Tab label="Select by Pattern" disabled={selectedClusters.size === 0} />
                 <Tab label="Namespaces" disabled={selectedClusters.size === 0} />
-                {/* <Tab label="Pods" disabled={selectedNamespaces.size === 0} /> */}
               </Tabs>
             </AppBar>
             {initialLoading && <CircularProgress className={classes.loading} />}
@@ -248,12 +234,6 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                 />
               </div>}
             {loading && activeTab !== SelectionTabs.Clusters && <CircularProgress className={classes.loading} />}
-            {!loading && activeTab === SelectionTabs.Pattern &&
-              <StyledSelectionFilter 
-                innerRef={ref => this.selectionFilter=ref}
-                filter={filter} 
-                onApplyFilter={this.onApplyFilter} />
-            }
             {!loading && activeTab === SelectionTabs.Namespaces &&  
               <div>
                 {reportClusterError && 
@@ -271,12 +251,13 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                 />
                 }
               </div>}
+              {updating && <CircularProgress className={classes.updating} />}
           </DialogContent>
           <DialogActions className={classes.dialogActions}>
-            <Button onClick={this.onCancel} className={classes.dialogButton} >
+            <Button onClick={this.onCancel} className={classes.dialogButton} disabled={updating} >
               Cancel
             </Button>
-            <Button onClick={this.onOk} className={classes.dialogButton} >
+            <Button onClick={this.onOk} className={classes.dialogButton} disabled={updating} >
               Ok
             </Button>
           </DialogActions>

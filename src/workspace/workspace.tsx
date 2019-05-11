@@ -181,7 +181,10 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
 
   onActionTextInput = (text: string) => {
-    this.actions && this.actions.onActionTextInput(text)
+    if(this.currentAction && this.currentAction.react) {
+      ActionLoader.actionContext.inputText = text
+      this.currentAction.react()
+    }
   }
 
   showLoading = (loadingMessage: string) => {
@@ -214,8 +217,8 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     const log = outputStyle === ActionOutputStyle.Log || outputStyle === ActionOutputStyle.LogWithHealth
     const health = outputStyle === ActionOutputStyle.TableWithHealth || outputStyle === ActionOutputStyle.LogWithHealth
     const compare = outputStyle === ActionOutputStyle.Compare
-    const acceptInput = this.actions ? this.actions.acceptInput() : false
-    const allowRefresh = this.actions ? this.actions.allowRefresh() : false
+    const acceptInput = this.currentAction && this.currentAction.react ? true : false
+    const allowRefresh = this.currentAction && this.currentAction.refresh ? true : false
     const accumulatedOutput = (output as any[]).concat(this.streamOutput)
         
     return (
