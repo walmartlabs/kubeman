@@ -77,7 +77,7 @@ const plugin : ActionGroupSpec = {
       },
     },
     {
-      name: "View Pilot-Sidecars Sync Status",
+      name: "View Pilot-Envoy Sync Status",
       order: 53,
       autoRefreshDelay: 15,
       loadingMessage: "Loading Pilot Pods...",

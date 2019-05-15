@@ -7,7 +7,7 @@ const plugin : ActionGroupSpec = {
   title: "Envoy Proxy Recipes",
   actions: [
     {
-      name: "List Envoy Sidecars",
+      name: "List Envoy Proxies",
       order: 1,
       async act(actionContext) {
         this.onOutput && this.onOutput([["", "Sidecars List"]], ActionOutputStyle.Table)
