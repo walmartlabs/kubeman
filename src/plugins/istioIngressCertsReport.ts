@@ -84,13 +84,17 @@ const plugin : ActionGroupSpec = {
           })
           .filter(g => g.servers.length > 0)
 
+          const matchGateway = (text, gateway) => text === gateway.name || text === gateway.namespace+"/"+gateway.name
+                                                  || text === gateway.name+"."+gateway.namespace
+                                                  || text.includes(gateway.name+"."+gateway.namespace+".")
+
           const outputRelatedVirtualServices = g => {
             const gatewayHosts = _.flatten(g.servers.map(server => server.hosts))
                                   .map(host => host.replace("*.", ""))
             const gatewayPorts = g.servers.map(server => server.port)
 
             const relatedVirtualServices = virtualServices
-            .filter(vs => vs.virtualService.gateways.includes(g.gateway.name))
+            .filter(vs => vs.virtualService.gateways.filter(vsg => matchGateway(vsg, g)))
             .filter(vs => vs.virtualService.hosts.filter(vsh => vsh === "*" || 
                           gatewayHosts.filter(gh => gh === "*" || vsh.includes(gh)).length > 0).length > 0)
             .map(vs => {
