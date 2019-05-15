@@ -2,6 +2,8 @@ import _ from 'lodash'
 import ChoiceManager from '../actions/choiceManager'
 import {ActionOutput, ActionOutputStyle} from '../actions/actionSpec'
 import K8sFunctions from './k8sFunctions';
+import StreamLogger from '../logger/streamLogger'
+import OutputManager from '../output/outputManager';
 
 export default class K8sPluginHelper {
   static async generateComparisonOutput(actionContext, onOutput, name, ...fields) {
@@ -36,4 +38,19 @@ export default class K8sPluginHelper {
     output = output.concat(outputRows)
     onOutput(output, "Compare")
   }
+
+  static async tailPodLogs(pods: any[], container: string, k8sClient, rowLimit, onStreamOutput, showOutputLoading, setScrollMode, ...filters) {
+    showOutputLoading(true)
+    setScrollMode(false)
+    const podRowLimit = Math.ceil((rowLimit || 200)/pods.length)
+    StreamLogger.init(rowLimit, onStreamOutput, ...filters)
+    filters.length > 0 && OutputManager.filter(filters.join(" "))
+  
+    for(const pod of pods) {
+      const logStream = await K8sFunctions.getPodLog(pod.namespace, pod.name, container, k8sClient, true, podRowLimit)
+      StreamLogger.captureLogStream(pod.name, logStream)
+    }
+    showOutputLoading(false)
+  }
+
 }

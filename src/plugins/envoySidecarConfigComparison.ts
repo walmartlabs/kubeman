@@ -243,7 +243,7 @@ const plugin : ActionGroupSpec = {
   order: ActionContextOrder.Istio+3,
   actions: [
     {
-      name: "Compare Configs of Envoy Sidecars",
+      name: "Compare Envoy Configs",
       order: 30,
       loadingMessage: "Loading Envoy Sidecars...",
 

@@ -10,13 +10,13 @@ import OutputManager from '../output/outputManager';
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Istio Ingress Recipes",
+  title: "Istio Pilot Recipes",
   order: ActionContextOrder.Istio+1,
 
   actions: [
     {
-      name: "Tail Ingress Logs",
-      order: 3,
+      name: "Tail Pilot Logs",
+      order: 2,
       outputRowLimit: 100,
 
       choose: ChoiceManager.chooseClusters.bind(ChoiceManager, 1, 1),
@@ -24,9 +24,9 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         this.clear && this.clear(actionContext)
         const cluster = ChoiceManager.getSelectedClusters(actionContext)[0]
-        const ingressPods = (await IstioFunctions.getIngressGatewayPods(cluster.k8sClient, true))
+        const ingressPods = (await IstioFunctions.getPilotPods(cluster.k8sClient, true))
                             .map(p => p.podDetails)
-        K8sPluginHelper.tailPodLogs(ingressPods, "istio-proxy", cluster.k8sClient, this.outputRowLimit, this.onStreamOutput, this.showOutputLoading, this.setScrollMode)
+        K8sPluginHelper.tailPodLogs(ingressPods, "discovery", cluster.k8sClient, this.outputRowLimit, this.onStreamOutput, this.showOutputLoading, this.setScrollMode)
       },
 
       stop(actionContext) {
@@ -34,12 +34,12 @@ const plugin : ActionGroupSpec = {
       },
 
       clear(actionContext) {
-        this.onOutput && this.onOutput([["Tail Istio IngressGateway Logs (All Pods)", ""]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Tail Istio Pilot Discovery Logs (All Pods)", ""]], ActionOutputStyle.Log)
       },
     },
     {
-      name: "Tail Filtered Ingress Logs",
-      order: 4,
+      name: "Tail Filtered Pilot Logs",
+      order: 3,
       outputRowLimit: 100,
       selectedCluster: undefined,
       filter: undefined,
@@ -55,9 +55,9 @@ const plugin : ActionGroupSpec = {
         this.filter = actionContext.inputText
         this.clear && this.clear(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
-        const ingressPods = (await IstioFunctions.getIngressGatewayPods(this.selectedCluster.k8sClient, true))
+        const ingressPods = (await IstioFunctions.getPilotPods(this.selectedCluster.k8sClient, true))
                             .map(p => p.podDetails)
-        K8sPluginHelper.tailPodLogs(ingressPods, "istio-proxy", this.selectedCluster.k8sClient, 
+        K8sPluginHelper.tailPodLogs(ingressPods, "discovery", this.selectedCluster.k8sClient, 
                     this.outputRowLimit, this.onStreamOutput, this.showOutputLoading, this.setScrollMode, this.filter)
         this.showOutputLoading && this.showOutputLoading(false)
       },
@@ -67,7 +67,7 @@ const plugin : ActionGroupSpec = {
       },
 
       clear() {
-        let title = "Tail Filtered Istio IngressGateway Logs (All Pods)"
+        let title = "Tail Filtered Istio Pilot Discovery Logs (All Pods)"
         if(this.filter) {
           title += ", Applied Filter: [ " + this.filter + " ]"
         }
