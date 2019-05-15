@@ -13,16 +13,21 @@ Prior to Kubeman, there was no comprehensive tool available in the Kubernetes co
 ## How to use it?
 1. Either download the application binary (currently pre-built binaries are offered for Mac and Win-64 OS), or get the source code and build it yourself (instructions at the bottom)
 2. Use kuebctl (or another tool) to connect to a cluster, so that the cluster context gets saved in your local kube config.
-3. Run Kubeman application and click on "Select Cluster" button to select up to 3 clusters. You can optionally select one or more namespaces from the cluster selection dialog to limit your session to those namespaces for certain recipes.
-4. You'll see a menus panel on the left side of the application window. You can select a recipe to run from the menus panel, or search for recipes by typing some keywords in the search field above the menus panel.
-5. Some recipes may ask you to make further selections (e.g. select namespaces, services, pods, etc).
-6. Once a recipe runs and produces output, you can use the search input field at the top of the output panel to search for some text in the recipe output.
-7. Some recipes allow you to enter commands/inputs, and they react on those inputs. E.g. "Find component by IP" recipe will wait till you input one or more IP addresses. In this case, the output search field plays dual role and also serves as a command input field for the recipe. To give input to a recipe, you type the input preceded by a "/". When a recipe supports command input, the text entered as "/<text>" is treated as input/command for the recipe instead of being used as search criteria.
-8. Some recipes support re-execution. In such cases, once the recipe has been produced, you'll see a "ReRun" button at the bottom of the menus panel. Clicking that button will run the recipe again with previously selected choices/input. Such recipes can also be rerun by entering command "/r".
-9. Some recipes support clearing their output once the output has been produced. In such cases, you'll see a "Clear" button at the bottom of the menus panel. Clearing output can be also be done by sending a "/clear" or "/c" command to such recipes.
-10. You'll see a "Stop" button at the bottom of the menus panel for most recipes. While Kubeman's recipes framework provides support for stopping recipes while they're running, not all recipes may be stopped once triggered. It's a best-effort feature.
-11. Some recipes support automatic periodic executing. For such recipes, you'll see an "Auto Refresh" option at the bottom of the menus panel. If you select the "Auto Refresh" option, you can also specify a frequency for the auto refresh to happen. Recipes provide a default auto-refresh frequency value, and the auto refresh frequency cannot be set to a value lower than 5 seconds.
-12. Kubeman supports "dark theme". You can switch to dark theme by using the selector at the left-bottom of the application window.
+3. Run Kubeman application
+   ![Kubeman Application](/static/kubeman.png)
+4. Click on "Select Cluster" button to select up to 3 clusters. You can optionally select one or more namespaces from the cluster selection dialog to limit your session to those namespaces for certain recipes.
+   ![Select Cluster](/static/kubeman-2.png)
+5. You'll see a menus panel on the left side of the application window. You can select a recipe to run from the menus panel, or search for recipes by typing some keywords in the search field above the menus panel.
+   ![Select Cluster](/static/kubeman-3.png)
+6. Some recipes may ask you to make further selections (e.g. select namespaces, services, pods, etc).
+   ![Select Cluster](/static/kubeman-4.png)   
+7. Once a recipe runs and produces output, you can use the search input field at the top of the output panel to search for some text in the recipe output.
+8. Some recipes allow you to enter commands/inputs, and they react on those inputs. E.g. "Find component by IP" recipe will wait till you input one or more IP addresses. In this case, the output search field plays dual role and also serves as a command input field for the recipe. To give input to a recipe, you type the input preceded by a "/". When a recipe supports command input, the text entered as "/<text>" is treated as input/command for the recipe instead of being used as search criteria.
+9.  Some recipes support re-execution. In such cases, once the recipe has been produced, you'll see a "ReRun" button at the bottom of the menus panel. Clicking that button will run the recipe again with previously selected choices/input. Such recipes can also be rerun by entering command "/r".
+10. Some recipes support clearing their output once the output has been produced. In such cases, you'll see a "Clear" button at the bottom of the menus panel. Clearing output can be also be done by sending a "/clear" or "/c" command to such recipes.
+11. You'll see a "Stop" button at the bottom of the menus panel for most recipes. While Kubeman's recipes framework provides support for stopping recipes while they're running, not all recipes may be stopped once triggered. It's a best-effort feature.
+12. Some recipes support automatic periodic executing. For such recipes, you'll see an "Auto Refresh" option at the bottom of the menus panel. If you select the "Auto Refresh" option, you can also specify a frequency for the auto refresh to happen. Recipes provide a default auto-refresh frequency value, and the auto refresh frequency cannot be set to a value lower than 5 seconds.
+13. Kubeman supports "dark theme". You can switch to dark theme by using the selector at the left-bottom of the application window.
 
 
 ## Recipes Overview
