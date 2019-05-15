@@ -657,30 +657,12 @@ export default class IstioFunctions {
     return podName ? EnvoyFunctions.getAllEnvoyConfigs(k8sClient, "istio-system", podName, "istio-proxy") : {}
   }
 
-  static async getIngressGatwayEnvoyStats(k8sClient: K8sClient) {
-    const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
-    if(!ingressPods || ingressPods.length === 0) {
-      console.log("IngressGateway not found")
-      return {}
-    }
-    const ingressEnvoyStats = {}
-    for(const ingressPod of ingressPods) {
-      ingressEnvoyStats[ingressPod.name] = await EnvoyFunctions.getEnvoyStats(k8sClient, "istio-system", ingressPod.name, "istio-proxy")
-    }
-    return ingressEnvoyStats
+  static async getIngressGatwayEnvoyStats(pod: string, k8sClient: K8sClient) {
+    return await EnvoyFunctions.getEnvoyStats(k8sClient, "istio-system", pod, "istio-proxy")
   }
 
-  static async getIngressGatwayEnvoyServerInfo(k8sClient: K8sClient) {
-    const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
-    if(!ingressPods || ingressPods.length === 0) {
-      console.log("IngressGateway not found")
-      return {}
-    }
-    const ingressEnvoyServerInfos = {}
-    for(const ingressPod of ingressPods) {
-      ingressEnvoyServerInfos[ingressPod.name] = await EnvoyFunctions.getEnvoyServerInfo(k8sClient, "istio-system", ingressPod.name, "istio-proxy")
-    }
-    return ingressEnvoyServerInfos
+  static async getIngressGatwayEnvoyServerInfo(pod: string, k8sClient: K8sClient) {
+    return await EnvoyFunctions.getEnvoyServerInfo(k8sClient, "istio-system", pod, "istio-proxy")
   }
 
   static async getIngressEnvoyConfigsForService(service: ServiceDetails, k8sClient: K8sClient) {
