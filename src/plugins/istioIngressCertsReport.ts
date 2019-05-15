@@ -46,33 +46,37 @@ const plugin : ActionGroupSpec = {
             continue
           }
 
-          const output: ActionOutput = []
+          let output: ActionOutput = []
           const gateways = await IstioPluginHelper.getIstioIngressGateways(k8sClient)
           const virtualServices = (await IstioFunctions.listAllIngressVirtualServices(k8sClient))
-                  .map(vs => {
-                    const routes = (vs.http || []).concat(vs.tls || []).concat(vs.tcp || []).filter(r => r.match)
-                    return {
-                      virtualService: vs,
-                      routes: routes.map(r => {
-                          return {
-                            ports: r.match.map(m => m.port),
-                            destinations: r.route.map(route => route.destination)
-                          }
-                        }),
-                      hasPorts: _.flatten(routes.map(r => r.match))
-                                .filter(m => m.port).map(m => m.port).length > 0
-                    }
-                  })
 
-          const gatewaysUsingMountedCerts = gateways.map(g => {
-            const relevantServers = g.servers.filter(server =>  server.tls && server.tls.privateKey && server.tls.privateKey.length > 0)
-            return {
-              gateway: g,
-              servers: relevantServers,
-              privateKeys: relevantServers.map(server =>  server.tls.privateKey)
-            }
-          })
-          .filter(g => g.servers.length > 0)
+          const matchGateway = (text, gateway) => text === gateway.name || text === gateway.namespace+"/"+gateway.name
+                                                  || text === gateway.name+"."+gateway.namespace
+                                                  || text.includes(gateway.name+"."+gateway.namespace+".")
+
+          const outputRelatedVirtualServices = g => {
+            const gatewayHosts = _.flatten(g.servers.map(server => server.hosts))
+                                  .map(host => host.replace("*.", ""))
+
+            const relatedVirtualServices = virtualServices
+            .filter(vs => vs.gateways.filter(vsg => matchGateway(vsg, g)))
+            .filter(vs => vs.hosts.filter(vsh => vsh === "*" || 
+                          gatewayHosts.filter(gh => gh === "*" || vsh.includes(gh)).length > 0).length > 0)
+            .map(vs => {
+              return {
+                name: vs.name,
+                hosts: vs.hosts,
+                http: vs.http,
+                tls: vs.tls,
+                tcp: vs.tcp
+              }
+            })
+            output.push([">>>Related VirtualService",""])
+            relatedVirtualServices.length === 0 && output.push(["No Related VirtualServices",""])
+            relatedVirtualServices.forEach(vs => 
+              output.push([vs.name, vs]))
+            output.push([])
+          }
 
           const gatewaysUsingSDSCerts = gateways.map(g => {
             const relevantServers = g.servers.filter(server =>  server.tls && server.tls.credentialName && server.tls.credentialName.length > 0)
@@ -83,39 +87,6 @@ const plugin : ActionGroupSpec = {
             }
           })
           .filter(g => g.servers.length > 0)
-
-          const matchGateway = (text, gateway) => text === gateway.name || text === gateway.namespace+"/"+gateway.name
-                                                  || text === gateway.name+"."+gateway.namespace
-                                                  || text.includes(gateway.name+"."+gateway.namespace+".")
-
-          const outputRelatedVirtualServices = g => {
-            const gatewayHosts = _.flatten(g.servers.map(server => server.hosts))
-                                  .map(host => host.replace("*.", ""))
-            const gatewayPorts = g.servers.map(server => server.port)
-
-            const relatedVirtualServices = virtualServices
-            .filter(vs => vs.virtualService.gateways.filter(vsg => matchGateway(vsg, g)))
-            .filter(vs => vs.virtualService.hosts.filter(vsh => vsh === "*" || 
-                          gatewayHosts.filter(gh => gh === "*" || vsh.includes(gh)).length > 0).length > 0)
-            .map(vs => {
-              return {
-                name: vs.virtualService.name,
-                hosts: vs.virtualService.hosts,
-                routes: vs.hasPorts ? 
-                          vs.routes.filter(r => 
-                            r.ports.filter(vsp => 
-                              gatewayPorts.filter(gp => gp.includes(vsp)).length > 0
-                            ).length > 0)
-                          : vs.routes
-              }
-            })
-            .filter(vs => vs.routes.length > 0)
-            output.push([">>>Related VirtualService Routes",""])
-            relatedVirtualServices.length === 0 && output.push(["No Related VirtualServices",""])
-            relatedVirtualServices.forEach(vs => 
-              output.push([vs.name, {hosts: vs.hosts, routes: vs.routes}]))
-            output.push([])
-          }
 
           if(gatewaysUsingSDSCerts.length > 0 && !istioSDSContainer) {
             output.push([">>Gateways using SDS certs but no SDS container",""])
@@ -139,7 +110,19 @@ const plugin : ActionGroupSpec = {
             })
             outputRelatedVirtualServices(g)
           })
+          this.onStreamOutput  && this.onStreamOutput(output)
 
+          const gatewaysUsingMountedCerts = gateways.map(g => {
+            const relevantServers = g.servers.filter(server =>  server.tls && server.tls.privateKey && server.tls.privateKey.length > 0)
+            return {
+              gateway: g,
+              servers: relevantServers,
+              privateKeys: relevantServers.map(server =>  server.tls.privateKey)
+            }
+          })
+          .filter(g => g.servers.length > 0)
+
+          output = []
           output.push([])
           output.push([">>Gateways using mounted certs",""])
           gatewaysUsingMountedCerts.length === 0 && output.push(["No Gateways",""])
