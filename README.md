@@ -1,4 +1,4 @@
-![Kubeman Logo](/static/kubeman.png)
+![Kubeman Logo](/static/kubeman-logo.png)
 # Kubeman Rocks!
 Slack Channel: #kubeman
 
