@@ -14,10 +14,7 @@ const plugin : ActionGroupSpec = {
       order: 20,
       loadingMessage: "Loading Services...",
       
-      async choose(actionContext) {
-        await ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, 
-                                                "Services", 1, 10, true, "name")
-      },
+      choose: ChoiceManager.chooseService.bind(ChoiceManager, 1, 10),
 
       async act(actionContext) {
         const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
@@ -32,7 +29,7 @@ const plugin : ActionGroupSpec = {
           const cluster = actionContext.getClusters().filter(c => c.name === selections[0].cluster)[0]
           const output: ActionOutput = []
           output.push([">" + service.name+"."+service.namespace + " @ " + cluster.name])
-          output.push([">>Service Yaml"], [service.yaml])
+          output.push([">>Service"], [service.yaml])
 
           output.push([">>Backing Pods"])
           const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(service, cluster.k8sClient, true)
@@ -54,10 +51,8 @@ const plugin : ActionGroupSpec = {
       name: "Compare Two Services",
       order: 30,
       loadingMessage: "Loading Services...",
-      async choose(actionContext) {
-        await ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, 
-                                              "Services", 2, 2, true, "name")
-      },
+
+      choose: ChoiceManager.chooseService.bind(ChoiceManager, 2, 2),
 
       async act(actionContext) {
         K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Services")

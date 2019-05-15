@@ -4,7 +4,7 @@ import IstioFunctions from '../k8s/istioFunctions';
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import JsonUtil from '../util/jsonUtil';
 import {outputConfig} from './envoySidecarConfigDump'
-import {compareEnvoyConfigs} from './envoySidecarConfigComparison'
+import ChoiceManager from '../actions/choiceManager'
 
 
 function getConfigItems(configs, configType, titleField) {
@@ -29,7 +29,7 @@ async function outputSidecarConfig(action, actionContext, configType, titleField
   const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
   action.onOutput && action.onOutput([["Sidecar Config from Pilot"]], ActionOutputStyle.Log)
 
-  const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, sidecar.title)
+  const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, sidecar.pilotPod, sidecar.title)
   action.onStreamOutput && action.onStreamOutput([[">" + configType + " for " + sidecar.title]])
   const configs = getConfigItems(pilotConfigs, configType, titleField)
   outputConfig(action.onStreamOutput, configs, dataField, dataTitleField)
@@ -40,13 +40,12 @@ const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
   title: "Istio Pilot Recipes",
   order: ActionContextOrder.Istio+2,
-  loadingMessage: "Loading Envoy Sidecars...",
 
   actions: [
     {
-      name: "View Sidecar Clusters Config from Pilot",
+      name: "View Envoy Clusters Config from Pilot",
       order: 50,
-      loadingMessage: "Loading Envoy Sidecars...",
+      loadingMessage: "Loading Envoy Proxies...",
       
       choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
 
@@ -55,9 +54,9 @@ const plugin : ActionGroupSpec = {
       },
     },
     {
-      name: "View Sidecar Listeners Config from Pilot",
-      order: 50,
-      loadingMessage: "Loading Envoy Sidecars...",
+      name: "View Envoy Listeners Config from Pilot",
+      order: 51,
+      loadingMessage: "Loading Envoy Proxies...",
       
       choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
 
@@ -66,9 +65,9 @@ const plugin : ActionGroupSpec = {
       },
     },
     {
-      name: "View Sidecar Routes Config from Pilot",
-      order: 50,
-      loadingMessage: "Loading Envoy Sidecars...",
+      name: "View Envoy Routes Config from Pilot",
+      order: 52,
+      loadingMessage: "Loading Envoy Proxies...",
       
       choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
 
@@ -78,56 +77,28 @@ const plugin : ActionGroupSpec = {
       },
     },
     {
-      name: "Compare Pilot-Sidecar Config",
-      order: 50,
-      loadingMessage: "Loading Envoy Sidecars...",
-      
-      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
-
-      async act(actionContext) {
-        const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
-        this.showOutputLoading && this.showOutputLoading(true)
-        const sidecar = sidecars[0]
-        const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
-
-        this.onOutput && this.onOutput([[
-          "", "Pilot <-> Sidecar Config Comparison", ""
-        ]], ActionOutputStyle.Log)
-
-        const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, sidecar.title)
-        const sidecarConfigs = await EnvoyFunctions.getEnvoyConfigDump(cluster.k8sClient, sidecar.namespace, sidecar.pod, "istio-proxy")
-
-        compareEnvoyConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, EnvoyConfigType.Clusters, true, "cluster")
-
-        compareEnvoyConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, EnvoyConfigType.Listeners, true, "listener")
-
-        compareEnvoyConfigs(this.onStreamOutput, pilotConfigs, sidecarConfigs, EnvoyConfigType.Routes, true, "routeConfig", "route_config")
-
-        this.showOutputLoading && this.showOutputLoading(false)
-      },
-    },
-    {
       name: "View Pilot-Sidecars Sync Status",
-      order: 51,
+      order: 53,
       autoRefreshDelay: 15,
-      
+      loadingMessage: "Loading Pilot Pods...",
+            
+      choose: IstioPluginHelper.choosePilotPods.bind(IstioPluginHelper, 1, 3),
+
       async act(actionContext) {
         this.onOutput && this.onOutput([["Pilot-Sidecars Sync Status"]], ActionOutputStyle.Log)
         this.showOutputLoading && this.showOutputLoading(true)
-        const clusters = actionContext.getClusters()
-        for(const cluster of clusters) {
+
+        const selections = await ChoiceManager.getPodSelections(actionContext, false)
+        for(const selection of selections) {
           const output: ActionOutput = []
-          output.push([">Cluster: " + cluster.name])
-          if(cluster.hasIstio) {
-            const result = await IstioFunctions.getPilotSidecarSyncStatus(cluster.k8sClient)
-            result.forEach(r => output.push([r], []))
-          } else {
-            output.push(["Istio not installed"])
-          }
+          output.push([">Pilot Pod: " + selection.podName + " @ Cluster: " + selection.cluster])
+          const result = await IstioFunctions.getPilotSidecarSyncStatus(selection.k8sClient, selection.podName)
+          result.forEach(r => output.push([r], []))
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
+
       refresh(actionContext) {
         this.act(actionContext)
       },

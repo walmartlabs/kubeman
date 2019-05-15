@@ -14,10 +14,7 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 15,
       loadingMessage: "Loading Services...",
       
-      async choose(actionContext) {
-        await ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, 
-                                                "Services", 1, 10, true, "name")
-      },
+      choose: ChoiceManager.chooseService.bind(ChoiceManager, 1, 10),
 
       async act(actionContext) {
         const selections = await ChoiceManager.getSelections(actionContext)

@@ -31,6 +31,7 @@ interface IState {
   choiceItems: any[][]
   choiceDataMap: Map<any, any>
   filteredChoices: any[][]
+  allSelected: boolean
 }
 
 class ActionChoiceDialog extends React.Component<IProps, IState> {
@@ -42,6 +43,7 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
     choiceDataMap: new Map,
     choiceItems: [],
     filteredChoices: [],
+    allSelected: false,
   }
   filterTimer: any = undefined
 
@@ -93,6 +95,37 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
     this.props.onSelection(previousSelections.slice(0, maxChoices))
   }
 
+  onSelectAll = () => {
+    let {selections, filteredChoices, choiceDataMap, allSelected} = this.state
+    const {minChoices, maxChoices} = this.props
+    if(allSelected) {
+      selections.forEach((data, id) => selections.delete(id))
+      allSelected = false
+    } else {
+      allSelected = true
+      const countSelected = selections.size
+      let maxToSelect = maxChoices > 0 ? maxChoices - countSelected : filteredChoices.length
+      if(maxToSelect > 0) {
+        filteredChoices.forEach(item => {
+          if(maxToSelect > 0) {
+            const itemId = item.join(".")
+            if(!selections.has(itemId)) {
+              selections.set(itemId, choiceDataMap.get(itemId))
+              --maxToSelect
+            }
+          }
+        })
+      }
+    }
+    this.setState({selections, allSelected})
+  }
+
+  onClearSelections = () => {
+    const {selections} = this.state
+    selections.forEach((data, id) => selections.delete(id))
+    this.setState({selections, allSelected: false})
+  }
+
   onOk = () => {
     const {selections} = this.state
     this.props.onSelection(Array.from(selections.values()))
@@ -107,7 +140,7 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
   render() {
     const {classes, open, title, minChoices, maxChoices, 
           showChoiceSubItems, previousSelections,} = this.props
-    const {selections, filteredChoices} = this.state
+    const {selections, filteredChoices, allSelected} = this.state
     let countSelected = selections.size
     const minSelected = minChoices > 0 && countSelected >= minChoices
     const maxSelected = maxChoices > 0 && countSelected >= maxChoices
@@ -192,24 +225,31 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
           </Table>
         </DialogContent>
         <DialogActions className={classes.dialogActions}>
-          {hasPreviousSelections &&
-            <Button onClick={this.onUsePreviousSelections} 
-                    disabled={!hasEnoughPreviousSelections}
-                    className={hasEnoughPreviousSelections ? classes.dialogButton : classes.dialogButtonDisabled} >
-              { hasMorePreviousSelections ? "Use First " + maxChoices + " Previous Selection(s)" :
-                hasEnoughPreviousSelections ? "Use Previous Selections" : "Not Enough Previous Selections"}
+          <div className={classes.floatLeft}>
+            <Checkbox checked={allSelected}
+                      className={classes.allCheckbox}
+                      onChange={this.onSelectAll} />
+          </div>
+          <div className={classes.floatRight}>
+            {hasPreviousSelections &&
+              <Button onClick={this.onUsePreviousSelections} 
+                      disabled={!hasEnoughPreviousSelections}
+                      className={hasEnoughPreviousSelections ? classes.dialogButton : classes.dialogButtonDisabled} >
+                { hasMorePreviousSelections ? "Use First " + maxChoices + " Previous Selection(s)" :
+                  hasEnoughPreviousSelections ? "Use Previous Selections" : "Not Enough Previous Selections"}
+              </Button>
+            }
+            <Button onClick={this.props.onRefresh} className={classes.dialogButton} >
+              Refresh
             </Button>
-          }
-          <Button onClick={this.props.onRefresh} className={classes.dialogButton} >
-            Refresh
-          </Button>
-          <Button onClick={this.props.onCancel} className={classes.dialogButton} >
-            Cancel
-          </Button>
-          <Button onClick={this.onOk} className={minSelected ? classes.dialogButton : classes.dialogButtonDisabled} 
-                  disabled={!minSelected} >
-            Ok
-          </Button>
+            <Button onClick={this.props.onCancel} className={classes.dialogButton} >
+              Cancel
+            </Button>
+            <Button onClick={this.onOk} className={minSelected ? classes.dialogButton : classes.dialogButtonDisabled} 
+                    disabled={!minSelected} >
+              Ok
+            </Button>
+          </div>
         </DialogActions>
       </Dialog>
 

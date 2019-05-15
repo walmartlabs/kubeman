@@ -30,6 +30,7 @@ export default class ChoiceManager {
   static useNamespace: boolean = true
   static showChoiceSubItems: boolean = true
   static cacheKey: string|undefined = undefined
+  static pendingChoicesCounter = 0
   static clearItemsTimer: any = undefined
 
   static startClearItemsTimer() {
@@ -45,6 +46,7 @@ export default class ChoiceManager {
     this.showChoiceSubItems = true
     this.cacheKey = undefined
     this.clearItemsTimer = undefined
+    this.pendingChoicesCounter = 0
     Context.selections = []
   }
 
@@ -111,6 +113,7 @@ export default class ChoiceManager {
       this.items = {}
     }
 
+    const operationId = Context.operationCounter
     let choices: any[] = []
     for(const cluster of clusters) {
       if(!this.items[cluster.name]) {
@@ -122,6 +125,9 @@ export default class ChoiceManager {
           namespaces = await K8sFunctions.getClusterNamespaces(cluster.k8sClient)
         }
         for(const namespace of namespaces) {
+          if(operationId !== Context.operationCounter) {
+            return []
+          }
           let isNewNamespace = false
           if(!this.items[cluster.name][namespace.name]) {
             this.items[cluster.name][namespace.name] = []
@@ -172,20 +178,32 @@ export default class ChoiceManager {
 
   static async _prepareChoices(cache: boolean, cacheKey: string|undefined, actionContext: ActionContext, k8sFunction: GetItemsFunction, 
                               name: string, min: number, max: number, useNamespace: boolean = true, ...fields) {
+    const operationId = Context.operationCounter
+    ++this.pendingChoicesCounter
     const previousSelections = cache && this.cacheKey === cacheKey ? actionContext.getSelections() : []
     this.cacheKey !== cacheKey && (Context.selections = [])
     const choices: any[] = await ChoiceManager._createAndStoreItems(cache, cacheKey, actionContext, k8sFunction, useNamespace, ...fields)
-    let howMany = ""
-    if(min === max && max > 0) {
-      howMany = " " + max + " "
+    if(choices.length >= min && choices.length <= max) {
+      Context.selections = choices
+      actionContext.onSkipChoices && actionContext.onSkipChoices()
     } else {
-      howMany = min > 0 ? " at least " + min : ""
-      howMany += max > 0 && min > 0 ? ", and " : ""
-      howMany += max > 0 ?  " up to " + max + " " : ""
+      let howMany = ""
+      if(min === max && max > 0) {
+        howMany = " " + max + " "
+      } else {
+        howMany = min > 0 ? " at least " + min : ""
+        howMany += max > 0 && min > 0 ? ", and " : ""
+        howMany += max > 0 ?  " up to " + max + " " : ""
+      }
+      //show dialog only if no other operation has been performed by the user in the meantime
+      if(operationId === Context.operationCounter) {
+        actionContext.onActionInitChoices && 
+          actionContext.onActionInitChoices("Choose" + howMany + name, choices, min, max, 
+                                            ChoiceManager.showChoiceSubItems, previousSelections)
+      } else if(--this.pendingChoicesCounter === 0) {
+        actionContext.onCancelActionChoice && actionContext.onCancelActionChoice()
+      }
     }
-    actionContext.onActionInitChoices && 
-      actionContext.onActionInitChoices("Choose" + howMany + name, choices, min, max, 
-                                        ChoiceManager.showChoiceSubItems, previousSelections)
   }
 
   static async prepareChoices(actionContext: ActionContext, k8sFunction: GetItemsFunction, 
@@ -349,6 +367,36 @@ export default class ChoiceManager {
     return podSelections
   }
 
+  static async chooseService(min, max, actionContext) {
+    ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", min, max, true, "name")
+  }
+
+  static async chooseServiceContainer(serviceName: string, serviceNamespace: string, serviceCluster: string, actionContext: ActionContext) {
+    ChoiceManager.prepareCachedChoices(actionContext, 
+      async (cluster, namespace, k8sClient) => {
+        if(cluster === serviceCluster) {
+          let podsAndContainers = await K8sFunctions.getPodsAndContainersForServiceName(serviceName, serviceNamespace, k8sClient, true)
+          return podsAndContainers.containers as any[]
+        } else {
+          return []
+        }
+      },
+      "Container(s)", 1, 1, false, "name"
+    )
+  }
+
+  static async chooseServiceAndContainer(action, actionContext: ActionContext) {
+    ChoiceManager.doubleChoices(action, actionContext,
+      ChoiceManager.chooseService.bind(ChoiceManager, 1, 1, actionContext),
+      ChoiceManager.getSelections.bind(ChoiceManager, actionContext),
+      serviceSelection => {
+        const service = serviceSelection.data[0].item
+        ChoiceManager.chooseServiceContainer(service.name, service.namespace, serviceSelection.data[0].cluster, actionContext)
+      },
+      ChoiceManager.getSelections.bind(ChoiceManager, actionContext)
+    )
+  }
+
   static async doubleChoices(action, actionContext, choose1, getSelections1, choose2, getSelections2) {
     let selections: any[] = []
     actionContext.onActionInitChoices = actionContext.onActionInitChoicesUnbound.bind(actionContext, 
@@ -357,11 +405,11 @@ export default class ChoiceManager {
         actionContext.onActionInitChoices = actionContext.onActionInitChoicesUnbound.bind(actionContext, 
           async (...args) => {
             selections.push({data: await getSelections2()})
-            actionContext.context.selections = selections
+            Context.selections = selections
             action.act(actionContext)
           }
         )
-        await choose2()
+        await choose2(selections[0])
       }
     )
     await choose1()

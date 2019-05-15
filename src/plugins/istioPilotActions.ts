@@ -14,19 +14,22 @@ const plugin : ActionGroupSpec = {
       name: "View Pilot Metrics",
       order: 40,
       autoRefreshDelay: 15,
+      loadingMessage: "Loading Pilot Pods...",
+            
+      choose: IstioPluginHelper.choosePilotPods.bind(IstioPluginHelper, 1, 3),
       
       async act(actionContext) {
         this.onOutput && this.onOutput([["Pilot Metrics"]], ActionOutputStyle.Log)
         this.showOutputLoading && this.showOutputLoading(true)
-        const clusters = actionContext.getClusters()
-        for(const cluster of clusters) {
-          if(cluster.hasIstio) {
-            const result = await IstioFunctions.getPilotMetrics(cluster.k8sClient)
-            this.onStreamOutput && this.onStreamOutput([[">Cluster: " + cluster.name]])
-            this.onStreamOutput && this.onStreamOutput(result ? result.split("\n").map(line => [line]) : [[""]])
-          } else {
-            this.onStreamOutput && this.onStreamOutput([["Istio not installed"]])
-          }
+
+        const selections = await ChoiceManager.getPodSelections(actionContext, false)
+        for(const selection of selections) {
+          const output: ActionOutput = []
+          output.push([">Pilot Pod: " + selection.podName + " @ Cluster: " + selection.cluster])
+          const result = await IstioFunctions.getPilotMetrics(selection.k8sClient, selection.podName)
+          result && result.split("\n").map(line => output.push([line]))
+          !result && output.push(["N/A"])
+          this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
@@ -40,8 +43,8 @@ const plugin : ActionGroupSpec = {
       loadingMessage: "Loading Services...",
       
       async choose(actionContext) {
-        await ChoiceManager.prepareChoices(actionContext, IstioPluginHelper.getServicesFromIstioEnabledClusters, 
-                                                  "Services", 1, 10, true, "name")
+        await ChoiceManager.prepareCachedChoices(actionContext, IstioPluginHelper.getServicesFromIstioEnabledClusters, 
+                                                  "Services using Istio", 1, 10, true, "name")
       },
       
       async act(actionContext) {

@@ -1,6 +1,64 @@
 import k8sFunctions from '../k8s/k8sFunctions'
-import {ActionGroupSpec, ActionContextType, ActionOutputStyle, } from '../actions/actionSpec'
+import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, } from '../actions/actionSpec'
 import ChoiceManager from '../actions/choiceManager'
+import { K8sClient } from '../k8s/k8sClient'
+
+export interface PodContainerInfo {
+  container: string
+  pod: string
+  namespace: string
+  cluster: string
+  k8sClient: K8sClient
+}
+
+export async function executeCommand(containerList: PodContainerInfo[], actionContext, clear, onStreamOutput) {
+  const inputText = actionContext.inputText ? actionContext.inputText : ''
+  const separator = inputText.includes("&&") ? "&&" : "&"
+  const commands = inputText.split(separator).map(c => c.trim())
+                      .map(c => c.startsWith("/") ? c.slice(1) : c)
+
+  for(const c of commands) {
+    const commandText = c.trim()
+    if(commandText.length === 0) {
+      onStreamOutput([["No command entered."]])
+      continue
+    }
+    if(commandText.includes("ping") && !commandText.includes("-c")) {
+        onStreamOutput([["Can't execute ping command without -c option since this will run indefinitely."]])
+        continue
+    }
+    if(commandText.includes("top")) {
+      onStreamOutput([[commandText + ": can't execute a command that runs indefinitely"]])
+      continue
+    }
+    if(commandText.includes("rm") || commandText.includes("rmdir")) {
+      onStreamOutput([[commandText + ": prohibited command"]])
+      continue
+    }
+    if(commandText === "clear" || commandText === "c") {
+      clear(actionContext)
+      continue
+    }
+    onStreamOutput([[">Command: " + commandText]])
+    const command = ["sh", "-c", commandText]
+    for(const c of containerList) {
+      const output: ActionOutput = []
+      const title = c.container+"@"+c.pod+"."+c.namespace+" @ "+c.cluster
+      try {
+        const result = await k8sFunctions.podExec(c.namespace, c.pod, 
+                              c.container, c.k8sClient, command)
+        output.push([">>Container@Pod @ Cluster :  "+  title])
+        output.push(result.length > 0 ? [result] : ["No Results"])
+        onStreamOutput(output)
+      } catch(error) {
+        onStreamOutput([[
+          "Error for container " + title + ": " + error.message
+        ]])
+      }
+    }
+  }
+}
+
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Namespace,
@@ -12,76 +70,41 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 15,
       loadingMessage: "Loading Containers@Pods...",
 
-      selections: undefined,
+      podsList: [],
       
       choose: ChoiceManager.choosePods.bind(ChoiceManager, 1, 10, true, false),
       
       async act(actionContext) {
+        this.showOutputLoading && this.showOutputLoading(true)
+        this.podsList = []
         const selections = await ChoiceManager.getPodSelections(actionContext)
-        this.selections = selections
+        this.podsList = this.podsList.concat(
+          selections.map(s => {
+            return {
+              container: s.containerName,
+              pod: s.podName,
+              namespace: s.namespace,
+              cluster: s.cluster,
+              k8sClient: s.k8sClient
+            }
+          }))
+
         this.clear && this.clear(actionContext)
         this.setScrollMode && this.setScrollMode(true)
+        this.showOutputLoading && this.showOutputLoading(false)
       },
       
       async react(actionContext) {
-        const inputText = actionContext.inputText ? actionContext.inputText : ''
-        const separator = inputText.includes("&&") ? "&&" : "&"
-        const commands = inputText.split(separator).map(c => c.trim())
-                            .map(c => c.startsWith("/") ? c.slice(1) : c)
-        for(const command of commands) {
-          await this.executeCommand(command, actionContext)
-        }
-      },      
-      async executeCommand(commandText, actionContext) {
-        commandText = commandText.trim()
-        if(commandText.length === 0) {
-          this.onStreamOutput && this.onStreamOutput([["No command entered."]])
-          this.showOutputLoading && this.showOutputLoading(false)
-          return
-        }
-        if(commandText.includes("ping") && !commandText.includes("-c")) {
-            this.onStreamOutput && this.onStreamOutput([["Can't execute ping command without -c option since this will run indefinitely."]])
-            this.showOutputLoading && this.showOutputLoading(false)
-            return
-        }
-        if(commandText.includes("top")) {
-          this.onStreamOutput && this.onStreamOutput([[commandText + ": can't execute a command that runs indefinitely"]])
-          this.showOutputLoading && this.showOutputLoading(false)
-          return
-        }
-        if(commandText.includes("rm") || commandText.includes("rmdir")) {
-          this.onStreamOutput && this.onStreamOutput([[commandText + ": prohibited command"]])
-          this.showOutputLoading && this.showOutputLoading(false)
-          return
-        }
-        if(commandText === "clear" || commandText === "c") {
-          this.clear && this.clear(actionContext)
-          return
-        }
         this.showOutputLoading && this.showOutputLoading(true)
-        const command = ["sh", "-c", commandText]
-        for(const selection of this.selections) {
-          try {
-            const result = await k8sFunctions.podExec(selection.namespace, selection.podName, 
-                                  selection.containerName, selection.k8sClient, command)
-            this.onStreamOutput && this.onStreamOutput([[">Pod: "+ selection.title+"."+selection.namespace 
-                                  + ", Command: " + commandText]])
-            const output = result.length > 0 ? [[result]] : [["No Results"]]
-            this.onStreamOutput && this.onStreamOutput(output)
-          } catch(error) {
-            this.onStreamOutput && this.onStreamOutput([[
-              "Error for pod " + selection.title + ": " + error.message
-            ]])
-          }
-        }
+        await executeCommand(this.podsList, actionContext, this.clear, this.onStreamOutput)
         this.showOutputLoading && this.showOutputLoading(false)
-      },
+      },      
       refresh(actionContext) {
         this.react && this.react(actionContext)
       },
       clear() {
         this.onOutput && this.onOutput([[
-          "Send Command To: " + this.selections.map(s => s.title+"."+s.namespace).join(", ")
+          "Send Command To: " + this.podsList.map(p => " [ " + p.container+"@"+p.pod+"."+p.namespace+" @ "+p.cluster + " ] ").join(", ")
         ]], ActionOutputStyle.Log)
       },
     }

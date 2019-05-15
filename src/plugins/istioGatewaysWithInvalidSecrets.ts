@@ -11,7 +11,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Gateways with Missing Secrets",
-      order: 4,
+      order: 13,
       async act(actionContext) {
         this.onOutput && this.onOutput([["Gateways with Missing Secrets"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)

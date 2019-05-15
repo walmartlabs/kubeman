@@ -12,6 +12,21 @@ export enum EnvoyConfigType {
 
 export default class EnvoyFunctions {
 
+  static getKeysForType(type: string) {
+    switch(type) {
+      case EnvoyConfigType.Bootstrap:
+        return ["bootstrap"]
+      case EnvoyConfigType.Clusters:
+        return ["static_clusters", "dynamic_active_clusters", "dynamic_warming_clusters", "dynamicActiveClusters"]
+      case EnvoyConfigType.Listeners:
+        return ["static_listeners", "dynamic_active_listeners", "dynamic_warming_listeners", "dynamic_draining_listeners", "dynamicActiveListeners"]
+      case EnvoyConfigType.Routes:
+        return ["static_route_configs", "dynamic_route_configs", "dynamicRouteConfigs"]
+      default:
+        return []
+    }
+  }
+
   static async getEnvoyConfigDump(k8sClient: K8sClient, namespace: string, pod: string, container: string) : Promise<any[]> {
     try {
       const result = JSON.parse(await K8sFunctions.podExec(namespace, pod, container, k8sClient, 
@@ -27,22 +42,20 @@ export default class EnvoyFunctions {
   }
 
 
-  private static extractEnvoyConfigForType(configs: any[], configType: EnvoyConfigType) : any[] {
+  static extractEnvoyConfigForType(configs: any[], configType: EnvoyConfigType) {
+    const keys = EnvoyFunctions.getKeysForType(configType)
     configs = configs.filter(c => c["@type"].includes(configType))[0]
-
-    const bootstrapConfig = configs[Object.keys(configs).filter(key => key.includes("bootstrap"))[0]]
-    const staticItems = configs[Object.keys(configs).filter(key => key.includes("static"))[0]]
-    const dynamicItems = configs[Object.keys(configs).filter(key => key.includes("dynamic"))[0]]
-
-    const items: any[] = []
-    bootstrapConfig && items.push(bootstrapConfig)
-    staticItems && staticItems.forEach(item => item && items.push(item))
-    dynamicItems && dynamicItems.forEach(item => item && items.push(item))
-    return items
+    const configItems = {}
+    keys.forEach(key => {
+      if(configs[key]) {
+        configItems[key] = configs[key]
+      }
+    })
+    return configItems
   }
 
   static async getEnvoyConfigForType(k8sClient: K8sClient, namespace: string, pod: string, container: string, 
-                                      configType: EnvoyConfigType) : Promise<any[]> {
+                                      configType: EnvoyConfigType) {
     try {
       let configs = await EnvoyFunctions.getEnvoyConfigDump(k8sClient, namespace, pod, container)
       return EnvoyFunctions.extractEnvoyConfigForType(configs, configType)
@@ -52,45 +65,73 @@ export default class EnvoyFunctions {
     return []
   }
 
-  private static prepareEnvoyBootstrapConfig(configs: any[]) {
-    return configs.map(config => {
-      config.title = config.node.id
-      return config
+  static prepareEnvoyBootstrapConfig(configs: any) {
+    const preparedBootstrapConfigs: any[] = []
+    Object.keys(configs).forEach(key => {
+      configs[key].title = configs[key].node.id + " ("+key+")"
+      preparedBootstrapConfigs.push(configs[key])
     })
+    return preparedBootstrapConfigs
   }
 
-  private static async prepareEnvoyClustersConfig(clusterConfigs: any[], namespace: string, pod: string, container: string, k8sClient: K8sClient) {
-    const result = JSON.parse(await K8sFunctions.podExec(namespace, pod, container, k8sClient, 
-                                  ["curl", "-s", "http://127.0.0.1:15000/clusters?format=json"]))
+  static async prepareEnvoyClustersConfig(clusterConfigs: any, loadStatus: boolean = false, 
+                            namespace: string = '', pod: string = '', container: string = '', k8sClient?: K8sClient) {
     const clusterStatusMap = {}
-    result.cluster_statuses && result.cluster_statuses.forEach &&
-      result.cluster_statuses.forEach(cs => clusterStatusMap[cs.name] = cs)
-
-    clusterConfigs.forEach(config => {
-      config.title = config.cluster.name
-      const clusterStatus = clusterStatusMap[config.name]
-      if(clusterStatus) {
-        delete clusterStatus.name
-        config.status = clusterStatus
-      }
+    if(loadStatus && k8sClient) {
+      const result = JSON.parse(await K8sFunctions.podExec(namespace, pod, container, k8sClient,
+        ["curl", "-s", "http://127.0.0.1:15000/clusters?format=json"]))
+      result.cluster_statuses && result.cluster_statuses.forEach &&
+        result.cluster_statuses.forEach(cs => clusterStatusMap[cs.name] = cs)
+    }
+    const preparedClusterConfigs: any[] = []
+    Object.keys(clusterConfigs).forEach(key => {
+      clusterConfigs[key].forEach(config => {
+        config.name = config.cluster.name
+        config.title = config.name + " ("+key+")"
+        if(loadStatus) {
+          const clusterStatus = clusterStatusMap[config.name]
+          if(clusterStatus) {
+            delete clusterStatus.name
+            config.status = clusterStatus
+          }
+        }
+        preparedClusterConfigs.push(config)
+      })
     })
-    return clusterConfigs
+    return preparedClusterConfigs
   }
 
-  private static prepareEnvoyListenersConfig(listenersConfigs: any[]) {
-    return listenersConfigs.map(config => {
-      config.title = config.listener.address.socket_address.address+":"+config.listener.address.socket_address.port_value
-      return config
+  static prepareEnvoyListenersConfig(listenersConfigs: any) {
+    const preparedListenerConfigs: any[] = []
+    Object.keys(listenersConfigs).forEach(key => {
+      listenersConfigs[key].forEach(config => {
+        const socketAddress = config.listener.address.socket_address || config.listener.address.socketAddress
+        config.name = socketAddress.address+":"+(socketAddress.port_value||socketAddress.portValue)
+        config.title = config.name + " ("+key+")"
+        preparedListenerConfigs.push(config)
+      })
     })
-}
+    return preparedListenerConfigs
+  }
 
-  private static prepareEnvoyRoutesConfig(routesConfigs: any[]) {
-    return _.flatten(routesConfigs.map(r => 
-      r.route_config.virtual_hosts.map(vh => {
-        vh.title = vh.name
-        r.route_config.name && (vh.title = r.route_config.name + " > " + vh.name)
-        return vh
-      })))
+  static prepareEnvoyRoutesConfig(routesConfigs: any) {
+    const preparedRouteConfigs: any[] = []
+    Object.keys(routesConfigs).forEach(key => {
+      routesConfigs[key].forEach(r => {
+        const routeConfig = r.route_config || r.routeConfig
+        const virtualHosts = routeConfig.virtual_hosts || routeConfig.virtualHosts
+        virtualHosts.map(vh => {
+          if(routeConfig.name) {
+            vh.title = routeConfig.name + " > " + vh.name
+          } else {
+            vh.title = vh.name
+          }
+          vh.title += " ("+key+")"
+          preparedRouteConfigs.push(vh)
+        })
+      })
+    })
+    return preparedRouteConfigs
   }
 
   static async getEnvoyBootstrapConfig(k8sClient: K8sClient, namespace: string, pod: string, container: string) {
@@ -101,15 +142,15 @@ export default class EnvoyFunctions {
   static async getEnvoyClusters(k8sClient: K8sClient, namespace: string, pod: string, container: string) {
     return EnvoyFunctions.prepareEnvoyClustersConfig(
         await EnvoyFunctions.getEnvoyConfigForType(k8sClient, namespace, pod, container, EnvoyConfigType.Clusters),
-        namespace, pod, container, k8sClient)
+                                                      true, namespace, pod, container, k8sClient)
   }
 
-  static async gettEnvoyListeners(k8sClient: K8sClient, namespace: string, pod: string, container: string) {
+  static async getEnvoyListeners(k8sClient: K8sClient, namespace: string, pod: string, container: string) {
     return EnvoyFunctions.prepareEnvoyListenersConfig(
             await EnvoyFunctions.getEnvoyConfigForType(k8sClient, namespace, pod, container, EnvoyConfigType.Listeners))
   }
 
-  static async gettEnvoyRoutes(k8sClient: K8sClient, namespace: string, pod: string, container: string) {
+  static async getEnvoyRoutes(k8sClient: K8sClient, namespace: string, pod: string, container: string) {
     return EnvoyFunctions.prepareEnvoyRoutesConfig(
             await EnvoyFunctions.getEnvoyConfigForType(k8sClient, namespace, pod, container, EnvoyConfigType.Routes))
   }
@@ -119,7 +160,7 @@ export default class EnvoyFunctions {
       let configs = await EnvoyFunctions.getEnvoyConfigDump(k8sClient, namespace, pod, container)
       const configsByType = {}
       configsByType[EnvoyConfigType.Clusters] = await EnvoyFunctions.prepareEnvoyClustersConfig(
-                      EnvoyFunctions.extractEnvoyConfigForType(configs, EnvoyConfigType.Clusters),
+                      EnvoyFunctions.extractEnvoyConfigForType(configs, EnvoyConfigType.Clusters), true,
                       namespace, pod, container, k8sClient)
       configsByType[EnvoyConfigType.Listeners] = EnvoyFunctions.prepareEnvoyListenersConfig(
                       EnvoyFunctions.extractEnvoyConfigForType(configs, EnvoyConfigType.Listeners))

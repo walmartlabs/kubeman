@@ -103,7 +103,7 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
           return
         }
-        await outputSidecarConfig(this, actionContext, sidecars, EnvoyFunctions.gettEnvoyListeners, "ListenersConfig")
+        await outputSidecarConfig(this, actionContext, sidecars, EnvoyFunctions.getEnvoyListeners, "ListenersConfig")
       },
       refresh(actionContext) {
         this.act(actionContext)
@@ -122,7 +122,7 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
           return
         }
-        await outputSidecarConfig(this, actionContext, sidecars, EnvoyFunctions.gettEnvoyRoutes, "RoutesConfig")
+        await outputSidecarConfig(this, actionContext, sidecars, EnvoyFunctions.getEnvoyRoutes, "RoutesConfig")
       },
       refresh(actionContext) {
         this.act(actionContext)

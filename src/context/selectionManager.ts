@@ -115,8 +115,16 @@ export default class SelectionManager {
     this.clustersInError = this.clustersInError.filter(c => c !== cluster.text())
   }
 
+  static deselectAllClusters() {
+    this.selectedClusters.forEach(cluster => this.deselectCluster(cluster))
+  }
+
   static deselectNamespace(namespace: Namespace) {
     this.selectedNamespaces.delete(namespace.text())
+  }
+
+  static deselectAllNamespaces() {
+    this.selectedNamespaces.forEach(ns => this.deselectNamespace(ns))
   }
 
   static setFilteredSelections(namespcaes: Namespace[]) {

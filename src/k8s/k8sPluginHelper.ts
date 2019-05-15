@@ -36,7 +36,4 @@ export default class K8sPluginHelper {
     output = output.concat(outputRows)
     onOutput(output, "Compare")
   }
-  static async chooseService(actionContext, min, max) {
-    ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", min, max, true, "name")
-  }
 }

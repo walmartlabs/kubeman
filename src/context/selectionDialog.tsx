@@ -1,18 +1,14 @@
-import React, { RefObject } from 'react';
+import React from 'react';
 import _ from 'lodash'
-
 import { withStyles, WithStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
 import {AppBar, Button, FormHelperText,} from '@material-ui/core';
 import {Dialog, DialogContent, DialogActions, } from '@material-ui/core';
 import {Tab, Tabs, CircularProgress} from '@material-ui/core'
-
-
 import {Cluster, Namespace, KubeComponent} from "../k8s/k8sObjectTypes";
 import * as k8s from '../k8s/k8sContextClient'
 import SelectionTable from './selectionTable'
 import {selectionDialogTheme} from '../theme/theme'
 import SelectionManager, {SelectedClusters, SelectedNamespaces} from './selectionManager'
-
 import styles from './selectionDialog.styles'
 
 
@@ -169,6 +165,16 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
     }
   }
 
+  onClearSelections = () => {
+    const { activeTab } = this.state
+    if(activeTab === SelectionTabs.Clusters) {
+      SelectionManager.deselectAllClusters()
+    } else if(activeTab === SelectionTabs.Namespaces) {
+      SelectionManager.deselectAllNamespaces()
+    }
+    this.forceUpdate()
+  }
+
   onCancel = () => {
     this.props.onCancel()
   }
@@ -254,12 +260,19 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
               {updating && <CircularProgress className={classes.updating} />}
           </DialogContent>
           <DialogActions className={classes.dialogActions}>
-            <Button onClick={this.onCancel} className={classes.dialogButton} disabled={updating} >
-              Cancel
-            </Button>
-            <Button onClick={this.onOk} className={classes.dialogButton} disabled={updating} >
-              Ok
-            </Button>
+            <div className={classes.floatLeft}>
+              <Button onClick={this.onClearSelections} className={classes.dialogButton} disabled={updating} >
+                Clear Selections
+              </Button>
+            </div>
+            <div className={classes.floatRight}>
+              <Button onClick={this.onCancel} className={classes.dialogButton} disabled={updating} >
+                Cancel
+              </Button>
+              <Button onClick={this.onOk} className={classes.dialogButton} disabled={updating} >
+                Ok
+              </Button>
+            </div>
           </DialogActions>
         </Dialog>
       </MuiThemeProvider>  

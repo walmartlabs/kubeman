@@ -25,6 +25,18 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     marginRight: 'auto',
     backgroundColor: 'transparent',
   },
+  floatLeft: {
+    display: 'flex',
+    flexDirection: 'row',
+   justifyContent: 'flex-start',
+   width: '100%',
+  },
+  floatRight: {
+    display: 'flex',
+    flexDirection: 'row',
+   justifyContent: 'flex-end',
+   width: '100%',
+  }
 })
 
 export default styles

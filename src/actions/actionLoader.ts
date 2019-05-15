@@ -14,6 +14,7 @@ export class ActionLoader {
   static onStreamOutput: (action, output) => void
   static onActionInitChoices: ActionChoiceMaker
   static onActionChoices: ActionChoiceMaker
+  static onCancelActionChoice: () => void
   static onShowInfo: ActionOnInfo
   static onSetScrollMode: (boolean) => void
   static onOutputLoading: (boolean) => void
@@ -32,9 +33,10 @@ export class ActionLoader {
     }
   }
 
-  static setOnActionChoices(onActionInitChoices: ActionChoiceMaker, onActionChoices: ActionChoiceMaker) {
+  static setOnActionChoices(onActionInitChoices: ActionChoiceMaker, onActionChoices: ActionChoiceMaker, onCancelActionChoice: () => void) {
     this.onActionInitChoices = onActionInitChoices
     this.onActionChoices = onActionChoices
+    this.onCancelActionChoice = onCancelActionChoice
   }
 
   static setOnShowInfo(callback: ActionOnInfo) {
@@ -111,6 +113,8 @@ export class ActionLoader {
         action.showOutputLoading = this.onOutputLoading
         action.showInfo = this.onShowInfo
         action.chooseAndAct = () => {
+          Context.incrementOperation()
+          this.actionContext.inputText = undefined
           action.stopped = false
           if(this.checkSelections({
             checkClusters: action.context !== ActionContextType.Other,
@@ -119,6 +123,7 @@ export class ActionLoader {
             if(action.choose) {
               this.actionContext.onActionInitChoices = this.onActionInitChoices.bind(this, action.act.bind(action, this.actionContext))
               this.actionContext.onActionInitChoicesUnbound = this.onActionInitChoices
+              this.actionContext.onCancelActionChoice = this.onCancelActionChoice
               this.actionContext.onSkipChoices = action.act.bind(action, this.actionContext)
               action.choose(this.actionContext)
             } else {
@@ -126,18 +131,29 @@ export class ActionLoader {
             }
           }
         }
+
         const actionRefresh = action.refresh
         action.autoRefreshDelay = action.autoRefreshDelay || 60
         actionRefresh && (action.refresh = () => {
+          action.stopped = false
           actionRefresh && actionRefresh.call(action, this.actionContext)
         })
+
         const actionStop = action.stop ? action.stop.bind(action, this.actionContext) : undefined
         action.stop = () => {
           action.stopped = true
           actionStop && actionStop()
         }
+
         const actionClear = action.clear && action.clear.bind(action)
-        actionClear && (action.clear = () => actionClear(this.actionContext))
+        actionClear && (action.clear = () => {
+          action.stopped = false
+          actionClear && actionClear(this.actionContext)
+        })
+
+        const onActionOption = action.onActionOption && action.onActionOption.bind(action)
+        onActionOption && (action.onActionOption = (...args) => onActionOption(this.actionContext, ...args))
+
         const actionReact = action.react && action.react.bind(action)
 
         const commands: string[] = [
@@ -149,6 +165,7 @@ export class ActionLoader {
         if(actionReact || actionRefresh || actionClear) {
           action.canReact = actionReact !== null && actionReact !== undefined
           const boundReact = action.react = () => {
+            action.stopped = false
             switch(this.actionContext.inputText) {
               case "help":
               case "h":

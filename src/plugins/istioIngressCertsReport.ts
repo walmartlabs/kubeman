@@ -49,20 +49,20 @@ const plugin : ActionGroupSpec = {
           const output: ActionOutput = []
           const gateways = await IstioPluginHelper.getIstioIngressGateways(k8sClient)
           const virtualServices = (await IstioFunctions.listAllIngressVirtualServices(k8sClient))
-                                  .map(vs => {
-                                    return {
-                                      virtualService: vs,
-                                      routes: (vs.http || []).concat(vs.tls || []).concat(vs.tcp || [])
-                                              .map(r => {
-                                                return {
-                                                  ports: r.match.map(m => m.port),
-                                                  destinations: r.route.map(route => route.destination)
-                                                }
-                                              }),
-                                      hasPorts: _.flatten((vs.http || []).concat(vs.tls || []).concat(vs.tcp || []).map(r => r.match))
-                                              .map(m => m.port).filter(p => p).length > 0
-                                    }
-                                  })
+                  .map(vs => {
+                    const routes = (vs.http || []).concat(vs.tls || []).concat(vs.tcp || []).filter(r => r.match)
+                    return {
+                      virtualService: vs,
+                      routes: routes.map(r => {
+                          return {
+                            ports: r.match.map(m => m.port),
+                            destinations: r.route.map(route => route.destination)
+                          }
+                        }),
+                      hasPorts: _.flatten(routes.map(r => r.match))
+                                .filter(m => m.port).map(m => m.port).length > 0
+                    }
+                  })
 
           const gatewaysUsingMountedCerts = gateways.map(g => {
             const relevantServers = g.servers.filter(server =>  server.tls && server.tls.privateKey && server.tls.privateKey.length > 0)
@@ -110,6 +110,7 @@ const plugin : ActionGroupSpec = {
             relatedVirtualServices.length === 0 && output.push(["No Related VirtualServices",""])
             relatedVirtualServices.forEach(vs => 
               output.push([vs.name, {hosts: vs.hosts, routes: vs.routes}]))
+            output.push([])
           }
 
           if(gatewaysUsingSDSCerts.length > 0 && !istioSDSContainer) {
@@ -130,7 +131,6 @@ const plugin : ActionGroupSpec = {
                     credentialName: server.tls.credentialName
                   }
                 ],
-                []
               )
             })
             outputRelatedVirtualServices(g)

@@ -96,7 +96,6 @@ export class TableBox extends React.Component<IProps, IState> {
 
   state: IState = {
   }
-  outputManager: OutputManager = new OutputManager
   filterTimer: any = undefined
   lastScrollTop: number = -1
   isScrolled: boolean = false
@@ -112,7 +111,7 @@ export class TableBox extends React.Component<IProps, IState> {
   componentWillReceiveProps(props: IProps) {
     this.isScrolled = false
     this.lastScrollTop = -1
-    this.outputManager.setOutput(props.output, props.log, props.rowLimit)
+    OutputManager.setOutput(props.output, props.log, props.rowLimit)
     if(this.filterText.length > 0 && this.isFilterInput(this.filterText)) {
       this.filter()
     }
@@ -120,7 +119,7 @@ export class TableBox extends React.Component<IProps, IState> {
   }
 
   appendOutput(output: ActionOutput) {
-    this.outputManager.appendRows(output)
+    OutputManager.appendRows(output)
     this.props.scrollMode && this.scrollToBottom()
     this.forceUpdate()
   }
@@ -131,9 +130,9 @@ export class TableBox extends React.Component<IProps, IState> {
   }
 
   clearFilter() {
-   this.outputManager.clearFilter()
-   this.filterText = ''
-   this.forceUpdate()
+    OutputManager.clearFilter()
+    this.filterText = ''
+    this.forceUpdate()
   }
 
   isFilterInput(text: string) : boolean {
@@ -141,7 +140,7 @@ export class TableBox extends React.Component<IProps, IState> {
   }
 
   filter = () => {
-    this.outputManager.filter(this.filterText)
+    OutputManager.filter(this.filterText)
     this.forceUpdate()
   }
 
@@ -161,8 +160,6 @@ export class TableBox extends React.Component<IProps, IState> {
     this.filterText = text
     if(this.isFilterInput(text)) {
       this.onFilter(text)
-    } else {
-      this.outputManager.clearFilter()
     }
     this.forceUpdate()
   }
@@ -194,27 +191,27 @@ export class TableBox extends React.Component<IProps, IState> {
   }
 
   onHeaderClick = () => {
-    this.outputManager.showeHideAllGroups()
+    OutputManager.showeHideAllGroups()
     this.forceUpdate()
   }
 
   onGroupClick = (groupIndex?: number) => {
     if(groupIndex) {
-      this.outputManager.showeHideGroup(groupIndex)
+      OutputManager.showeHideGroup(groupIndex)
       this.forceUpdate()
     }
   }
 
   onSubGroupClick = (subGroupIndex?: number) => {
     if(subGroupIndex) {
-      this.outputManager.showeHideSubGroup(subGroupIndex)
+      OutputManager.showeHideSubGroup(subGroupIndex)
       this.forceUpdate()
     }
   }
 
   onSectionClick = (sectionIndex?: number) => {
     if(sectionIndex) {
-      this.outputManager.showeHideSection(sectionIndex)
+      OutputManager.showeHideSection(sectionIndex)
       this.forceUpdate()
     }
   }
@@ -222,7 +219,7 @@ export class TableBox extends React.Component<IProps, IState> {
   renderGroupRow(row: Row, rowIndex: number) {
     const {classes} = this.props
     const components : any[] = []
-    const columnCount = this.outputManager.headers.length
+    const columnCount = OutputManager.headers.length
     const colspans: number[] = []
     row.cells.forEach(cell => {
       cell.hasContent ? colspans.push(1) : colspans[colspans.length-1]++
@@ -304,7 +301,7 @@ export class TableBox extends React.Component<IProps, IState> {
 
   renderRow(row: Row, rowIndex: number, isAppendedRow: boolean) {
     const {classes, compare, health, log} = this.props
-    const columnCount = this.outputManager.headers.length
+    const columnCount = OutputManager.headers.length
     const components : any[] = []
 
     let cellContent
@@ -345,8 +342,8 @@ export class TableBox extends React.Component<IProps, IState> {
 
   renderHeaderRow() {
     const {classes} = this.props
-    let headers = this.outputManager.headers
-    const filterMatchedColumns = this.outputManager.matchedColumns
+    let headers = OutputManager.headers
+    const filterMatchedColumns = OutputManager.matchedColumns
     const keyColumnWidth = 'auto'
     const headersWithData = headers.filter(h => h.length > 0)
     const emptyCount = headers.length - headersWithData.length
@@ -394,12 +391,12 @@ export class TableBox extends React.Component<IProps, IState> {
   render() {
     const {classes, acceptInput, allowRefresh} = this.props
 
-    if(!this.outputManager.hasContent) {
+    if(!OutputManager.hasContent) {
       return <div/>
     }
 
-    const rows = this.outputManager.filteredRows
-    const columnCount = this.outputManager.headers.length
+    const rows = OutputManager.filteredRows
+    const columnCount = OutputManager.headers.length
     let inputMessage = "Type to filter results"
     if(acceptInput || allowRefresh) {
       inputMessage += ", or enter"
@@ -461,16 +458,15 @@ export class TableBox extends React.Component<IProps, IState> {
         if(row.isHidden) {
           if(!hiddenIndicatorShown) {
             hiddenIndicatorShown = true
+            const parent = currentParent
             currentParent.children.push(
               <TableRow key={index+"hidden"} className={classes.tableRowHidden}>
                 <TableCell className={classes.tableCellHidden}
                           style={{cursor: 'pointer'}}
                           colSpan={columnCount}
-                          onClick={() => 
-                            currentParent.isSection ? this.onSectionClick(row.sectionIndex) :
-                            currentParent.isSubGroup ? this.onSubGroupClick(row.subGroupIndex) : 
-                            currentParent.isGroup ? this.onGroupClick(row.groupIndex) :
-                            undefined}
+                          onClick={() => parent.isSection ? this.onSectionClick(row.sectionIndex) :
+                                        parent.isSubGroup ? this.onSubGroupClick(row.subGroupIndex) : 
+                                        parent.isGroup ? this.onGroupClick(row.groupIndex) : undefined}
                 >
                 ...
                 </TableCell>

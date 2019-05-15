@@ -3,6 +3,7 @@ import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionSpec, } fro
 import ChoiceManager from '../actions/choiceManager'
 import ActionContext from '../actions/actionContext';
 import StreamLogger from '../logger/streamLogger'
+import OutputManager from '../output/outputManager';
 
 
 const plugin : ActionGroupSpec = {
@@ -17,13 +18,15 @@ const plugin : ActionGroupSpec = {
         .join(", ") : ""
   },
 
-  async getPodLogs(actionContext: ActionContext, action: ActionSpec, tail: boolean) {
+  async getPodLogs(actionContext: ActionContext, action: ActionSpec, tail: boolean, ...filters) {
     this.selections = await ChoiceManager.getPodSelections(actionContext)
     action.clear && action.clear(actionContext)
     action.setScrollMode && action.setScrollMode(false)
-    StreamLogger.init(action.outputRowLimit, action.onStreamOutput)
     const podRowLimit = Math.ceil((action.outputRowLimit || 200)/this.selections.length)
 
+    StreamLogger.init(action.outputRowLimit, action.onStreamOutput, ...filters)
+    filters.length > 0 && OutputManager.filter(filters.join(" "))
+    
     for(const selection of this.selections) {
       action.showOutputLoading && action.showOutputLoading(true)
       const logStream = await k8sFunctions.getPodLog(selection.namespace, selection.podName, 
@@ -56,14 +59,14 @@ const plugin : ActionGroupSpec = {
         this.act(actionContext)
       },
       clear() {
-        this.onOutput && this.onOutput([["Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Check Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)
       }
     },
     {
       name: "Tail Container Logs",
       order: 11,
       loadingMessage: "Loading Containers@Pods...",
-      outputRowLimit: 200,
+      outputRowLimit: 100,
 
       choose: ChoiceManager.choosePods.bind(ChoiceManager, 1, 5, true, false),
       async act(actionContext) {
@@ -73,7 +76,37 @@ const plugin : ActionGroupSpec = {
         StreamLogger.stop()
       },
       clear() {
-        this.onOutput && this.onOutput([["Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Tail Logs for: " + plugin.getSelectionAsText()]], ActionOutputStyle.Log)
+      }
+    },
+    {
+      name: "Tail Filtered Container Logs",
+      order: 12,
+      loadingMessage: "Loading Containers@Pods...",
+      outputRowLimit: 100,
+      filter: undefined,
+
+      choose: ChoiceManager.choosePods.bind(ChoiceManager, 1, 5, true, false),
+
+      async act(actionContext) {
+        this.clear && this.clear(actionContext)
+      },
+      
+      async react(actionContext) {
+        this.filter = actionContext.inputText
+        await plugin.getPodLogs(actionContext, this, true, this.filter)
+      },
+
+      stop(actionContext) {
+        StreamLogger.stop()
+      },
+
+      clear() {
+        let title = "Tail Filtered Logs for: " + plugin.getSelectionAsText()
+        if(this.filter) {
+          title += ", Applied Filter: [ " + this.filter + " ]"
+        }
+        this.onOutput && this.onOutput([[title, ""]], ActionOutputStyle.Log)
       }
     }
   ]

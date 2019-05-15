@@ -600,4 +600,18 @@ export default class K8sFunctions {
     }
     return result
   }
+
+  static async getAnyKubeAPIServerPod(k8sClient: K8sClient) {
+    return (await K8sFunctions.getPodsByLabels("kube-system", "component=kube-apiserver", k8sClient))[0]
+  }
+
+  static async lookupDNSForFqdn(fqdn: string, namespace: string, pod: string, container: string, k8sClient: K8sClient) {
+    let result = await K8sFunctions.podExec(namespace, pod, container, k8sClient, ["dig", fqdn])
+    if(result.includes("status: NOERROR")) {
+      result = result.split(";; ANSWER SECTION:")[1].split(";;")[0].split(fqdn)[1].split("IN")[1].split("A")[1].trim()
+      return result.length > 0 ? result : undefined
+    } else {
+      return undefined
+    }
+  }
 }

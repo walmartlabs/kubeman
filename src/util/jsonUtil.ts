@@ -103,28 +103,48 @@ export default class JsonUtil {
     }
   }
 
-  static compareFlatArrays(arr1: any[], arr2: any[], ignoreValues?: string[], inOrder: boolean = false) {
+  static _compareFlatArrays(arr1: any[], arr2: any[], ignoreValues?: string[], inOrder: boolean = false) {
     if(isNullOrUndefined(arr1) !== isNullOrUndefined(arr2))
       return false
     
     if(!(arr1 instanceof Array) || !(arr2 instanceof Array))
       return false
+
+    arr1 = arr1.filter(item => !ignoreValues || !ignoreValues.includes(item))
+    arr2 = arr2.filter(item => !ignoreValues || !ignoreValues.includes(item))
     
     if(arr1.length !== arr2.length)
       return false
 
     if(inOrder) {
-      if(arr1.filter((item,index) => ignoreValues && ignoreValues.includes(item) || arr2[index] === item).length < arr1.length)
+      if(arr1.filter((item, i) => arr2[i] === item).length < arr1.length)
         return false
     } else {
-      if(arr1.filter(item => ignoreValues && ignoreValues.includes(item) || arr2.includes(item)).length < arr1.length)
+      if(arr1.filter(item => arr2.includes(item)).length < arr1.length)
         return false
     }
     
     return true
   }
 
-  static compareObjects(obj1, obj2, diffCollector: string[], ignoreKeys?: string[], ignoreValues?: string[], parentKey?: string) {
+
+  static compareFlatArrays(arr1: any[], arr2: any[], diffCollector?: string[], ignoreValues?: string[], inOrder: boolean = false) {
+    if(! this._compareFlatArrays(arr1, arr2, ignoreValues, inOrder)) {
+      if(arr1 && arr2 && diffCollector) {
+        let diffs = arr1.filter(a => !arr2.includes(a))
+        diffs = diffs.concat(arr2.filter(a => !arr1.includes(a)))
+        diffCollector.push(...diffs)
+      } else {
+        diffCollector && diffCollector.push("null/undefined array")
+      }
+      return false
+    }
+    return true
+  }
+
+  static compareObjects(obj1, obj2, diffCollector: string[], ignoreKeys?: string[], ignoreValues?: string[], parentKey?: string) : boolean {
+    if(!obj1 || !obj2) return false
+    
     const keys1 = Object.keys(obj1)
     const keys2 = Object.keys(obj2)
     const ignoreKeysFull = ignoreKeys || []
@@ -132,10 +152,7 @@ export default class JsonUtil {
     const ignoreKeysEnd = ignoreKeysFull.map(k => "."+k)
     parentKey && (parentKey += ".")
 
-    if(!this.compareFlatArrays(keys1, keys2, ignoreKeys)) {
-      let differentKeys = keys1.filter(k => !keys2.includes(k))
-      differentKeys = differentKeys.concat(keys2.filter(k => !keys1.includes(k)))
-      diffCollector.push(...differentKeys)
+    if(!this.compareFlatArrays(keys1, keys2, diffCollector, ignoreKeys)) {
       return false
     }
     const allKeys = keys1
@@ -147,7 +164,6 @@ export default class JsonUtil {
 
       const value1 = obj1[key]
       const value2 = obj2[key]
-
       if(isNullOrUndefined(value1) !== isNullOrUndefined(value2)) return false
       if(typeof value1 !== typeof value2) return false
       if(typeof value1 === 'object') {
@@ -164,7 +180,6 @@ export default class JsonUtil {
       !result && diffCollector.push(fullKeyPath)
       return result
     })
-    //const nonMatchingKeys = allKeys.filter(k => !matchingKeys.includes(k))
     return matchingKeys.length === allKeys.length
   }
 

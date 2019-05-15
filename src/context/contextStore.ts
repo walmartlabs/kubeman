@@ -36,10 +36,19 @@ export default class Context {
   static hasClusters: boolean = false
   static hasNamespaces: boolean = false
   static hasIstio: boolean = false
+  static operationCounter: number = 0
   static selections: any[] = []
   static cachedSelections = {}
   static cacheKey: string = ''
   static errorMessage: string = ''
+
+  static incrementOperation() {
+    if(this.operationCounter >= Number.MAX_SAFE_INTEGER) {
+      this.operationCounter = 1
+    } else {
+      ++this.operationCounter
+    }
+  }
 
   static updateFlags() {
     this.hasIstio = Array.from(this.clusterMap.values()).map(pair => pair[0].hasIstio).reduce((v1,v2) => v1||v2, false)

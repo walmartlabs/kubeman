@@ -59,20 +59,13 @@ const plugin : ActionGroupSpec = {
           this.onOutput && this.onOutput([["No pod selected"]], ActionOutputStyle.Text)
           return
         }
-        this.onOutput && this.onOutput([["Keys", "Data"]], ActionOutputStyle.Table)
+        this.onOutput && this.onOutput([["Pod Details"]], ActionOutputStyle.Table)
 
         selections.forEach(selection => {
-          const pod = selection.podName
-          const namespace = selection.namespace
-          const cluster = selection.cluster
-          const podDetails = selection.podContainerDetails as PodDetails
+          const pod = selection.podContainerDetails as PodDetails
           const output: ActionOutput = []
-          output.push([">" + pod + ",Namespace: " + namespace + ", Cluster: " + cluster, ""])
-          output.push(["cluster", cluster])
-          if(podDetails) {
-            Object.keys(podDetails).forEach((key, index) => 
-                          podDetails[key] && output.push([key, podDetails[key]]))
-          }
+          output.push([">" + pod.name + ",Namespace: " + pod.namespace + ", Cluster: " + selection.cluster])
+          output.push([pod.yaml])
           this.onStreamOutput && this.onStreamOutput(output)
         })
       },

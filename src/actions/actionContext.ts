@@ -7,6 +7,7 @@ export default class ActionContext {
   onActionInitChoices? : ActionOnChoice
   onActionInitChoicesUnbound? : ActionChoiceMaker
   onSkipChoices? : BoundActionAct
+  onCancelActionChoice? : () => void
 
   getClusters: () => Cluster[] = () => Context.clusters || []
 

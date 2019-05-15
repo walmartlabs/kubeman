@@ -101,4 +101,19 @@ export default class IstioPluginHelper {
       return []
     }
   }
+
+  static async chooseIngressGatewayPods(min: number = 1, max: number = 1, actionContext: ActionContext) {
+    ChoiceManager.prepareCachedChoices(actionContext, 
+      async (cluster, namespace, k8sClient) => {
+        return await IstioFunctions.getIngressGatewayPods(k8sClient)
+      }, "IngressGateway Pods", min, max, false, "name")
+  }
+
+  static async choosePilotPods(min: number = 1, max: number = 1, actionContext: ActionContext) {
+    ChoiceManager.prepareCachedChoices(actionContext, 
+      async (cluster, namespace, k8sClient) => {
+        return await IstioFunctions.getPilotPods(k8sClient)
+      }, "Pilot Pods", min, max, false, "name")
+  }
+
 }

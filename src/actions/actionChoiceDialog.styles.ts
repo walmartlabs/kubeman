@@ -22,14 +22,15 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     padding: 10,
   },
   dialogActions: {
-    margin: 10,
-    padding: 10,
-    height: 40,
+    margin: '0px !important',
+    padding: '0px !important',
+    height: 60,
     backgroundColor: '#4b6082',
   },
   dialogButton: {
     color: 'white !important',
     backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    marginRight: 2,
   },
   dialogButtonDisabled: {
     color: '#c2c2d6 !important'
@@ -83,6 +84,13 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     paddingTop: 15,
     paddingBottom: 5,
   },
+  allCheckbox: {
+    height: 20,
+    width: 33,
+    paddingTop: 15,
+    paddingBottom: 15,
+    color: 'white',
+  },
   choiceSubtext: {
     display: 'block',
     paddingLeft: 33,
@@ -94,6 +102,18 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     fontSize: typography.pxToRem(15),
     fontWeight: typography.fontWeightRegular,
   },
+  floatLeft: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    width: '20%',
+  },
+  floatRight: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    width: '80%',
+  }
 })
 
 export default styles

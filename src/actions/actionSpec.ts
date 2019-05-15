@@ -63,6 +63,8 @@ export interface ActionSpec {
   context?: ActionContextType
   order?: number
   outputRowLimit?: number
+  showJSON?: boolean
+  options?: () => string[]
   choose?: ActionAct
   act: ActionAct
   directAct?: ActionDirectAct
@@ -70,6 +72,7 @@ export interface ActionSpec {
   refresh?: ActionAct
   stop?: ActionAct
   clear?: ActionAct
+  onActionOption?: ActionAct
   filterSelections?: (selections: []) => any[]
   onOutput?: ActionOutputCollector
   onStreamOutput?: ActionStreamOutputCollector
@@ -90,6 +93,7 @@ export interface BoundAction extends ActionSpec {
   react?: BoundActionAct
   refresh?: BoundActionAct
   clear?: BoundActionAct
+  onActionOption?: BoundActionAct
   canReact: boolean
 }
 

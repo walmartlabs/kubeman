@@ -13,7 +13,9 @@ import BlackBox from '../output/blackbox'
 import TableOutput, {TableBox} from '../output/tableBox'
 import {ActionOutput, ActionOutputStyle, ActionOutputCollector, ActionStreamOutputCollector,
         ActionChoiceMaker, Choice, BoundActionAct, BoundAction} from '../actions/actionSpec'
+import {ActionLoader} from '../actions/actionLoader'
 import ChoiceManager from "../actions/choiceManager"
+import OutputManager from '../output/outputManager'
 
 import styles from './workspace.styles'
 
@@ -86,7 +88,8 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   onAction = (action: BoundAction) => {
     this.currentAction = action
     this.streamOutput = []
-    this.tableBox && this.tableBox.outputManager.clearContent()
+    this.tableBox && this.tableBox.clearFilter()
+    OutputManager.clearContent()
     this.setState({
       scrollMode: false, 
       outputRowLimit: action.outputRowLimit || 0,
@@ -188,11 +191,16 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
 
   showLoading = (loadingMessage: string) => {
-    this.tableBox && this.tableBox.clearFilter()
     this.setState({loading: true, loadingMessage, outputStyle: ActionOutputStyle.None})
   }
 
+  stopLoading = () => {
+    this.setState({loading: false, loadingMessage: ''})
+  }
+
   showContextDialog = () => {
+    Context.incrementOperation()
+    this.currentAction && this.currentAction.stop && this.currentAction.stop()
     this.refs.contextSelector && this.refs.contextSelector.showContextDialog()
   }
 
@@ -242,6 +250,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                         onStreamOutput={this.showStreamOutput}
                         onActionInitChoices={this.onActionInitChoices}
                         onActionChoices={this.onActionChoices}
+                        onCancelActionChoice={this.onCancelActionChoice}
                         onShowInfo={this.showInfo}
                         onSetScrollMode={this.setScrollMode}
                         onAction={this.onAction}

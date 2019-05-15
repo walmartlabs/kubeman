@@ -14,7 +14,7 @@ import {ActionGroupSpecs, ActionSpec, BoundAction, ActionGroupSpec, ActionContex
 
 import styles from './actions.styles'
 import {actionsTheme} from '../theme/theme'
-import {filter} from '../util/filterUtil'
+import FilterUtil, {filter} from '../util/filterUtil'
 
 
 interface IState {
@@ -30,6 +30,7 @@ interface IProps extends WithStyles<typeof styles> {
   onStreamOutput: ActionStreamOutputCollector
   onActionInitChoices: ActionChoiceMaker
   onActionChoices: ActionChoiceMaker
+  onCancelActionChoice: () => void
   onShowInfo: ActionOnInfo
   onSetScrollMode: (boolean) => void
   onAction: (BoundAction) => void
@@ -57,7 +58,7 @@ export class Actions extends React.Component<IProps, IState> {
 
   componentWillReceiveProps(props: IProps) {
     ActionLoader.setOnOutput(props.onOutput, props.onStreamOutput)
-    ActionLoader.setOnActionChoices(props.onActionInitChoices, props.onActionChoices)
+    ActionLoader.setOnActionChoices(props.onActionInitChoices, props.onActionChoices, props.onCancelActionChoice)
     ActionLoader.setOnShowInfo(props.onShowInfo)
     ActionLoader.setOnSetScrollMode(props.onSetScrollMode)
     ActionLoader.setOnOutputLoading(props.onOutputLoading)
@@ -85,11 +86,11 @@ export class Actions extends React.Component<IProps, IState> {
     ActionLoader.actionContext.inputText = undefined
     this.currentAction = action
     this.lastRefreshed = undefined
-    this.props.showLoading(action.loadingMessage)
     if(direct && action.directAct) {
       action.directAct(params)
       this.setAutoRefresh(false)
     } else if(action.act) {
+      action.loadingMessage && this.props.showLoading(action.loadingMessage)
       action.chooseAndAct()
       this.setAutoRefresh(false)
     }
@@ -180,7 +181,7 @@ export class Actions extends React.Component<IProps, IState> {
       this.filterText = text
       if(text.length > 1) {
         const actions = _.flatten(actionGroupSpecs.map(group => group.actions))
-        const filteredActions = filter(text, actions, "name")
+        const filteredActions = FilterUtil.filter(text, actions, "name")
         this.setState({filteredActions})
       }
     } else {
