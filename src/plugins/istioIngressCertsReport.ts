@@ -59,7 +59,7 @@ const plugin : ActionGroupSpec = {
                                   .map(host => host.replace("*.", ""))
 
             const relatedVirtualServices = virtualServices
-            .filter(vs => vs.gateways.filter(vsg => matchGateway(vsg, g)))
+            .filter(vs => vs.gateways.filter(vsg => matchGateway(vsg, g.gateway)).length > 0)
             .filter(vs => vs.hosts.filter(vsh => vsh === "*" || 
                           gatewayHosts.filter(gh => gh === "*" || vsh.includes(gh)).length > 0).length > 0)
             .map(vs => {
