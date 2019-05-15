@@ -1,4 +1,5 @@
-# Kubeman Rocks! 
+![Kubeman Logo](/static/kubeman.png)
+# Kubeman Rocks!
 Slack Channel: #kubeman
 
 ## What's Kubeman?
@@ -14,7 +15,7 @@ Prior to Kubeman, there was no comprehensive tool available in the Kubernetes co
 1. Either download the application binary (currently pre-built binaries are offered for Mac and Win-64 OS), or get the source code and build it yourself (instructions at the bottom)
 2. Use kuebctl (or another tool) to connect to a cluster, so that the cluster context gets saved in your local kube config.
 3. Run Kubeman application
-   ![Kubeman Application](/static/kubeman.png)
+   ![Kubeman Application](/static/kubeman-application.png)
 4. Click on "Select Cluster" button to select up to 3 clusters. You can optionally select one or more namespaces from the cluster selection dialog to limit your session to those namespaces for certain recipes.
    ![Select Cluster](/static/kubeman-select-cluster.png)
    ![Select Namespace](/static/kubeman-select-ns.png)
