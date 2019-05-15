@@ -1,5 +1,8 @@
 {
   "name": "kubeman",
+  "author": {
+    "name": "uk"
+  },
   "version": "0.3.0",
   "license": "MIT",
   "scripts": {

@@ -28,9 +28,10 @@ Prior to Kubeman, there was no comprehensive tool available in the Kubernetes co
    ![Recipe Input](/static/kubeman-recipe-input.png)   
 9.  Some recipes support re-execution. In such cases, once the recipe has been produced, you'll see a "ReRun" button at the bottom of the menus panel. Clicking that button will run the recipe again with previously selected choices/input. Such recipes can also be rerun by entering command "/r".
 10. Some recipes support clearing their output once the output has been produced. In such cases, you'll see a "Clear" button at the bottom of the menus panel. Clearing output can be also be done by sending a "/clear" or "/c" command to such recipes.
+   ![Recipe Buttons](/static/kubeman-menu-buttons.png)   
 11. You'll see a "Stop" button at the bottom of the menus panel for most recipes. While Kubeman's recipes framework provides support for stopping recipes while they're running, not all recipes may be stopped once triggered. It's a best-effort feature.
 12. Some recipes support automatic periodic executing. For such recipes, you'll see an "Auto Refresh" option at the bottom of the menus panel. If you select the "Auto Refresh" option, you can also specify a frequency for the auto refresh to happen. Recipes provide a default auto-refresh frequency value, and the auto refresh frequency cannot be set to a value lower than 5 seconds.
-   ![Recipe Buttons](/static/kubeman-recipe-buttons.png)   
+   ![Recipe Auto Refresh](/static/kubeman-auto-refresh.png)   
 13. Kubeman supports "dark theme". You can switch to dark theme by using the selector at the left-bottom of the application window.
 
 
