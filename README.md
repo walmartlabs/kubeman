@@ -26,7 +26,7 @@ Prior to Kubeman, there was no comprehensive tool available in the Kubernetes co
 7. Given the large number of recipes, finding a recipe from the menus can be daunting. You can simply look for recipes by typing some keywords in the search field above the menus panel. The matching recipes will show up in a separate menu option named "Matching Recipes". Complex searches can be done here (see complex search details further below)
    ![Recipe Search](/static/kubeman-recipe-search.png)   
 8. Some recipes may ask you to make further selections (e.g. select namespaces, services, pods, etc).
-   [Recipe Choices Dialog](/static/kubeman-recipe-choices.png)   
+   ![Recipe Choices Dialog](/static/kubeman-recipe-choices.png)   
 9. The output panel that captures and shows outputs for all recipes provides some common behavior that can be used regardless of which recipe produced the output.
    * Once a recipe runs and produces output, you can use the search input field at the top of the output panel to search for some text in the recipe output. Hitting "escape" key deletes the search text when focus is in the search text field. Complex searches can be done here (see complex search details further below)
    ![Output Search](/static/kubeman-output-search.png)   
@@ -54,6 +54,7 @@ Kubeman offers recipes grouped by focus areas. There are 99 recipes in the relea
 These recipes either offer a cluster-wide overview or perform some analysis on the whole cluster.
 ###### Recipes:
 - Clusters Overview, 
+   ![Clusters Overview](/static/kubeman-clusters-overview.png)   
 - Get Nodes Details
 - Find Component By IP
    ![Find Component By IP](/static/kubeman-recipe-input.png)   
@@ -64,7 +65,7 @@ These recipes let you view events at various levels.
 - Cluster Events, Namespace Events, Pod Events, Service Events (shows pod events from all backing pods for a service)
 
 #### Resources
-These recipes let you view resoruces (kubernetes native resources as well as custom resources, e.g. Istio).
+These recipes let you view resources (kubernetes native resources as well as custom resources, e.g. Istio).
 ###### Recipes Examples: 
 - List All CRDs, Compare CRDs, CRD Instances, List Gateways, List VirtualServices, List ServiceEntries, Compare Secrets, Compare ConfigMaps, etc.
 
@@ -73,6 +74,7 @@ These recipes let you view or compare information from namespaces
 ###### Recipes:
 - List All Namespaces, 
 - Compare Cluster Namespaces, 
+   ![Compare Namespaces](/static/kubeman-compare-namespaces.png)   
 - View All Resources in a Namespace, 
 - View Namespace ConfigMaps 
 
@@ -80,33 +82,39 @@ These recipes let you view or compare information from namespaces
 These recipes let you view or compare deployments 
 ###### Recipes:
 - List Deployments for Namespaces 
-- Container Resource Configs for Deployments, 
-- Compare Namespace Deployments, 
-- View Deployment Details, 
+- Container Resource Configs for Deployments
+- Compare Namespace Deployments
+- View Deployment Details
 - Compare Two Deployments
+   ![Compare Deployments](/static/kubeman-compare-deployments.png)   
 
 #### Service Recipes
 These recipes let you view or compare information related to services and/or their backing pods
 ###### Recipes:
-- List Cluster Services (all services in a cluster)
-- List Namespace Services (all services in a namespace)
-- List All External Services (all "ExternalName" services)
-- Compare Namespace Services (compare services across namespaces)
-- View Service Details, Compare Two Services
-- Tail Service Logs, Tail Filtered Service Logs (tail logs from all backing pods for a service)
-- Execute Command on Service Pods (execute a command on all backing pods for a service)
+- List Cluster Services: all services in a cluster
+- List Namespace Services: all services in a namespace
+- List All External Services: all "ExternalName" services
+- Compare Namespace Services: compare services across namespaces
+- View Service Details, 
+- Compare Two Services
+- Tail Service Logs, Tail Filtered Service Logs: tail logs from all backing pods for a service
+- Execute Command on Service Pods: execute a command on all backing pods for a service (use '/c' to clear output, '&&' to concatenate multiple commands)
+   ![Service Execute Command](/static/kubeman-service-command.png)   
 
 #### Pod Recipes
 These recipes let you view or compare information from selected pods
 ###### Recipes:
-- List Namespace Pods (all pods in a namespace)
-- View Pod Addresses (IP addresses of all pods in a namespace)
-- View Pod(s) Details, View Pod(s) Status (details of one or more selected pods)
-- View Pod(s) Resource Configurations (view resource requests and limits config for all pods of a namespace)
-- Check Container Logs, Tail Container Logs, Tail Filtered Container Logs (let you check logs of one or more selected pod-containers)
+- List Namespace Pods: all pods in a namespace
+- View Pod Addresses: IP addresses of all pods in a namespace
+   ![Pod Addresses](/static/kubeman-pod-addresses.png)   
+- View Pod(s) Details, View Pod(s) Status: details of one or more selected pods
+- View Pod(s) Resource Configurations: view resource requests and limits config for all pods of a namespace
+   ![Pod Resources](/static/kubeman-pod-resources.png)   
+- Check Container Logs, Tail Container Logs, Tail Filtered Container Logs: let you check logs of one or more selected pod-containers
 - Compare Two Pods
-- Test Containers Reachability (performs a ping check from one another for all selected pod-containers)
-- Execute Pod Command (execute a command on all selected pod-containers)
+- Test Containers Reachability: performs a ping check from one another for all selected pod-containers
+   ![Container Reachability](/static/kubeman-pod-reachability.png)   
+- Execute Pod Command: execute a command on all selected pod-containers (use '/c' to clear output, '&&' to concatenate multiple commands)
 
 #### Istio Ingress Recipes
 These recipes let you view or analyze information related to Istio IngressGateway
@@ -118,8 +126,10 @@ These recipes let you view or analyze information related to Istio IngressGatewa
 - Find Overlapping Gateways (finds gateways with same host+port)
 - Gateways with Missing Certs (finds gateways for which the referenced TLS cert secret is missing)
 - Ingress Certs Report (a report of all gateways and matching virtualservices that are configured to use TLS certs)
+   ![Certs Report](/static/kubeman-certs-report.png)   
 - Compare Ingress (compare ingressgateway details between two clusters)
 - Service Reachability from IngressGateway (test ping-based reachability of service pods from an ingressgateway pod)
+   ![Service Reachability](/static/kubeman-service-reachability.png)   
 - VirtualService Reachability from IngressGateway (test ping-based reachability of service pods backing a virtualservice from an ingressgateway pod)
 - IngressGateway Envoy Bootstrap, IngressGateway Envoy Clusters, IngressGateway Envoy Listeners, IngressGateway Envoy Routes, IngressGateway Envoy Stats, IngressGateway Envoy ServerInfo (view envoy configs and metrics from selected ingressgateway pods)
 - Compare Ingress Envoy Configs (compare envoy configs from two selected ingressgateway pods)
@@ -151,12 +161,14 @@ These recipes let you view or analyze information related to envoy proxies deplo
 Sundry recipes related to Istio
 ###### Recipes:
 - View Istio Versions, View Egress Details
+   ![Istio Versions](/static/kubeman-istio-versions.png)   
 
 #### Analysis Recipes
 These recipes focus on advanced analysis of information from various components, service a specific focused task
 ###### Recipes:
 - Analyze Service Details and Routing (analyze routing related details for a selected service)
 - Analyze Service mTLS Status (analyze mTLS setup related to a selected service)
+   ![mTLS Status](/static/kubeman-mtls-status.png)   
 - Cluster mTLS Report (see a report of mTLS setup for the cluster)
 
 

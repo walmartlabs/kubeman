@@ -386,32 +386,32 @@ export default class ChoiceManager {
   }
 
   static async chooseServiceAndContainer(action, actionContext: ActionContext) {
-    ChoiceManager.doubleChoices(action, actionContext,
-      ChoiceManager.chooseService.bind(ChoiceManager, 1, 1, actionContext),
-      ChoiceManager.getSelections.bind(ChoiceManager, actionContext),
-      serviceSelection => {
+    await ChoiceManager.doubleChoices(action, actionContext,
+      await ChoiceManager.chooseService.bind(ChoiceManager, 1, 1, actionContext),
+      await ChoiceManager.getSelections.bind(ChoiceManager, actionContext),
+      async serviceSelection => {
         const service = serviceSelection.data[0].item
-        ChoiceManager.chooseServiceContainer(service.name, service.namespace, serviceSelection.data[0].cluster, actionContext)
+        await ChoiceManager.chooseServiceContainer(service.name, service.namespace, serviceSelection.data[0].cluster, actionContext)
       },
-      ChoiceManager.getSelections.bind(ChoiceManager, actionContext)
+      await ChoiceManager.getSelections.bind(ChoiceManager, actionContext)
     )
   }
 
   static async doubleChoices(action, actionContext, choose1, getSelections1, choose2, getSelections2) {
     let selections: any[] = []
-    actionContext.onActionInitChoices = actionContext.onActionInitChoicesUnbound.bind(actionContext, 
-      async (...args) => {
-        selections.push({data: await getSelections1()})
-        actionContext.onActionInitChoices = actionContext.onActionInitChoicesUnbound.bind(actionContext, 
-          async (...args) => {
-            selections.push({data: await getSelections2()})
-            Context.selections = selections
-            action.act(actionContext)
-          }
-        )
-        await choose2(selections[0])
-      }
-    )
+    const choice2SelectionHandler = async (...args) => {
+      selections.push({data: await getSelections2()})
+      Context.selections = selections
+      action.act(actionContext)
+    }
+    const choice1SelectionHandler = async (...args) => {
+      selections.push({data: await getSelections1()})
+      actionContext.onSkipChoices = choice2SelectionHandler
+      actionContext.onActionInitChoices = actionContext.onActionInitChoicesUnbound.bind(actionContext, choice2SelectionHandler)
+      await choose2(selections[0])
+    }
+    actionContext.onSkipChoices = choice1SelectionHandler
+    actionContext.onActionInitChoices = actionContext.onActionInitChoicesUnbound.bind(actionContext, choice1SelectionHandler)
     await choose1()
   }
 }
