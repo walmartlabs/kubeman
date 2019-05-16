@@ -151,7 +151,7 @@ export class Cell {
     this.isHealthStatusField = isHealthStatusField || false
   }
 
-  match(filters: string[]) : string[] {
+  match(filters: string[]) : any[] {
     const appliedFilters: Set<string> = new Set
     this.isMatched = false
     this.filteredIndexes = []
@@ -178,7 +178,7 @@ export class Cell {
         } else {
           const isMatched = this.stringContent.includes(filter)
           isExcluded = isExcluded || negated && isMatched
-          if(negated && !isMatched || !negated && isMatched) {
+          if(!isExcluded && (negated && !isMatched || !negated && isMatched)) {
             negated && appliedFilters.add("!")
             appliedFilters.add(filter)
             this.isMatched = true
@@ -186,7 +186,7 @@ export class Cell {
         }
       }
     })
-    return isExcluded ? [] : Array.from(appliedFilters)
+    return isExcluded ? [true, []] : [false, Array.from(appliedFilters)]
   }
 
   clearFilter() {
@@ -431,10 +431,14 @@ export class Row {
     this.appliedFilters = []
     this.isMatched = this.parent ? this.parent.isMatched : false
     this.matchedColumns.clear()
+    let isExcluded = false
     filterGroups.forEach(filters => {
-      this.cells.map(cell => cell.match(filters)).forEach(matchingFilters => 
-                      matchingFilters.forEach(filter => matchedFilters.add(filter)))
-      const rowMatched = matchedFilters.size === filters.length
+      this.cells.map(cell => cell.match(filters))
+        .forEach(matchResult => {
+          isExcluded = isExcluded || matchResult[0]
+          !isExcluded && matchResult[1].forEach(filter => matchedFilters.add(filter))
+        })
+      const rowMatched = !isExcluded && matchedFilters.size === filters.length
       if(rowMatched) {
         this.appliedFilters = this.appliedFilters.concat(filters).filter(filter => filter.length > 0)
         if(!this.isGroupOrSubgroupOrSection) {
@@ -445,6 +449,7 @@ export class Row {
         this.isMatched = true
       }
     })
+    isExcluded && (this.isMatched = false)
     return this.isGroupOrSubgroupOrSection ? true : this.isMatched
   }
 

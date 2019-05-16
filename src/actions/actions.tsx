@@ -244,7 +244,7 @@ export class Actions extends React.Component<IProps, IState> {
         {Context.hasClusters &&
           <Paper  className={classes.filterContainer}>
             <Input fullWidth autoFocus
-                placeholder="Type here to find plugins" 
+                placeholder="Type here to find Recipes" 
                 value={this.filterText}
                 onChange={this.onFilterChange}
                 onKeyDown={this.onKeyDown}
@@ -254,7 +254,7 @@ export class Actions extends React.Component<IProps, IState> {
         }
         <div className={classes.root}>
           {filteredActions.length > 0 && 
-            this.renderExpansionPanel("Matching Actions", filteredActions, true)
+            this.renderExpansionPanel("Matching Recipes", filteredActions, true)
           }
           {actionGroupSpecs.map(actionGroupSpec => 
             actionShowNoShow.get(actionGroupSpec.context || ActionContextType.Other) &&

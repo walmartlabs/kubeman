@@ -19,20 +19,32 @@ Prior to Kubeman, there was no comprehensive tool available in the Kubernetes co
 4. Click on "Select Cluster" button to select up to 3 clusters. You can optionally select one or more namespaces from the cluster selection dialog to limit your session to those namespaces for certain recipes.
    ![Select Cluster](/static/kubeman-select-cluster.png)
    ![Select Namespace](/static/kubeman-select-ns.png)
-5. You'll see a menus panel on the left side of the application window. You can select a recipe to run from the menus panel, or search for recipes by typing some keywords in the search field above the menus panel.
+5. Your current selected context is shown in the top panel. This context defines the boundaries within which the recipes will operate. E.g. Many recipes that require namespace selection will not ask you to select namespaces anymore and instead use the selected namespaces from the context. Recipes that require pod selection will only show pods from the namespaces you selected in the context. When no namespaces are selected in the context, the recipes just work with clusters and will perform namespace, pods, etc selection on the fly from the entire cluster(s). Note that when working with clusters without pre-selected namespaces, some recipes's choice selection dialogs can take a while to load as they'll have to look at the entire cluster to find choices to present in the dialog.
+   ![Selected Context](/static/kubeman-selected-context.png)
+6. You'll see a menus panel on the left side of the application window. The recipes are grouped in menus based on focus areas. You can select a recipe to run from the menus panel by sliding open a menu group.
    ![Menus](/static/kubeman-menus.png)
-6. Some recipes may ask you to make further selections (e.g. select namespaces, services, pods, etc).
-   ![Recipe Choices Dialog](/static/kubeman-recipe-choices.png)   
-7. Once a recipe runs and produces output, you can use the search input field at the top of the output panel to search for some text in the recipe output.
+7. Given the large number of recipes, finding a recipe from the menus can be daunting. You can simply look for recipes by typing some keywords in the search field above the menus panel. The matching recipes will show up in a separate menu option named "Matching Recipes". Complex searches can be done here (see complex search details further below)
+   ![Recipe Search](/static/kubeman-recipe-search.png)   
+8. Some recipes may ask you to make further selections (e.g. select namespaces, services, pods, etc).
+   [Recipe Choices Dialog](/static/kubeman-recipe-choices.png)   
+9. The output panel that captures and shows outputs for all recipes provides some common behavior that can be used regardless of which recipe produced the output.
+   * Once a recipe runs and produces output, you can use the search input field at the top of the output panel to search for some text in the recipe output. Hitting "escape" key deletes the search text when focus is in the search text field. Complex searches can be done here (see complex search details further below)
    ![Output Search](/static/kubeman-output-search.png)   
-8. Some recipes allow you to enter commands/inputs, and they react on those inputs. E.g. "Find component by IP" recipe will wait till you input one or more IP addresses. In this case, the output search field plays dual role and also serves as a command input field for the recipe. To give input to a recipe, you type the input preceded by a "/". When a recipe supports command input, the text entered as "/<text>" is treated as input/command for the recipe instead of being used as search criteria.
+   * The output from each recipe is grouped into groups and subgroups. The topmost output row (rendered in dark blue) shows the heading of the output. Clicking on this header row compresses the entire output to only show groups and subgroups, essentially presenting a summary view of the entire output. Clicking on the header row again expands the entire output back to its normal detailed view.
+   ![Overview Mode](/static/kubeman-overview-mode.png)
+   * Similarly, clicking on a group row will collapse all its children rows to present a summary view of the group, showing its subgroups while hiding everything else. Clicking the group again opens it back to its normal detailed view. Same applies to the subgroup. Rows below subgroups (sections and individual data output rows) don't support the summary view.
+   * While in overview mode, individual subgroups can be clicked to open and close them. This allows you to go into overview mode to scroll through a large output, and then click to open and view individual items of interest.
+   ![Group Overview Mode](/static/kubeman-subgroup-view.png)
+10. Some recipes allow you to enter commands/inputs, and they react on those inputs. E.g. "Find component by IP" recipe will wait till you input one or more IP addresses. In this case, the output search field plays dual role and also serves as a command input field for the recipe. To give input to a recipe, you type the input preceded by a "/". When a recipe supports command input, the text entered as "/<text>" is treated as input/command for the recipe instead of being used as search criteria. Some recipes support multiple input values separated by ",".
    ![Recipe Input](/static/kubeman-recipe-input.png)   
-9.  Some recipes support re-execution. In such cases, once the recipe has been produced, you'll see a "ReRun" button at the bottom of the menus panel. Clicking that button will run the recipe again with previously selected choices/input. Such recipes can also be rerun by entering command "/r".
-10. Some recipes support clearing their output once the output has been produced. In such cases, you'll see a "Clear" button at the bottom of the menus panel. Clearing output can be also be done by sending a "/clear" or "/c" command to such recipes.
-11. You'll see a "Stop" button at the bottom of the menus panel for most recipes. While Kubeman's recipes framework provides support for stopping recipes while they're running, not all recipes may be stopped once triggered. It's a best-effort feature.
-12. Some recipes support automatic periodic executing. For such recipes, you'll see an "Auto Refresh" option at the bottom of the menus panel. If you select the "Auto Refresh" option, you can also specify a frequency for the auto refresh to happen. Recipes provide a default auto-refresh frequency value, and the auto refresh frequency cannot be set to a value lower than 5 seconds.
+11. Some recipes support re-execution. In such cases, once the recipe has been produced, you'll see a "ReRun" button at the bottom of the menus panel. Clicking that button will run the recipe again with previously selected choices/input. Such recipes can also be rerun by entering command "/r".
+12. Some recipes support clearing their output once the output has been produced. In such cases, you'll see a "Clear" button at the bottom of the menus panel. Clearing output can be also be done by sending a "/clear" or "/c" command to such recipes.
+13. You'll see a "Stop" button at the bottom of the menus panel for most recipes. While Kubeman's recipes framework provides support for stopping recipes while they're running, not all recipes may be stopped once triggered. It's a best-effort feature.
+14. Some recipes support automatic periodic execution. For such recipes, you'll see an "Auto Refresh" option at the bottom of the menus panel. If you select the "Auto Refresh" option, you can also specify a frequency for the auto refresh to happen. Recipes provide a default auto-refresh frequency value, and the auto refresh frequency cannot be set to a value lower than 5 seconds.
    ![Recipe Auto Refresh](/static/kubeman-autorefresh.png)
-13. Kubeman supports "dark theme". You can switch to dark theme by using the selector at the left-bottom of the application window.
+13. Any place where you can search in Kubeman allows advanced search using operators "or" and "!". By default all words (space separated) are used in conjunction ("and"). Operator "or" allows for disjunction query (A or B). Operator "!" can be used for negation, where it'll exclude all results that have keywords that follow the ! operator (e.g. "A B ! C D" will find results containing A and B, but will exclude those results that have C and D). Complex queries can be formed using these two operators (e.g. "A or B ! C" will find all results that have either "A", or have "B without C")
+   ![Complex Search](/static/kubeman-complex-search.png)
+15. Kubeman supports "dark theme". You can switch to dark theme by using the selector at the left-bottom of the application window.
 
 
 ## Recipes Overview
@@ -44,6 +56,7 @@ These recipes either offer a cluster-wide overview or perform some analysis on t
 - Clusters Overview, 
 - Get Nodes Details
 - Find Component By IP
+   ![Find Component By IP](/static/kubeman-recipe-input.png)   
 
 #### Events
 These recipes let you view events at various levels.
