@@ -10,7 +10,6 @@ import {Namespace} from "../k8s/k8sObjectTypes";
 import Context from "./contextStore";
 
 import styles from './contextPanel.styles'
-import * as scratch from '../scratch'
 
 interface IState {
   activeTab: number
@@ -28,7 +27,6 @@ class ContextPanel extends React.Component<IProps, IState> {
   }
 
   componentDidMount() {
-    scratch.setupRealContext().then(() => {this.forceUpdate(); this.props.onUpdateContext()})
     this.componentWillReceiveProps(this.props)
   }
 
