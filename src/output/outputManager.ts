@@ -91,6 +91,7 @@ export class Cell {
   isJSON: boolean = false
   isText: boolean = false
   isLog: boolean = false
+  isSuperGroup: boolean = false
   isGroup: boolean = false
   isSubGroup: boolean = false  
   isSection: boolean = false
@@ -105,7 +106,7 @@ export class Cell {
   
   constructor(content: CellContent, index:number, formattedContent?: CellContent, 
               appliedFilters?: string[],
-              isGroup?: boolean, isSubGroup?: boolean, isSection?: boolean,
+              isSuperGroup?: boolean, isGroup?: boolean, isSubGroup?: boolean, isSection?: boolean,
               isHealthStatusField?: boolean, isLog?: boolean) {
     this.index = index
     this.isText = jsonUtil.isText(content)
@@ -145,6 +146,7 @@ export class Cell {
       this.isFiltered = true
       appliedFilters && this.match(appliedFilters)
     }
+    this.isSuperGroup = isSuperGroup || false
     this.isGroup = isGroup || false
     this.isSubGroup = isSubGroup || false
     this.isSection = isSection || false
@@ -238,7 +240,7 @@ export class Cell {
                               jsonUtil.isObject(this.content[i]) || jsonUtil.isArray(this.content[i])), i)
         })
     } else {
-      return renderer((this.isGroup || this.isSubGroup || this.isSection) ? this.groupText 
+      return renderer((this.isSuperGroup || this.isGroup || this.isSubGroup || this.isSection) ? this.groupText 
                       : this.formatText(this.formattedContent, this.isJSON), 0)
     }
   }
@@ -271,7 +273,7 @@ export class Cell {
   }
 
   get isFirstColumn() {
-    return this.index === 0 && !this.isGroup
+    return this.index === 0 && !this.isGroup && !this.isSuperGroup
   }
 
   get hasContent() {
@@ -305,6 +307,7 @@ export class Row {
   private healthColumnIndex?: number
   private firstColumn?: Cell
   private appliedFilters: string[] = []
+  private _isSuperGroup: boolean = false
   private _isGroup: boolean = false
   private _isSubgroup: boolean = false
   private _isSection: boolean = false
@@ -336,9 +339,10 @@ export class Row {
         (content[0] instanceof Array && (content[0] as []).length > 0 && content[0][0].toString().startsWith("##"))) {
         this._isWide = true
       }
+      this._isSuperGroup = content[0].toString().startsWith("^^") || false
       this._isTitle = content[0].toString().startsWith("++") || false
       this._isNoKey = content[0].toString().startsWith("<<") || false
-      if(this.isGroupOrSubgroupOrSection && content.length < headersCount) {
+      if(this.isSomeGroup && content.length < headersCount) {
         for(let i = content.length; i < headersCount; i++) {
           content.push("")
         }
@@ -348,19 +352,19 @@ export class Row {
         this.subTable = subTable.map((subRow, subRowIndex) => subRow.map((cellContent, cellIndex) =>
           new Cell(cellContent, subRowIndex+cellIndex,
             formattedContent ? formattedContent[subRowIndex][cellIndex] : undefined,
-            this.appliedFilters, false, false, false, false, isLog || false))
+            this.appliedFilters, false, false, false, false, false, isLog || false))
         )
       } else {
         this.cells = content.map((cellContent, cellIndex) => 
           new Cell(cellContent, cellIndex,  
             formattedContent ? formattedContent[cellIndex] : undefined,
-            this.appliedFilters,
+            this.appliedFilters, this.isSuperGroup,
             this.isGroup, this.isSubGroup, this._isSection,
             healthColumnIndex ? healthColumnIndex === cellIndex : false,
             isLog || false
             ))
       }
-      if(this._isNoKey || this._isTitle) {
+      if(this._isSuperGroup || this._isNoKey || this._isTitle) {
         this.cells.shift()
       }
           
@@ -382,8 +386,12 @@ export class Row {
     }
   }
 
-  get isGroupOrSubgroupOrSection() : boolean {
-    return this._isGroup || this._isSubgroup || this._isSection
+  get isSomeGroup() : boolean {
+    return this._isSuperGroup || this._isGroup || this._isSubgroup || this._isSection
+  }
+
+  get isSuperGroup() : boolean {
+    return this._isSuperGroup
   }
 
   get isGroup() : boolean {
@@ -441,7 +449,7 @@ export class Row {
       const rowMatched = !isExcluded && matchedFilters.size === filters.length
       if(rowMatched) {
         this.appliedFilters = this.appliedFilters.concat(filters).filter(filter => filter.length > 0)
-        if(!this.isGroupOrSubgroupOrSection) {
+        if(!this.isSomeGroup) {
           this.cells.forEach((cell, index) => cell.isMatched && this.matchedColumns.add(index))
         } else {
           this.children.forEach(row => row.isMatched = true)
@@ -450,7 +458,7 @@ export class Row {
       }
     })
     isExcluded && (this.isMatched = false)
-    return this.isGroupOrSubgroupOrSection ? true : this.isMatched
+    return this.isSomeGroup ? true : this.isMatched
   }
 
   highlightFilters() : [Row, boolean] {
@@ -494,6 +502,7 @@ export default class OutputManager {
   private static lastSubGroupVisibleCount: number = 0
   private static lastSectionVisibleCount: number = 0
   private static rowLimit: number = 0
+  private static currentGroupings: any = {}
 
   static setOutput(output: ActionOutput, isLog: boolean, rowLimit: number = 0) {
     this.clearContent()
@@ -504,12 +513,12 @@ export default class OutputManager {
     this.groupCount = 0
     this.subGroupCount = 0
     this.sectionCount = 0
-    const currentGroupings = {}
+    this.currentGroupings = {}
     this.rows = output && output.length > 0 ? 
         output.slice(1).map((content, rowIndex) => {
           const row = new Row(rowIndex, content, this.groupCount, this.subGroupCount, this.sectionCount, 
                                   this.headers.length, this.healthColumnIndex, this.isLog)
-          this.updateRowMetaData(row, currentGroupings)
+          this.updateRowMetaData(row)
           return row
         }) 
         : []
@@ -521,13 +530,12 @@ export default class OutputManager {
     let appendedCount = 0
     this.rows.forEach(row => row.isFirstAppendedRow = false)
     let isFirstAppendedRow = false
-    const currentGroupings = {}
     rows.forEach(rowContent => {
       lastRowIndex++
       appendedCount++
       const row = new Row(lastRowIndex, rowContent, this.groupCount, this.subGroupCount, this.sectionCount,
                                 this.headers.length, this.healthColumnIndex, this.isLog)
-      this.updateRowMetaData(row, currentGroupings)
+      this.updateRowMetaData(row)
       this.rows.push(row)
       if(!isFirstAppendedRow) {
         row.isFirstAppendedRow = isFirstAppendedRow = true
@@ -568,35 +576,59 @@ export default class OutputManager {
     this.rowLimit = 0
   }
 
-  private static updateRowMetaData(row: Row, currentGroupings: any) {
-    if(row.isGroup) {
-      currentGroupings.currentGroup = row
+  private static updateRowMetaData(row: Row) {
+    if(row.isSuperGroup) {
+      this.currentGroupings.currentSuperGroup = row
+    } else if(row.isGroup) {
+      if(this.currentGroupings.currentSuperGroup) {
+        row.parent = this.currentGroupings.currentSuperGroup
+      }
+      row.parent && row.parent.children.push(row)
+      this.currentGroupings.currentGroup = row
       row.groupIndex = ++this.groupCount
       row.subGroupIndex = -1
       row.sectionIndex = -1
       ++this.subGroupCount
       ++this.sectionCount
     } else if(row.isSubGroup) {
-      currentGroupings.currentSubGroup = row
+      if(this.currentGroupings.currentSuperGroup) {
+        row.parent = this.currentGroupings.currentSuperGroup
+      }
+      if(this.currentGroupings.currentGroup) {
+        row.parent = this.currentGroupings.currentGroup
+      }
+      row.parent && row.parent.children.push(row)
+      this.currentGroupings.currentSubGroup = row
       row.subGroupIndex = ++this.subGroupCount
       row.sectionIndex = -1
       ++this.sectionCount
     } else if(row.isSection) {
-      currentGroupings.currentSection = row
+      if(this.currentGroupings.currentSuperGroup) {
+        row.parent = this.currentGroupings.currentSuperGroup
+      }
+      if(this.currentGroupings.currentGroup) {
+        row.parent = this.currentGroupings.currentGroup
+      }
+      if(this.currentGroupings.currentSubGroup) {
+        row.parent = this.currentGroupings.currentSubGroup
+      }
+      row.parent && row.parent.children.push(row)
+      this.currentGroupings.currentSection = row
       row.sectionIndex = ++this.sectionCount
     } else {
-      if(currentGroupings.currentGroup) {
-        currentGroupings.currentGroup.children.push(row)
-        row.parent = currentGroupings.currentGroup
+      if(this.currentGroupings.currentSuperGroup) {
+        row.parent = this.currentGroupings.currentSuperGroup
       }
-      if(currentGroupings.currentSubGroup) {
-        currentGroupings.currentSubGroup.children.push(row)
-        row.parent = currentGroupings.currentSubGroup
+      if(this.currentGroupings.currentGroup) {
+        row.parent = this.currentGroupings.currentGroup
       }
-      if(currentGroupings.currentSection) {
-        currentGroupings.currentSection.children.push(row)
-        row.parent = currentGroupings.currentSection
+      if(this.currentGroupings.currentSubGroup) {
+        row.parent = this.currentGroupings.currentSubGroup
       }
+      if(this.currentGroupings.currentSection) {
+        row.parent = this.currentGroupings.currentSection
+      }
+      row.parent && row.parent.children.push(row)
     }
   }
 

@@ -63,12 +63,20 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   tableHeaderText: {
     color: '#ffffff !important',
   },
+  tableSuperGroupRow: {
+    padding: 0,
+    height: 38,
+    backgroundBlendMode: 'multiply',
+    color: '#ffffff !important',
+    background: '#150230',
+    cursor: 'pointer',
+  },
   tableGroupRow: {
     padding: 0,
     height: 36,
     backgroundBlendMode: 'multiply',
     color: '#ffffff !important',
-    background: 'linear-gradient(45deg, #2952a3 80%, #142952 99%)',
+    background: '#142952',
     cursor: 'pointer',
   },
   tableSubgroupRow: {
@@ -139,6 +147,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   },
   tableCell: {
     padding: 0,
+    paddingLeft: 2,
     color: 'inherit',
     verticalAlign: 'top',
     width: 'auto',
@@ -155,6 +164,11 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   },
   tableGroupCell: {
     verticalAlign: 'middle',
+    paddingLeft: 2,
+  },
+  tableSubGroupCell: {
+    verticalAlign: 'middle',
+    paddingLeft: 10,
   },
   tableCellCompare: {
     borderRight: palette.type ==='dark' ? columnSeparatorDark : columnSeparatorLight,
@@ -192,6 +206,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     backgroundColor: palette.type ==='dark' ? palette.background.default : '#dae1fa',
   },
   tableGridCell: {
+    paddingLeft: 2,
     '&:not(:last-child)': {
       //borderBottom: '1px dashed #808080'
     }

@@ -4,17 +4,27 @@ import IstioFunctions from '../k8s/istioFunctions';
 import {outputConfig} from './envoySidecarConfigDump'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import ChoiceManager from '../actions/choiceManager'
+import EnvoyPluginHelper from '../k8s/envoyPluginHelper'
+import { EnvoyConfigType } from '../k8s/envoyFunctions';
 
-async function outputIngresEnvoyConfig(action: ActionSpec, actionContext: ActionContext, configFn: (K8sClient, podName) => Promise<any[]>,
-                            configType: string, dataField?: string, dataTitleField?: string) {
+async function outputIngresEnvoyConfig(action: ActionSpec, actionContext: ActionContext, configFn: (K8sClient, podName) => Promise<any[]>, configType: string) {
   action.onOutput && action.onOutput([["Istio IngressGateway Envoy " + configType]], ActionOutputStyle.Table)
   action.showOutputLoading && action.showOutputLoading(true)
 
   const selections = await ChoiceManager.getPodSelections(actionContext, false)
   for(const selection of selections) {
-    action.onStreamOutput  && action.onStreamOutput([[">IngressGateway Pod: " + selection.podName + " @ Cluster: " + selection.cluster]])
+    action.onStreamOutput  && action.onStreamOutput([["^^","IngressGateway Pod: " + selection.podName + " @ Cluster: " + selection.cluster]])
     const configs = await configFn(selection.k8sClient, selection.podName)
-    outputConfig(action.onStreamOutput, configs, dataField, dataTitleField)
+    switch(configType) {
+      case EnvoyConfigType.Bootstrap:
+      case EnvoyConfigType.Clusters:
+      case EnvoyConfigType.Routes:
+        outputConfig(action.onStreamOutput, configs)
+        break
+      case EnvoyConfigType.Listeners:
+        EnvoyPluginHelper.outputListenerConfig(action.onStreamOutput, configs)
+        break
+    }
   }
   action.showOutputLoading && action.showOutputLoading(false)
 }

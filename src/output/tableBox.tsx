@@ -20,8 +20,10 @@ interface ITableCellProps extends WithStyles<typeof styles> {
 function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, compare: boolean, 
                           health: boolean, log: boolean, wide: boolean, classes: any) : string {
   let className = classes.tableCell
-  if(cell.isGroup || cell.isSubGroup || cell.isSection) {
+  if(cell.isSuperGroup || cell.isGroup) {
     className += " " + classes.tableGroupCell
+  } else if(cell.isSubGroup || cell.isSection) {
+    className += " " + classes.tableSubGroupCell
   } else {
     if(isKeyColumn && !wide) {
       className = className + " " + classes.tableKeyCell
@@ -48,7 +50,6 @@ const TextCell = withStyles(styles)(({index, cell, colSpan, className, classes}:
     return (
       <TableCell key={"textcell"+index} component="th" scope="row" colSpan={colSpan}
                 className={className}
-                style={{paddingLeft: cell.isGroup ? '2px' : '10px'}}
                 dangerouslySetInnerHTML={{__html:formattedText}} />
     )})
 })
@@ -65,7 +66,6 @@ const GridCell = withStyles(styles)(({index, cell, colSpan, className, classes}:
               <TableRow key={gridIndex} className={classes.tableCellInnerRow}>
                 <TableCell component="th" scope="row" colSpan={colSpan}
                 className={className}
-                style={{paddingLeft: cell.isGroup ? '2px' : '10px', border: 0}}
                 dangerouslySetInnerHTML={{__html:formattedText}} />
               </TableRow>
             )
@@ -195,6 +195,19 @@ export class TableBox extends React.Component<IProps, IState> {
     this.forceUpdate()
   }
 
+  onSuperGroupClick = (superGroupRow: Row) => {
+    superGroupRow.children.forEach(row => {
+      if(row.isGroup) {
+        OutputManager.showeHideGroup(row.groupIndex)
+      } else if(row.isSubGroup) {
+        OutputManager.showeHideSubGroup(row.subGroupIndex)
+      } else if(row.isSection) {
+        OutputManager.showeHideSection(row.sectionIndex)
+      }
+      this.forceUpdate()
+    })
+  }
+
   onGroupClick = (groupIndex?: number) => {
     if(groupIndex) {
       OutputManager.showeHideGroup(groupIndex)
@@ -226,7 +239,7 @@ export class TableBox extends React.Component<IProps, IState> {
     })
 
     if(!row.isSection) {
-      rowIndex > 0 && components.push(
+      components.push(
         <TableRow key={rowIndex+".pre"} className={classes.tableGroupRowSpacer}>
           <TableCell colSpan={columnCount} className={classes.tableSpacerCell}/>
         </TableRow>
@@ -234,10 +247,12 @@ export class TableBox extends React.Component<IProps, IState> {
     }
     components.push(
       <TableRow key={rowIndex+".group"} 
-                className={row.isGroup ? classes.tableGroupRow : 
+                className={row.isSuperGroup ? classes.tableSuperGroupRow : 
+                           row.isGroup ? classes.tableGroupRow : 
                            row.isSubGroup ? classes.tableSubgroupRow : 
                            classes.tableSectionRow }
                 onClick={
+                  row.isSuperGroup ? this.onSuperGroupClick.bind(this, row) :
                   row.isGroup ? this.onGroupClick.bind(this, row.groupIndex) :
                   row.isSubGroup ? this.onSubGroupClick.bind(this, row.subGroupIndex) :
                   row.isSection ? this.onSectionClick.bind(this, row.sectionIndex)
@@ -410,39 +425,55 @@ export class TableBox extends React.Component<IProps, IState> {
     let isAppendedRow = false
 
     const groups: any[] = []
-    const openParents: any[] = []
-    let currentParent: {parent: any[], children: any[], row?: Row,
+    let openParents: any[] = []
+    let currentParent: {renderedRow: any[], children: any[], row?: Row, isSuperGroup?: boolean,
                         isGroup?: boolean, isSubGroup?: boolean, isSection?: boolean}
 
     rows.forEach((row, index) => {
-      if(row.isGroupOrSubgroupOrSection) {
+      if(row.isSomeGroup) {
         hiddenIndicatorShown = false
         parentIsSection = (row.isGroup || row.isSubGroup) ? false : (parentIsSection || row.isSection)
-        if(row.isGroup) {
-          if(openParents.length > 0 && openParents[openParents.length-1].isGroup) {
-            openParents.pop()
-          }
-          currentParent =  {parent: this.renderGroupRow(row, index), children: [], row, isGroup: true}
+        if(row.isSuperGroup) {
+          openParents = []
+          currentParent =  {renderedRow: this.renderGroupRow(row, index), children: [], row, isSuperGroup: true}
           groups.push(currentParent)
           openParents.push(currentParent)
+        } else if(row.isGroup) {
+          while(openParents.length > 0 && !openParents[openParents.length-1].isSuperGroup) {
+            openParents.pop()
+            currentParent = openParents[openParents.length-1]
+          }
+          const newParent = {renderedRow: this.renderGroupRow(row, index), children: [], row, isGroup: true}
+          if(currentParent) {
+            currentParent.children.push(newParent)
+          } else {
+            groups.push(newParent)
+          }
+          currentParent = newParent
+          openParents.push(newParent)
         } else if((row.isSubGroup || row.isSection) && !row.isHidden) {
-          while(openParents.length > 0 && !openParents[openParents.length-1].isGroup) {
+          currentParent = openParents.length > 0 ? openParents[openParents.length-1] : undefined
+          while(openParents.length > 0 && !openParents[openParents.length-1].isGroup && !openParents[openParents.length-1].isSuperGroup) {
             if((row.isSection && openParents[openParents.length-1].isSection) || row.isSubGroup) {
               openParents.pop()
-              currentParent = openParents[openParents.length-1]
+              currentParent = openParents.length > 0 ? openParents[openParents.length-1] : undefined
             } else {
               break
             }
           }
-          const newParent = {parent: this.renderGroupRow(row, index), children: [], row,
+          const newParent = {renderedRow: this.renderGroupRow(row, index), children: [], row,
                               isSubGroup: row.isSubGroup, isSection: row.isSection}
-          currentParent && currentParent.children.push(newParent)
+          if(currentParent) {
+            currentParent.children.push(newParent)
+          } else {
+            groups.push(newParent)
+          }
           currentParent = newParent
           openParents.push(newParent)
         }
       } else {
         if(!currentParent) {
-          currentParent =  {parent: [], children: []}
+          currentParent =  {renderedRow: [], children: []}
           groups.push(currentParent)
         }
         if(row.isFirstAppendedRow) {
@@ -472,61 +503,43 @@ export class TableBox extends React.Component<IProps, IState> {
                 </TableCell>
               </TableRow>
             )
-            currentParent.children.push(
-              <TableRow key={index+".hidden.spacer"} className={classes.tableRowSpacer}>
-                <TableCell colSpan={columnCount} className={classes.tableSpacerCell} />
-              </TableRow>
-            )
           }
         } else {
           currentParent.children.push(this.renderRow(row, index, isAppendedRow))
         }
       }
     })
-    let tableRows: any[] = []
-    groups.forEach((group, gi) => {
-      if(group.parent.length > 0) {
-        tableRows = tableRows.concat(group.parent)
+
+    const renderGroup = (group, pi) => {
+      let groupRows: any[] = []
+      if(group.renderedRow && group.renderedRow.length > 0) {
+        groupRows = groupRows.concat(group.renderedRow)
+        group.children.forEach((subGroup, sgi) => {
+          groupRows = groupRows.concat(renderGroup(subGroup, "g"+pi+"sg"+sgi))
+        })
+      } else if(group.length) {
+        groupRows = groupRows.concat(group)
+      } else if(group.children) {
+        groupRows = groupRows.concat(group.children)
+      } else {
+        groupRows.push(group)
       }
-      group.children.forEach((subGroup, sgi) => {
-        if(subGroup.parent && subGroup.parent.length > 0) {
-          tableRows = tableRows.concat(subGroup.parent)
-        } 
-        if(subGroup.children) {
-          let subGroupRows: any[] = []
-          subGroup.children.forEach((section, si) => {
-            if(section.parent && section.parent.length > 0) {
-              subGroupRows = subGroupRows.concat(section.parent)
-            }
-            if(section.children) {
-              subGroupRows = subGroupRows.concat(section.children)
-            } else if(section.length) {
-              subGroupRows = subGroupRows.concat(section)
-            } else {
-              subGroupRows.push(section)
-            }
-          })
-          tableRows.push(
-            <TableRow key={"g"+gi+"sg"+sgi} className={classes.tableRow}>
-              <TableCell colSpan={columnCount} className={classes.tableWrapperCell}>
-                <Table>
-                  <TableBody>
-                    {subGroupRows}
-                  </TableBody>
-                </Table>
-              </TableCell>
-            </TableRow>
-          )
-        } else if(subGroup.length) {
-          tableRows = tableRows.concat(subGroup)
-        } else {
-          tableRows.push(subGroup)
-        }
-      })
-    })
-
-
-    
+      if(groupRows.length > 0) {
+        return (
+          <TableRow key={pi} className={classes.tableRow}>
+            <TableCell colSpan={columnCount} className={classes.tableWrapperCell}>
+              <Table>
+                <TableBody>
+                  {groupRows}
+                </TableBody>
+              </Table>
+            </TableCell>
+          </TableRow>
+        )
+      } else {
+        return []
+      }
+    }
     return (
       <div className={classes.root}>
         <Paper className={classes.filterContainer}>
@@ -549,7 +562,7 @@ export class TableBox extends React.Component<IProps, IState> {
                 <div className={classes.tableBody} onScroll={this.onScroll}>
                   <Table className={classes.table}>
                     <TableBody>
-                      {tableRows}
+                      {groups.map((group, gi) => renderGroup(group, gi))}
                       <TableRow style={{height: 0}}>
                         <TableCell className={classes.tableSpacerCell}>
                           <div className="bottomDiv" ref={ref => this.bottomRef = ref}/>
