@@ -3,6 +3,7 @@ import ChoiceManager from '../actions/choiceManager'
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
 import { PodDetails, Namespace } from '../k8s/k8sObjectTypes';
+import JsonUtil from '../util/jsonUtil';
 
 type ClusterNamespacePodsMap = {[cluster: string]: {[namespace: string]: PodDetails[]}}
 
@@ -35,8 +36,9 @@ const plugin : ActionGroupSpec = {
             const pods = await K8sFunctions.getAllPodsForNamespace(namespace.name, cluster.k8sClient)
             pods.length === 0 && output.push(["No pods found"])
             pods.forEach(pod => {
-              output.push([pod.name, ["Created: "+pod.creationTimestamp, 
-                            pod.conditions, pod.containerStatuses]])
+              output.push([[pod.name, "Created: "+pod.creationTimestamp],
+                ["Conditions: ", JsonUtil.flattenObjectsWithKeyValueFields(pod.conditions, "type", "status"),
+                "","ContainerStatuses: ", JsonUtil.flattenObject(pod.containerStatuses)]])
             })
             this.onStreamOutput && this.onStreamOutput(output)
           }
@@ -85,7 +87,7 @@ const plugin : ActionGroupSpec = {
         this.showOutputLoading && this.showOutputLoading(false)
       },
       clear() {
-        this.onOutput && this.onOutput([["Pod", "Status"]], ActionOutputStyle.Table)
+        this.onOutput && this.onOutput([["Pod", "Config"]], ActionOutputStyle.Table)
       }
     }
   ]

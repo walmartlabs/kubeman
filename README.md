@@ -44,7 +44,9 @@ Prior to Kubeman, there was no comprehensive tool available in the Kubernetes co
    ![Recipe Auto Refresh](/static/kubeman-autorefresh.png)
 13. Any place where you can search in Kubeman allows advanced search using operators "or" and "!". By default all words (space separated) are used in conjunction ("and"). Operator "or" allows for disjunction query (A or B). Operator "!" can be used for negation, where it'll exclude all results that have keywords that follow the ! operator (e.g. "A B ! C D" will find results containing A and B, but will exclude those results that have C and D). Complex queries can be formed using these two operators (e.g. "A or B ! C" will find all results that have either "A", or have "B without C")
    ![Complex Search](/static/kubeman-complex-search.png)
-15. Kubeman supports "dark theme". You can switch to dark theme by using the selector at the left-bottom of the application window.
+15. Kubeman supports running multiple windows to let you look at information in parallel. You can open another window via "New Window" menu option or via keystore "Cmd N" or "Ctrl N".
+16. Kubeman supports zooming in and out to make text larger/smaller. Use keystroke "Cmd +"/"Ctrl +" to zoom in, and "Cmd -" or "Ctrl -" to zoom out.
+17. Kubeman supports "dark theme". You can switch to dark theme by using the selector at the left-bottom of the application window.
 
 
 ## Recipes Overview
@@ -98,7 +100,7 @@ These recipes let you view or compare information related to services and/or the
 - View Service Details, 
 - Compare Two Services
 - Tail Service Logs, Tail Filtered Service Logs: tail logs from all backing pods for a service
-- Execute Command on Service Pods: execute a command on all backing pods for a service (use '/c' to clear output, '&&' to concatenate multiple commands)
+- Execute Command on Service Pods: execute a command on all backing pods for a service (use '/c' to clear output, '&&' to execute multiple commands)
    ![Service Execute Command](/static/kubeman-service-command.png)   
 
 #### Pod Recipes
@@ -114,48 +116,48 @@ These recipes let you view or compare information from selected pods
 - Compare Two Pods
 - Test Containers Reachability: performs a ping check from one another for all selected pod-containers
    ![Container Reachability](/static/kubeman-pod-reachability.png)   
-- Execute Pod Command: execute a command on all selected pod-containers (use '/c' to clear output, '&&' to concatenate multiple commands)
+- Execute Pod Command: execute a command on all selected pod-containers (use '/c' to clear output, '&&' to execute multiple commands)
 
 #### Istio Ingress Recipes
 These recipes let you view or analyze information related to Istio IngressGateway
 ###### Recipes:
-- View Ingress Details (shows details of IngressGateway service, its backing pods and containers, and a list of VirtualServices and Gateways defined in the cluster for ingress)
-- View Ingress Gateways and VirtualServices (a list of VirtualServices and Gateways defined in the cluster for ingress)
-- Tail Ingress Logs, Tail Filtered Ingress Logs (let you check logs from all ingressgateway pods)
-- Execute Command on Ingress Pods (execute a command on all ingressgateway pods)
-- Find Overlapping Gateways (finds gateways with same host+port)
-- Gateways with Missing Certs (finds gateways for which the referenced TLS cert secret is missing)
-- Ingress Certs Report (a report of all gateways and matching virtualservices that are configured to use TLS certs)
+- View Ingress Details: shows details of IngressGateway service, its backing pods and containers, and a list of VirtualServices and Gateways defined in the cluster for ingress
+- View Ingress Gateways and VirtualServices: a list of VirtualServices and Gateways defined in the cluster for ingress
+- Tail Ingress Logs, Tail Filtered Ingress Logs: let you check logs from all ingressgateway pods
+- Execute Command on Ingress Pods: execute a command on all ingressgateway pods
+- Find Overlapping Gateways: finds gateways with same host+port
+- Gateways with Missing Certs: finds gateways for which the referenced TLS cert secret is missing
+- Ingress Certs Report: a report of all gateways and matching virtualservices that are configured to use TLS certs
    ![Certs Report](/static/kubeman-certs-report.png)   
-- Compare Ingress (compare ingressgateway details between two clusters)
-- Service Reachability from IngressGateway (test ping-based reachability of service pods from an ingressgateway pod)
+- Compare Ingress: compare ingressgateway details between two clusters
+- Service Reachability from IngressGateway: test ping-based reachability of service pods from an ingressgateway pod
    ![Service Reachability](/static/kubeman-service-reachability.png)   
-- VirtualService Reachability from IngressGateway (test ping-based reachability of service pods backing a virtualservice from an ingressgateway pod)
-- IngressGateway Envoy Bootstrap, IngressGateway Envoy Clusters, IngressGateway Envoy Listeners, IngressGateway Envoy Routes, IngressGateway Envoy Stats, IngressGateway Envoy ServerInfo (view envoy configs and metrics from selected ingressgateway pods)
-- Compare Ingress Envoy Configs (compare envoy configs from two selected ingressgateway pods)
-- Check Ingress Envoy Listen Status (reports whether ingressgateway pods are listening on ports present in envoy listener configs, for all ingressgateway pods)
-- IngressGateway Config for Service (shows relevant envoy configs from an ingressgateway pod for a selected service)
+- VirtualService Reachability from IngressGateway: test ping-based reachability of service pods backing a virtualservice from an ingressgateway pod
+- IngressGateway Envoy Bootstrap, IngressGateway Envoy Clusters, IngressGateway Envoy Listeners, IngressGateway Envoy Routes, IngressGateway Envoy Stats, IngressGateway Envoy ServerInfo: view envoy configs and metrics from selected ingressgateway pods
+- Compare Ingress Envoy Configs: compare envoy configs from two selected ingressgateway pods
+- Check Ingress Envoy Listen Status: reports whether ingressgateway pods are listening on ports present in envoy listener configs, for all ingressgateway pods
+- IngressGateway Config for Service: shows relevant envoy configs from an ingressgateway pod for a selected service
 
 #### Istio Pilot Recipes
 These recipes let you view or analyze information related to Istio Pilot
 ###### Recipes:
-- Execute Command on Pilot Pods (execute a command on all pilot pods)
-- Tail Pilot Logs, Tail Filtered Pilot Logs (let you check logs from all pilot pods)
-- View Pilot Metrics (metrics collected from pilot pods)
-- View Service Endpoints Known to Pilot (check endpoints that pilot is aware of for a selected service)
-- View Envoy Clusters Config from Pilot, View Envoy Listeners Config from Pilot, View Envoy Routes Config from Pilot (check envoy configs that pilot has sent to a selected envoy proxy, including ingressgateway pods)
-- View Pilot-Envoy Sync Status (check sync status of pilot and various envoy proxies, including ingressgateway pods)
-- Compare Pilot-Envoy Config (compare envoy configs from a selected envoy proxy and the corresponding configs from pilot)
-- Compare Pilot-Envoy Listeners Config (compare envoy listeners configs from a selected envoy proxy and the corresponding configs from pilot)
+- Execute Command on Pilot Pods: execute a command on all pilot pods
+- Tail Pilot Logs, Tail Filtered Pilot Logs: let you check logs from all pilot pods
+- View Pilot Metrics: metrics collected from pilot pods
+- View Service Endpoints Known to Pilot: check endpoints that pilot is aware of for a selected service
+- View Envoy Clusters Config from Pilot, View Envoy Listeners Config from Pilot, View Envoy Routes Config from Pilot: check envoy configs that pilot has sent to a selected envoy proxy, including ingressgateway pods
+- View Pilot-Envoy Sync Status: check sync status of pilot and various envoy proxies, including ingressgateway pods
+- Compare Pilot-Envoy Config: compare envoy configs from a selected envoy proxy and the corresponding configs from pilot
+- Compare Pilot-Envoy Listeners Config: compare envoy listeners configs from a selected envoy proxy and the corresponding configs from pilot
 
 #### Envoy Proxy Recipes
 These recipes let you view or analyze information related to envoy proxies deployed as a part of Istio mesh
 ###### Recipes:
-- List Envoy Proxies (see a list of all envoy proxies running in the cluster)
-- Envoy Sidecar Injection Report (list of namespaces that have sidecar injection enabled)
-- Tail Envoy Logs (check logs of a selected envoy proxy)
-- Envoy Bootstrap Config, Envoy Clusters Config, Envoy Listeners Config, Envoy Routes Config, Envoy Stats, Envoy ServerInfo (view envoy configs and metrics from selected envoy proxies)
-- Compare Envoy Configs (compare envoy configs from two selected envoy proxies)
+- List Envoy Proxies: see a list of all envoy proxies running in the cluster
+- Envoy Sidecar Injection Report: list of namespaces that have sidecar injection enabled
+- Tail Envoy Logs: check logs of a selected envoy proxy
+- Envoy Bootstrap Config, Envoy Clusters Config, Envoy Listeners Config, Envoy Routes Config, Envoy Stats, Envoy ServerInfo: view envoy configs and metrics from selected envoy proxies
+- Compare Envoy Configs: compare envoy configs from two selected envoy proxies
 
 #### More Istio Recipes
 Sundry recipes related to Istio
@@ -166,10 +168,10 @@ Sundry recipes related to Istio
 #### Analysis Recipes
 These recipes focus on advanced analysis of information from various components, service a specific focused task
 ###### Recipes:
-- Analyze Service Details and Routing (analyze routing related details for a selected service)
-- Analyze Service mTLS Status (analyze mTLS setup related to a selected service)
-   ![mTLS Status](/static/kubeman-mtls-status.png)   
-- Cluster mTLS Report (see a report of mTLS setup for the cluster)
+- Analyze Service Details and Routing: analyze routing related details for a selected service
+- Analyze Service mTLS Status: analyze mTLS setup related to a selected service
+   ![mTLS Status](/static/kubeman-mtls-status.png)
+- Cluster mTLS Report: see a report of mTLS setup for the cluster
 
 
 ## To build and run the app

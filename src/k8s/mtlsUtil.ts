@@ -43,7 +43,7 @@ export class MtlsUtil {
             .filter(policy => policy.name === 'default')[0]
     if(defaultMeshPolicy) {
       const meshPolicyMtls = defaultMeshPolicy.peers.filter(p => p.mtls).map(p => p.mtls)[0]
-      meshPolicyMtls && (globalMtlsMode = meshPolicyMtls.mode ? meshPolicyMtls.mode.toUpperCase() : ServiceMtlsMode.DISABLE)
+      meshPolicyMtls && (globalMtlsMode = meshPolicyMtls.mode ? meshPolicyMtls.mode.toUpperCase() : ServiceMtlsMode.STRICT)
     }
     return {
       isGlobalMtlsEnabled: globalMtlsMode !== ServiceMtlsMode.DISABLE,

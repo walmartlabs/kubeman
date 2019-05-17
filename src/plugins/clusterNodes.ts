@@ -12,7 +12,7 @@ const plugin : ActionGroupSpec = {
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         this.onOutput && this.onOutput([[
-          ["Node", "(CreationTime)"],
+          "Labels",
           "Info",
           "Conditions",
         ]], ActionOutputStyle.TableWithHealth)
@@ -24,12 +24,13 @@ const plugin : ActionGroupSpec = {
           output.push([">Cluster: " + cluster.name, "", ""])
           const nodes = await k8sFunctions.getClusterNodes(cluster.name, cluster.k8sClient)
           if(nodes.length > 0) {
-            output.push([">>>Cluster URL: " + nodes[0].baseUrl, "", ""])
+            output.push(["++", "Cluster URL: " + nodes[0].baseUrl, "", ""])
           }
           nodes.forEach(node => {
+            output.push([">>Node: " + node.name + " Created: "+node.creationTimestamp, "", ""])
             const nodeInfo = JsonUtil.flattenObject(node.info)
             output.push([
-              [node.name, "(" + node.creationTimestamp + ")"],
+              "<<", JsonUtil.convertObjectToArray(node.labels),
               Object.keys(node.network)
                     .map(key => key + ": " + node.network[key])
                     .concat(Object.keys(nodeInfo)

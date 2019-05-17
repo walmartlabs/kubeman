@@ -10,17 +10,17 @@ const plugin : ActionGroupSpec = {
       name: "List Envoy Proxies",
       order: 1,
       async act(actionContext) {
-        this.onOutput && this.onOutput([["", "Sidecars List"]], ActionOutputStyle.Table)
+        this.onOutput && this.onOutput([["", "Envoy Proxies List"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
           const output: ActionOutput = []
-          output.push([">Sidecars @ Cluster: " + cluster.name, ""])
+          output.push([">Envoy Proxies @ Cluster: " + cluster.name, ""])
       
           if(cluster.hasIstio) {
             const sidecars = await IstioFunctions.getAllSidecars(cluster.k8sClient)
-            sidecars.length === 0 && output.push(["", "No sidecars found"])
+            sidecars.length === 0 && output.push(["", "No envoy proxies found"])
             sidecars.forEach(sc => {
               output.push([">>" + sc.pod+"."+sc.namespace, ""])
               output.push(["IP", sc.ip])

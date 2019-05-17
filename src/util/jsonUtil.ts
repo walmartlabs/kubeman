@@ -93,6 +93,19 @@ export default class JsonUtil {
     return object
   }
 
+  static flattenObjectsWithKeyValueFields(object, keyField: string, valueField: string) {
+    if(object) {
+      if(object instanceof Array) {
+        return object.map(item => JsonUtil.flattenObjectsWithKeyValueFields(item, keyField, valueField))
+      } else if(typeof object === 'object') {
+        const result = {}
+        result[object[keyField]] = object[valueField]
+        return result
+      }
+    }
+    return object
+  }
+
   static toObjectValuesArray(object) {
     if(object instanceof Array) {
       return _.flatten(object.map(value => this.toObjectValuesArray(value)))

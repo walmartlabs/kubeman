@@ -132,11 +132,15 @@ export default class IstioFunctions {
 
   static listAllIngressVirtualServices = async (k8sClient: K8sClient, yaml: boolean = true) => {
     if(k8sClient.istio) {
-      const ingressGateways = (await IstioFunctions.listAllIngressGateways(k8sClient))
-                            .map(g => g.name)
+      const ingressGateways = await IstioFunctions.listAllIngressGateways(k8sClient)
       return (await IstioFunctions.listAllVirtualServices(k8sClient, yaml))
-              .filter(v => v.gateways && v.gateways.filter(g => 
-                ingressGateways.filter(ig => g === ig || g.includes(ig+".")).length > 0).length > 0)
+              .filter(vs => vs.gateways && vs.gateways.filter(vsg => 
+                ingressGateways.filter(ig => 
+                  vsg === ig.name && vs.namespace === ig.namespace
+                  || vsg === ig.name+"."+ig.namespace
+                  || vsg.includes(ig.name+"."+ig.namespace+".") 
+                  || vsg === ig.namespace+"/"+ig.name
+                ).length > 0).length > 0)
     } else {
       return []
     }
