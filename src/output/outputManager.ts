@@ -828,7 +828,7 @@ export default class OutputManager {
     })
     .forEach(row => {
       if(anyVisible && anyHidden) {
-        row.showRow()
+        row.hideRow()
       } else {
         row.isVisible ? row.hideRow() : row.showRow()
       } 
