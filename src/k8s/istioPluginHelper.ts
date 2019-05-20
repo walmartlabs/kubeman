@@ -67,20 +67,20 @@ export default class IstioPluginHelper {
     }
   }
 
-  static async chooseSidecar(min: number = 1, max: number = 1, actionContext: ActionContext) {
+  static async chooseEnvoyProxy(min: number = 1, max: number = 1, actionContext: ActionContext) {
     ChoiceManager.prepareCachedChoices(actionContext, 
       async (cluster, namespace, k8sClient) => {
-        const sidecars = (namespace && namespace.length > 0) ?
-                          await IstioFunctions.getNamespaceSidecars(namespace, k8sClient)
-                          : await IstioFunctions.getAllSidecars(k8sClient)
-        return sidecars.map(s => {
+        const proxies = (namespace && namespace.length > 0) ?
+                          await IstioFunctions.getNamespaceEnvoyProxies(namespace, k8sClient)
+                          : await IstioFunctions.getAllEnvoyProxies(k8sClient)
+        return proxies.map(s => {
                   s['title'] = s.pod+"."+s.namespace
                   return s
                 })
-      }, "Sidecars", min, max, true, "title")
+      }, "Envoy Proxies", min, max, true, "title")
   }
 
-  static getSelectedSidecars(actionContext: ActionContext) {
+  static getSelectedEnvoyProxies(actionContext: ActionContext) {
     const selections = ChoiceManager.getSelections(actionContext)
     return selections.map(s => {
       s.item.cluster = s.cluster

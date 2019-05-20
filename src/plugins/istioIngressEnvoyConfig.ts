@@ -1,7 +1,7 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder, ActionSpec} from '../actions/actionSpec'
 import ActionContext from '../actions/actionContext';
 import IstioFunctions from '../k8s/istioFunctions';
-import {outputConfig} from './envoySidecarConfigDump'
+import {outputConfig} from './envoyConfigDump'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import ChoiceManager from '../actions/choiceManager'
 import EnvoyPluginHelper from '../k8s/envoyPluginHelper'

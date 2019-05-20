@@ -3,7 +3,7 @@ import EnvoyFunctions, {EnvoyConfigType} from '../k8s/envoyFunctions'
 import IstioFunctions from '../k8s/istioFunctions';
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import JsonUtil from '../util/jsonUtil';
-import {compareEnvoyConfigs} from './envoySidecarConfigComparison'
+import {compareEnvoyConfigs} from './envoyConfigComparison'
 
 
 const plugin : ActionGroupSpec = {
@@ -17,33 +17,33 @@ const plugin : ActionGroupSpec = {
       order: 60,
       loadingMessage: "Loading Envoy Proxies...",
       
-      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
+      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
 
       async act(actionContext) {
-        const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
+        const envoys = IstioPluginHelper.getSelectedEnvoyProxies(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
-        const sidecar = sidecars[0]
-        const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
+        const envoy = envoys[0]
+        const cluster = actionContext.getClusters().filter(c => c.name === envoy.cluster)[0]
 
         this.onOutput && this.onOutput([[
-          "", "Pilot [" + sidecar.pilotPod + "] <-> Sidecar ["+ sidecar.title + "] Config Comparison", ""
+          "", "Pilot [" + envoy.pilotPod + "] <-> Envoy Proxy ["+ envoy.title + "] Config Comparison", ""
         ]], ActionOutputStyle.Log)
 
-        const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, sidecar.pilotPod, sidecar.title)
+        const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, envoy.pilotPod, envoy.title)
         const pilotClusters = await EnvoyFunctions.prepareEnvoyClustersConfig(EnvoyFunctions.extractEnvoyConfigForType(pilotConfigs, EnvoyConfigType.Clusters))
         const pilotListeners = EnvoyFunctions.prepareEnvoyListenersConfig(EnvoyFunctions.extractEnvoyConfigForType(pilotConfigs, EnvoyConfigType.Listeners))
         const pilotRoutes = EnvoyFunctions.prepareEnvoyRoutesConfig(EnvoyFunctions.extractEnvoyConfigForType(pilotConfigs, EnvoyConfigType.Routes))
         
-        let envoyClusters = await EnvoyFunctions.getEnvoyClusters(cluster.k8sClient, sidecar.namespace, sidecar.pod, "istio-proxy")
+        let envoyClusters = await EnvoyFunctions.getEnvoyClusters(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
         const staticClusters = envoyClusters.filter(c => c.title.includes("static"))
         const dynamicClusters = envoyClusters.filter(c => !c.title.includes("static"))
 
-        const envoyListeners = await EnvoyFunctions.getEnvoyListeners(cluster.k8sClient, sidecar.namespace, sidecar.pod, "istio-proxy")
+        const envoyListeners = await EnvoyFunctions.getEnvoyListeners(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
         const activeListeners = envoyListeners.filter(l => l.title.includes("active"))
         const warmingListeners = envoyListeners.filter(l => l.title.includes("warming"))
         const drainingListeners = envoyListeners.filter(l => l.title.includes("draining"))
 
-        const envoyRoutes = await EnvoyFunctions.getEnvoyRoutes(cluster.k8sClient, sidecar.namespace, sidecar.pod, "istio-proxy")
+        const envoyRoutes = await EnvoyFunctions.getEnvoyRoutes(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
         const dynamicRoutes = envoyRoutes.filter(r => r.title.includes("dynamic"))
         const staticRoutes = envoyRoutes.filter(r => r.title.includes("static"))
 
@@ -68,39 +68,39 @@ const plugin : ActionGroupSpec = {
       order: 61,
       loadingMessage: "Loading Envoy Proxies...",
       
-      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
+      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
 
       async act(actionContext) {
-        const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
+        const envoys = IstioPluginHelper.getSelectedEnvoyProxies(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
-        const sidecar = sidecars[0]
-        const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
+        const envoy = envoys[0]
+        const cluster = actionContext.getClusters().filter(c => c.name === envoy.cluster)[0]
 
         this.onOutput && this.onOutput([[
-          "Pilot [" + sidecar.pilotPod + "] <-> Sidecar ["+ sidecar.title + "] Listeners Config Comparison"
+          "Pilot [" + envoy.pilotPod + "] <-> Envoy Proxy ["+ envoy.title + "] Listeners Config Comparison"
         ]], ActionOutputStyle.Log)
 
-        const pilotListeners = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, sidecar.pilotPod, sidecar.title, EnvoyConfigType.Listeners)
-        const sidecarListeners = await EnvoyFunctions.getEnvoyListeners(cluster.k8sClient, sidecar.namespace, sidecar.pod, "istio-proxy")
+        const pilotListeners = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, envoy.pilotPod, envoy.title, EnvoyConfigType.Listeners)
+        const envoyListeners = await EnvoyFunctions.getEnvoyListeners(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
 
         const output: ActionOutput = []
         output.push([">Listener Counts"])
-        output.push(["Pilot: "+sidecar.pilotPod + " = "  + pilotListeners.length])
-        output.push(["Sidecar: "+sidecar.title + " = "  + sidecarListeners.length])
+        output.push(["Pilot: "+envoy.pilotPod + " = "  + pilotListeners.length])
+        output.push(["Envoy: "+envoy.title + " = "  + envoyListeners.length])
 
         const allListeners: Set<string> = new Set
         const pilotListenerMap: Map<string, any> = new Map
-        const sidecarListenerMap: Map<string, any> = new Map
+        const envoyListenerMap: Map<string, any> = new Map
 
         pilotListeners.forEach(l => {
           const title = l.listener.name || l.listener.address.socketAddress.address+":"+l.listener.address.socketAddress.portValue
           allListeners.add(title)
           pilotListenerMap.set(title, l)
         })
-        sidecarListeners.forEach(l => {
+        envoyListeners.forEach(l => {
           const title = l.listener.name || l.listener.address.socket_address.address+":"+l.listener.address.socket_address.port_value
           allListeners.add(title)
-          sidecarListenerMap.set(title, l)
+          envoyListenerMap.set(title, l)
         })
 
         allListeners.forEach(title => {
@@ -108,45 +108,45 @@ const plugin : ActionGroupSpec = {
           const pilotListener = pilotListenerMap.get(title)
           let pilotFilterChains = pilotListener ? pilotListener.listener.filterChains : undefined
 
-          const sidecarListener = sidecarListenerMap.get(title)
-          let sidecarFilterChains = sidecarListener ? sidecarListener.listener.filter_chains : undefined
+          const envoyListener = envoyListenerMap.get(title)
+          let envoyFilterChains = envoyListener ? envoyListener.listener.filter_chains : undefined
 
           output.push(["Pilot: " + (pilotFilterChains ? pilotFilterChains.length + " filter chains" : "N/A")])
-          output.push(["Sidecar: " + (sidecarFilterChains ? sidecarFilterChains.length + " filter chains" : "N/A")])
+          output.push(["Envoy: " + (envoyFilterChains ? envoyFilterChains.length + " filter chains" : "N/A")])
           
-          if(pilotFilterChains && sidecarFilterChains) {
+          if(pilotFilterChains && envoyFilterChains) {
             pilotFilterChains = pilotFilterChains.map(fc => JsonUtil.transformObject(fc))
-            sidecarFilterChains = sidecarFilterChains.map(fc => JsonUtil.transformObject(fc))
+            envoyFilterChains = envoyFilterChains.map(fc => JsonUtil.transformObject(fc))
             const mismatchedPilotFilterChains: any[] = []
-            const mismatchedSidecarFilterChains: any[] = []
+            const mismatchedEnvoyFilterChains: any[] = []
             pilotFilterChains.forEach(pfc => {
-              const sfc = sidecarFilterChains.filter(sfc => JsonUtil.compareObjects(pfc, sfc, []))[0]
+              const sfc = envoyFilterChains.filter(sfc => JsonUtil.compareObjects(pfc, sfc, []))[0]
               if(pfc && !sfc) {
                 mismatchedPilotFilterChains.push(pfc)
               }
             })
-            sidecarFilterChains.forEach(sfc => {
+            envoyFilterChains.forEach(sfc => {
               const pfc = pilotFilterChains.filter(pfc => JsonUtil.compareObjects(sfc, pfc, []))[0]
               if(sfc && !pfc) {
-                mismatchedSidecarFilterChains.push(sfc)
+                mismatchedEnvoyFilterChains.push(sfc)
               }
             })
             if(mismatchedPilotFilterChains.length > 0) {
-              output.push([">>Pilot filter chains not present in Sidecar"])
+              output.push([">>Pilot filter chains not present in Envoy"])
               output.push([mismatchedPilotFilterChains])
             }
-            if(mismatchedSidecarFilterChains.length > 0) {
-              output.push([">>Sidecar filter chains not present in Pilot"])
-              output.push([mismatchedSidecarFilterChains])
+            if(mismatchedEnvoyFilterChains.length > 0) {
+              output.push([">>Envoy filter chains not present in Pilot"])
+              output.push([mismatchedEnvoyFilterChains])
             }
-            mismatchedPilotFilterChains.length === 0 && mismatchedSidecarFilterChains.length === 0
+            mismatchedPilotFilterChains.length === 0 && mismatchedEnvoyFilterChains.length === 0
               && output.push(["No Mismatched FilterChains"])
-          } else if (pilotListener && !sidecarListener) {
-            output.push(["Pilot Listener not found in Envoy: "])
+          } else if (pilotListener && !envoyListener) {
+            output.push([">>Pilot Listener not found in Envoy: "])
             output.push([pilotListener])
-          } else if (!pilotListener && sidecarListener) {
-            output.push(["Envoy Listener not found in Pilot: "])
-            output.push([sidecarListener])
+          } else if (!pilotListener && envoyListener) {
+            output.push([">>Envoy Listener not found in Pilot: "])
+            output.push([envoyListener])
           } else {
           }
         })

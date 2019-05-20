@@ -19,7 +19,7 @@ const plugin : ActionGroupSpec = {
           output.push([">Envoy Proxies @ Cluster: " + cluster.name, ""])
       
           if(cluster.hasIstio) {
-            const sidecars = await IstioFunctions.getAllSidecars(cluster.k8sClient)
+            const sidecars = await IstioFunctions.getAllEnvoyProxies(cluster.k8sClient)
             sidecars.length === 0 && output.push(["", "No envoy proxies found"])
             sidecars.forEach(sc => {
               output.push([">>" + sc.pod+"."+sc.namespace, ""])

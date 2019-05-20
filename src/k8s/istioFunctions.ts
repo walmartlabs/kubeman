@@ -64,6 +64,17 @@ export default class IstioFunctions {
     }
   }
 
+  static matchGatewaysForVirtualService(virtualService: any, gateways: any[]) {
+    return virtualService && gateways && virtualService.gateways && 
+      gateways.filter(gateway =>
+        virtualService.gateways.filter(vsg => 
+          vsg === gateway.name && virtualService.namespace === gateway.namespace
+          || vsg === gateway.name+"."+gateway.namespace
+          || vsg.includes(gateway.name+"."+gateway.namespace+".") 
+          || vsg === gateway.namespace+"/"+gateway.name
+        ).length > 0)
+  }
+
   static getIngressGatewaysForVirtualServices = async (virtualServices: any[], k8sClient: K8sClient, yaml: boolean = false) => {
     if(k8sClient.istio) {
       const allGateways = (await IstioFunctions.listAllGateways(k8sClient, yaml))
@@ -71,10 +82,7 @@ export default class IstioFunctions {
       return virtualServices.map(vs => {
         return {
           virtualService: vs,
-          gateways: allGateways.filter(g => vs.gateways && vs.gateways.filter(vsg => 
-                        vsg === g.name && vs.namespace === g.namespace
-                        || vsg === g.name+"."+g.namespace
-                        || vsg.includes(g.name+"."+g.namespace+".")).length > 0)
+          gateways: IstioFunctions.matchGatewaysForVirtualService(vs, allGateways)
         }
       })
     } else {
@@ -134,13 +142,7 @@ export default class IstioFunctions {
     if(k8sClient.istio) {
       const ingressGateways = await IstioFunctions.listAllIngressGateways(k8sClient)
       return (await IstioFunctions.listAllVirtualServices(k8sClient, yaml))
-              .filter(vs => vs.gateways && vs.gateways.filter(vsg => 
-                ingressGateways.filter(ig => 
-                  vsg === ig.name && vs.namespace === ig.namespace
-                  || vsg === ig.name+"."+ig.namespace
-                  || vsg.includes(ig.name+"."+ig.namespace+".") 
-                  || vsg === ig.namespace+"/"+ig.name
-                ).length > 0).length > 0)
+              .filter(vs => IstioFunctions.matchGatewaysForVirtualService(vs, ingressGateways).length > 0)
     } else {
       return []
     }
@@ -769,10 +771,74 @@ export default class IstioFunctions {
     return []
   }
 
-  static getAllSidecars = async (k8sClient: K8sClient) => {
-    const sidecars: any[] = []
+  static async getPilotRegistryConfig(k8sClient: K8sClient, fqdn?: string) {
     if(!k8sClient.istio) {
-      return sidecars
+      return 
+    }
+    const result = await IstioFunctions.executeOnAnyPilotPod(k8sClient,
+                                  ["curl", "-s", "localhost:8080/debug/registryz"])
+    if(result) {
+      let items = (JSON.parse(result) as any[]).map(item => {
+        return {
+          id: item.Attributes.UID,
+          hostname: item.hostname,
+          name: item.Attributes.Name,
+          namespace: item.Attributes.Namespace,
+          address: item.address,
+          ports: item.ports,
+          meshExternal: item.MeshExternal,
+          creationTime: item.creationTime,
+          exportTo: item.Attributes.ExportTo,
+        }
+      })
+      if(fqdn) {
+        FqdnMatcher.init(fqdn)
+        items = items.filter(item => FqdnMatcher.matchDomain(item.hostname))
+
+      }
+      return items
+    }
+    return []
+  }
+
+  static async getConfigResourcesFromPilot(k8sClient: K8sClient, resourceType: string) {
+    if(!k8sClient.istio) {
+      return
+    }
+    const result = await IstioFunctions.executeOnAnyPilotPod(k8sClient,
+                                  ["curl", "-s", "localhost:8080/debug/configz"])
+    if(result) {
+      return (JSON.parse(result) as any[]).filter(i => i.type === resourceType)
+        .map(i => {
+          return {
+            name: i.name,
+            namespace: i.namespace,
+            domain: i.domain,
+            resourceVersion: i.resourceVersion,
+            creationTimestamp: i.creationTimestamp,
+            spec: i.Spec
+          }
+        })
+    }
+    return []
+  }
+
+  static async getVirtualServicesFromPilot(k8sClient: K8sClient) {
+    return IstioFunctions.getConfigResourcesFromPilot(k8sClient, "virtual-service")
+  }
+
+  static async getGatewaysFromPilot(k8sClient: K8sClient) {
+    return IstioFunctions.getConfigResourcesFromPilot(k8sClient, "gateway")
+  }
+
+  static async getDestinationRulesFromPilot(k8sClient: K8sClient) {
+    return IstioFunctions.getConfigResourcesFromPilot(k8sClient, "destination-rule")
+  }
+
+  static getAllEnvoyProxies = async (k8sClient: K8sClient) => {
+    const proxies: any[] = []
+    if(!k8sClient.istio) {
+      return proxies
     }
     const results = await IstioFunctions.executeOnAllPilotPods(k8sClient,
                                   ["curl", "-s", "localhost:8080/debug/adsz"])
@@ -783,7 +849,7 @@ export default class IstioFunctions {
           .map(cds => cds.node.split("~"))
           .forEach(pieces => {
             const podAndNamespace = pieces[2].split(".")
-            sidecars.push({
+            proxies.push({
               ip: pieces[1],
               pod: podAndNamespace[0],
               namespace: podAndNamespace[1],
@@ -792,11 +858,11 @@ export default class IstioFunctions {
           })
       }
     })
-    return sidecars
+    return proxies
   }
 
-  static getNamespaceSidecars = async (namespace: string, k8sClient: K8sClient) => {
-    const sidecars = await IstioFunctions.getAllSidecars(k8sClient)
-    return sidecars.filter(s => s.namespace === namespace)
+  static getNamespaceEnvoyProxies = async (namespace: string, k8sClient: K8sClient) => {
+    const proxies = await IstioFunctions.getAllEnvoyProxies(k8sClient)
+    return proxies.filter(s => s.namespace === namespace)
   }
 }

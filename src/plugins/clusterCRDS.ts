@@ -14,7 +14,7 @@ const plugin : ActionGroupSpec = {
       order: 1,
       name: "List All CRDs",
       async act(actionContext) {
-        this.onOutput && this.onOutput([["CRD", "Labels", "Version", "Status"]], ActionOutputStyle.Table)
+        this.onOutput && this.onOutput([["Labels", "Version", "Status"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const clusters = actionContext.getClusters()
@@ -22,11 +22,12 @@ const plugin : ActionGroupSpec = {
           const output : ActionOutput  = []
           output.push([">Cluster: " + cluster.name])
           const crds = await K8sFunctions.getClusterCRDs(cluster.k8sClient)
-          crds.forEach(crd => output.push([
-            crd.name + "<br/>(created: "+crd.creationTimestamp+")", 
-            crd.labels, crd.spec.version, 
-            crd.conditions.map(c => c.type+"="+c.status)
-          ]))
+          crds.forEach(crd => {
+            output.push([">>" + crd.name + " (created: "+crd.creationTimestamp+")"])
+            output.push(["<<", crd.labels, crd.spec.version, 
+              crd.conditions.map(c => c.type+"="+c.status)
+            ])
+          })
           crds.length === 0 && output.push(["CRDs not visible"])
           this.onStreamOutput && this.onStreamOutput(output)
         }
@@ -87,7 +88,7 @@ const plugin : ActionGroupSpec = {
         this.showOutputLoading && this.showOutputLoading(true)
         for(const selection of selections) {
           this.onStreamOutput && this.onStreamOutput([
-            [">"+selection.title],
+            [">"+selection.title + " @ Cluster: " + selection.cluster],
             [selection.item]
           ])
         }

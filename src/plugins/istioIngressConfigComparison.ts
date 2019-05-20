@@ -4,7 +4,7 @@ import K8sFunctions from '../k8s/k8sFunctions'
 import IstioFunctions from '../k8s/istioFunctions'
 import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
 import EnvoyFunctions, {EnvoyConfigType} from '../k8s/envoyFunctions'
-import {compareTwoEnvoys} from './envoySidecarConfigComparison'
+import {compareTwoEnvoys} from './envoyConfigComparison'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,

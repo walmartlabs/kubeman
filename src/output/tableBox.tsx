@@ -2,13 +2,11 @@ import React, { ChangeEvent, KeyboardEvent, SyntheticEvent } from "react"
 
 import { withStyles, WithStyles } from '@material-ui/core/styles'
 import { Table, TableHead, TableBody, TableRow, TableCell } from "@material-ui/core";
-import { Paper, Typography, Input, CircularProgress } from '@material-ui/core';
-
+import { Paper, Typography, InputBase, CircularProgress } from '@material-ui/core';
 import { ActionOutput } from "../actions/actionSpec";
 import OutputManager, {Row, Cell} from './outputManager'
 import styles from './tableBox.styles'
 import './tableBox.css'
-
 
 interface ITableCellProps extends WithStyles<typeof styles> {
   index: number
@@ -48,7 +46,7 @@ function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, 
 const TextCell = withStyles(styles)(({index, cell, colSpan, className, classes}: ITableCellProps) => {
   return cell.render((formattedText) => {
     return (
-      <TableCell key={"textcell"+index} component="th" scope="row" colSpan={colSpan}
+      <TableCell key={"textcell"+index} scope="row" colSpan={colSpan}
                 className={className}
                 dangerouslySetInnerHTML={{__html:formattedText}} />
     )})
@@ -64,7 +62,7 @@ const GridCell = withStyles(styles)(({index, cell, colSpan, className, classes}:
           {cell.render((formattedText, gridIndex) => {
             return (
               <TableRow key={gridIndex} className={classes.tableCellInnerRow}>
-                <TableCell component="th" scope="row" colSpan={colSpan}
+                <TableCell scope="row" colSpan={colSpan}
                 className={className}
                 dangerouslySetInnerHTML={{__html:formattedText}} />
               </TableRow>
@@ -76,6 +74,65 @@ const GridCell = withStyles(styles)(({index, cell, colSpan, className, classes}:
     </TableCell>
   )
 })
+
+
+interface FilterInputProps extends WithStyles<typeof styles> {
+  placeholder: string
+  isFilterInput: (string) => boolean
+  onFilter: (...any) => any
+  clearFilter: () => any
+  onActionTextInput: (string) => any
+}
+
+interface FilterInputState {
+  filterText: string
+}
+
+const FilterInput = withStyles(styles)(
+class extends React.Component<FilterInputProps, FilterInputState> {
+  state: FilterInputState = {
+    filterText: '',
+  }
+
+  onKeyDown = (event) => {
+    const {filterText} = this.state
+    switch(event.which) {
+      case 27: /*Esc*/
+        this.setState({filterText: ''})
+        this.props.clearFilter()
+        break
+      case 13: /*Enter*/
+        if(this.props.isFilterInput(filterText)) {
+          this.props.onFilter(filterText)
+        } else {
+          this.props.onActionTextInput(filterText.slice(1))
+        }
+        break
+    }
+  }
+
+  onTextInput = (event: ChangeEvent<HTMLInputElement>) => {
+    const filterText = event.target.value
+    if(this.props.isFilterInput(filterText)) {
+      this.props.onFilter(filterText)
+    }
+    this.setState({filterText})
+  }
+
+  render() {
+    const {placeholder, classes} = this.props
+    return (
+      <InputBase  fullWidth autoFocus
+              value={this.state.filterText}
+              placeholder={placeholder}
+              className={classes.filterInput}
+              onChange={this.onTextInput}
+              onKeyDown={this.onKeyDown}
+      />
+    )
+  }
+})
+
 
 interface IProps extends WithStyles<typeof styles> {
   output: ActionOutput
@@ -112,10 +169,9 @@ export class TableBox extends React.Component<IProps, IState> {
     this.isScrolled = false
     this.lastScrollTop = -1
     OutputManager.setOutput(props.output, props.log, props.rowLimit)
-    if(this.filterText.length > 0 && this.isFilterInput(this.filterText)) {
+    if(this.isFilterInput(this.filterText)) {
       this.filter()
     }
-    this.forceUpdate()
   }
 
   appendOutput(output: ActionOutput) {
@@ -129,50 +185,31 @@ export class TableBox extends React.Component<IProps, IState> {
     this.forceUpdate()
   }
 
-  clearFilter() {
+  clearFilter = () => {
     OutputManager.clearFilter()
     this.filterText = ''
     this.forceUpdate()
   }
 
-  isFilterInput(text: string) : boolean {
-    return !((this.props.acceptInput || this.props.allowRefresh) && text.startsWith("/"))
+  isFilterInput = (filterText: string) : boolean => {
+    return !((this.props.acceptInput || this.props.allowRefresh) && filterText.startsWith("/"))
   }
 
   filter = () => {
-    OutputManager.filter(this.filterText)
+    if(this.filterText.length === 0) {
+      this.clearFilter()
+    } else {
+      OutputManager.filter(this.filterText)
+    }
     this.forceUpdate()
   }
 
-  onFilter = (text: string) => {
+  onFilter = (filterText: string) => {
+    this.filterText = filterText
     if(this.filterTimer) {
       clearTimeout(this.filterTimer)
     }
-    if(text.length === 0) {
-      this.clearFilter()
-    } else {
-      this.filterTimer = setTimeout(this.filter, 500)
-    }
-  }
-
-  onTextInput = (event: ChangeEvent<HTMLInputElement>) => {
-    const text = event.target.value
-    this.filterText = text
-    if(this.isFilterInput(text)) {
-      this.onFilter(text)
-    }
-    this.forceUpdate()
-  }
-
-  onKeyDown = (event) => {
-    switch(event.which) {
-      case 27: /*Esc*/
-        this.clearFilter()
-        break
-      case 13: /*Enter*/
-        this.props.onActionTextInput(this.filterText.slice(1))
-        break
-    }
+    this.filterTimer = setTimeout(this.filter, 500)
   }
 
   scrollToBottom() {
@@ -191,45 +228,16 @@ export class TableBox extends React.Component<IProps, IState> {
   }
 
   onHeaderClick = () => {
-    OutputManager.showeHideAllGroups()
+    OutputManager.showeHideAllRows()
     this.forceUpdate()
   }
 
-  onSuperGroupClick = (superGroupRow: Row) => {
-    superGroupRow.children.forEach(row => {
-      if(row.isGroup) {
-        OutputManager.showeHideGroup(row.groupIndex)
-      } else if(row.isSubGroup) {
-        OutputManager.showeHideSubGroup(row.subGroupIndex)
-      } else if(row.isSection) {
-        OutputManager.showeHideSection(row.sectionIndex)
-      }
-      this.forceUpdate()
-    })
+  onRowClick = (row: Row) => {
+    OutputManager.showeHideChildren(row)
+    this.forceUpdate()
   }
 
-  onGroupClick = (groupIndex?: number) => {
-    if(groupIndex) {
-      OutputManager.showeHideGroup(groupIndex)
-      this.forceUpdate()
-    }
-  }
-
-  onSubGroupClick = (subGroupIndex?: number) => {
-    if(subGroupIndex) {
-      OutputManager.showeHideSubGroup(subGroupIndex)
-      this.forceUpdate()
-    }
-  }
-
-  onSectionClick = (sectionIndex?: number) => {
-    if(sectionIndex) {
-      OutputManager.showeHideSection(sectionIndex)
-      this.forceUpdate()
-    }
-  }
-
-  renderGroupRow(row: Row, rowIndex: number) {
+  renderGroupRow(row: Row, rowIndex) {
     const {classes} = this.props
     const components : any[] = []
     const columnCount = OutputManager.headers.length
@@ -251,13 +259,7 @@ export class TableBox extends React.Component<IProps, IState> {
                            row.isGroup ? classes.tableGroupRow : 
                            row.isSubGroup ? classes.tableSubgroupRow : 
                            classes.tableSectionRow }
-                onClick={
-                  row.isSuperGroup ? this.onSuperGroupClick.bind(this, row) :
-                  row.isGroup ? this.onGroupClick.bind(this, row.groupIndex) :
-                  row.isSubGroup ? this.onSubGroupClick.bind(this, row.subGroupIndex) :
-                  row.isSection ? this.onSectionClick.bind(this, row.sectionIndex)
-                  : undefined
-                }
+                onClick={row && row.isSomeGroup ? this.onRowClick.bind(this, row) : undefined}
       >
         {row.cells.filter(cell => cell.hasContent)
           .map((cell,i) => {
@@ -301,21 +303,19 @@ export class TableBox extends React.Component<IProps, IState> {
           />
         )
       } else {
-        return (
-          <TextCell key={"TextCell"+ci} 
-                    index={ci} 
-                    cell={cell}
-                    className={cellClass}
-                    colSpan={ci === 0 ? gap : 1}
-          />
-        )
+        return <TextCell key={"TextCell"+ci} 
+                        index={ci} 
+                        cell={cell}
+                        className={cellClass}
+                        colSpan={ci === 0 ? gap : 1}
+              />
       }
     })
 
   }
 
-  renderRow(row: Row, rowIndex: number, isAppendedRow: boolean) {
-    const {classes, compare, health, log} = this.props
+  renderDataRow(row: Row, rowIndex, isAppendedRow: boolean) {
+    const {classes} = this.props
     const columnCount = OutputManager.headers.length
     const components : any[] = []
 
@@ -342,16 +342,13 @@ export class TableBox extends React.Component<IProps, IState> {
     const rowClass = row.isEmpty ? classes.tableEmptyRow : 
                       row.isTitle ? classes.tableTitleRow :
                       classes.tableRow + " " + (isAppendedRow && this.props.scrollMode ? classes.tableAppendedRow : "")
+    row.isTitle && components.push(this.renderSpacer(rowIndex+"pretitle"))
     components.push(
       <TableRow key={rowIndex} className={rowClass} >
         {cellContent}
       </TableRow>
     )
-    components.push(
-      <TableRow key={rowIndex+".space"} className={classes.tableRowSpacer}>
-        <TableCell colSpan={columnCount} className={classes.tableSpacerCell} />
-      </TableRow>
-    )
+    components.push(this.renderSpacer(rowIndex))
     return components
   }
 
@@ -370,48 +367,128 @@ export class TableBox extends React.Component<IProps, IState> {
       >
         {headers.map((header, i) => {
           const columnMatchedFilter = filterMatchedColumns.has(i)
-          if(header instanceof Array){
-            return(
+          return(
             <TableCell key={i} style={{width: i===0?keyColumnWidth:'auto', paddingLeft: 10}}
                     colSpan={emptyCount === 0 ? 1 : i === 0 ? 1+emptyCount : 1} >
               <Typography className={classes.tableHeaderText}>
-              {header.map((text,hi) =>
-                <span key={hi} style={{display: 'block'}}>
-                  {text}
-                </span>
-              )}
-              {columnMatchedFilter && 
-                <span style={{display: 'block', fontSize: '0.7rem'}}>[matches]</span>}
+                {(header instanceof Array) ? header.map((text,hi) => {
+                  return (
+                    <span key={hi} style={{display: 'block'}}>
+                      {text}
+                    </span>
+                  )
+                }) : header}
+                {columnMatchedFilter && <span style={{display: 'block', fontSize: '0.7rem'}}>[filtered]</span>}
               </Typography>
             </TableCell>
-            )
-          } else {
-            return(
-            <TableCell key={i} style={{width: i===0?keyColumnWidth:'auto', paddingLeft: 10}}
-                        colSpan={emptyCount === 0 ? 1 : i === 0 ? 1+emptyCount : 1} >
-              <Typography className={classes.tableHeaderText}>
-                {header} 
-                {columnMatchedFilter && 
-                  <span style={{display: 'block', fontSize: '0.7rem'}}>[matches]</span>}
-              </Typography>
-            </TableCell>
-            )
-          }
-        })
-        }
+          )
+        })}
       </TableRow>
     )
   }
 
+  renderSpacer(index) {
+    const {classes} = this.props
+    const columnCount = OutputManager.columnCount
+    return (
+      <TableRow key={index+".space"} className={classes.tableRowSpacer}>
+        <TableCell colSpan={columnCount} className={classes.tableSpacerCell} />
+      </TableRow>
+    )
+  }
+
+  renderScrollPoint(index) {
+    return (
+      <TableRow key={index+"scroll"} style={{height: 0}}>
+        <TableCell style={{height: 0, padding: 0}}>
+          <div className="scrollDiv" ref={ref => this.scrollToRef = ref}/>
+        </TableCell>
+      </TableRow>
+    )
+  }
+
+  renderHiddenIndicatorRow(index, parentRow, classes) {
+    return [
+      <TableRow key={index+"hidden"} className={classes.tableRowHidden}>
+        <TableCell className={classes.tableCellHidden}
+                  style={{cursor: 'pointer'}}
+                  colSpan={OutputManager.columnCount}
+                  onClick={parentRow && parentRow.isSomeGroup ? this.onRowClick.bind(this, parentRow) : undefined}
+        >
+        ...
+        </TableCell>
+      </TableRow>,
+      this.renderSpacer(index)
+    ]
+  }
+
+  wrapRowsInTable(rows: any[], index, classes) {
+    return [
+      <TableRow key={index} className={classes.tableRow}>
+        <TableCell colSpan={OutputManager.columnCount} className={classes.tableWrapperCell}>
+          <Table>
+            <TableBody>
+              {rows}
+            </TableBody>
+          </Table>
+        </TableCell>
+      </TableRow>
+    ]
+  }
+
+  renderRows() {
+    const {classes} = this.props
+    const columnCount = OutputManager.columnCount
+
+    const renderedRows: any[] = []
+    const renderRow = (row: Row, index) => {
+      const currentRows: any[] = []
+      const childRows: any[] = []
+      let dataChildRowCount = 0
+      if(row.isVisible && row.isFirstAppendedRow && (!row.isSomeGroup || row.visibleChildCount > 0)) {
+        currentRows.push(this.renderScrollPoint(index))
+      }
+      if(row.isSomeGroup) {
+        row.isVisible && currentRows.push(...this.renderGroupRow(row, index))
+        if(row.isVisible && row.hiddenChildCount > 0) {
+          childRows.push(...this.renderHiddenIndicatorRow(index+"opening", row, classes))
+        }
+      } else {
+        row.isVisible && currentRows.push(...this.renderDataRow(row, index, row.isFirstAppendedRow))
+      }
+      row.filteredChildren.map((childRow,ri) => {
+        childRows.push(...renderRow(childRow, index+"."+ri))
+        !childRow.isSomeGroup && ++dataChildRowCount
+      })
+      if(row.isSomeGroup && row.isVisible && dataChildRowCount > 0 && row.hiddenChildCount > 0 && row.visibleChildCount > 0) {
+        childRows.push(...this.renderHiddenIndicatorRow(index+"closing", row, classes))
+      }
+      if(currentRows.length > 0 && row.isSomeGroup) {
+        currentRows.push(...this.wrapRowsInTable(childRows, index, classes))
+        return currentRows
+      } else if(currentRows.length > 0) {
+        return currentRows
+      } else {
+        return []
+      }
+    }
+
+    OutputManager.topRows.forEach((row, index) => {
+      renderedRows.push(...renderRow(row, index))
+    })
+
+    return renderedRows
+  }
+
   render() {
     const {classes, acceptInput, allowRefresh} = this.props
-
     if(!OutputManager.hasContent) {
       return <div/>
     }
 
-    const rows = OutputManager.filteredRows
-    const columnCount = OutputManager.headers.length
+    const renderedRows = this.renderRows()
+
+    const columnCount = OutputManager.columnCount
     let inputMessage = "Type to filter results"
     if(acceptInput || allowRefresh) {
       inputMessage += ", or enter"
@@ -420,135 +497,15 @@ export class TableBox extends React.Component<IProps, IState> {
       allowRefresh && (inputMessage += " /r")
       inputMessage += " (enter /help to see available commands)"
     }
-    let hiddenIndicatorShown = false
-    let parentIsSection = false
-    let isAppendedRow = false
 
-    const groups: any[] = []
-    let openParents: any[] = []
-    let currentParent: {renderedRow: any[], children: any[], row?: Row, isSuperGroup?: boolean,
-                        isGroup?: boolean, isSubGroup?: boolean, isSection?: boolean}
-
-    rows.forEach((row, index) => {
-      if(row.isSomeGroup) {
-        hiddenIndicatorShown = false
-        parentIsSection = (row.isGroup || row.isSubGroup) ? false : (parentIsSection || row.isSection)
-        if(row.isSuperGroup) {
-          openParents = []
-          currentParent =  {renderedRow: this.renderGroupRow(row, index), children: [], row, isSuperGroup: true}
-          groups.push(currentParent)
-          openParents.push(currentParent)
-        } else if(row.isGroup) {
-          while(openParents.length > 0 && !openParents[openParents.length-1].isSuperGroup) {
-            openParents.pop()
-            currentParent = openParents[openParents.length-1]
-          }
-          const newParent = {renderedRow: this.renderGroupRow(row, index), children: [], row, isGroup: true}
-          if(currentParent) {
-            currentParent.children.push(newParent)
-          } else {
-            groups.push(newParent)
-          }
-          currentParent = newParent
-          openParents.push(newParent)
-        } else if((row.isSubGroup || row.isSection) && !row.isHidden) {
-          currentParent = openParents.length > 0 ? openParents[openParents.length-1] : undefined
-          while(openParents.length > 0 && !openParents[openParents.length-1].isGroup && !openParents[openParents.length-1].isSuperGroup) {
-            if((row.isSection && openParents[openParents.length-1].isSection) || row.isSubGroup) {
-              openParents.pop()
-              currentParent = openParents.length > 0 ? openParents[openParents.length-1] : undefined
-            } else {
-              break
-            }
-          }
-          const newParent = {renderedRow: this.renderGroupRow(row, index), children: [], row,
-                              isSubGroup: row.isSubGroup, isSection: row.isSection}
-          if(currentParent) {
-            currentParent.children.push(newParent)
-          } else {
-            groups.push(newParent)
-          }
-          currentParent = newParent
-          openParents.push(newParent)
-        }
-      } else {
-        if(!currentParent) {
-          currentParent =  {renderedRow: [], children: []}
-          groups.push(currentParent)
-        }
-        if(row.isFirstAppendedRow) {
-          isAppendedRow = true
-          currentParent.children.push(
-            <TableRow key={index+"scroll"} style={{height: 0}}>
-              <TableCell style={{height: 0, padding: 0}}>
-                <div className="scrollDiv" ref={ref => this.scrollToRef = ref}/>
-              </TableCell>
-            </TableRow>
-          )
-        }
-        if(row.isHidden) {
-          if(!hiddenIndicatorShown) {
-            hiddenIndicatorShown = true
-            const parent = currentParent
-            currentParent.children.push(
-              <TableRow key={index+"hidden"} className={classes.tableRowHidden}>
-                <TableCell className={classes.tableCellHidden}
-                          style={{cursor: 'pointer'}}
-                          colSpan={columnCount}
-                          onClick={() => parent.isSection ? this.onSectionClick(row.sectionIndex) :
-                                        parent.isSubGroup ? this.onSubGroupClick(row.subGroupIndex) : 
-                                        parent.isGroup ? this.onGroupClick(row.groupIndex) : undefined}
-                >
-                ...
-                </TableCell>
-              </TableRow>
-            )
-          }
-        } else {
-          currentParent.children.push(this.renderRow(row, index, isAppendedRow))
-        }
-      }
-    })
-
-    const renderGroup = (group, pi) => {
-      let groupRows: any[] = []
-      if(group.renderedRow && group.renderedRow.length > 0) {
-        groupRows = groupRows.concat(group.renderedRow)
-        group.children.forEach((subGroup, sgi) => {
-          groupRows = groupRows.concat(renderGroup(subGroup, "g"+pi+"sg"+sgi))
-        })
-      } else if(group.length) {
-        groupRows = groupRows.concat(group)
-      } else if(group.children) {
-        groupRows = groupRows.concat(group.children)
-      } else {
-        groupRows.push(group)
-      }
-      if(groupRows.length > 0) {
-        return (
-          <TableRow key={pi} className={classes.tableRow}>
-            <TableCell colSpan={columnCount} className={classes.tableWrapperCell}>
-              <Table>
-                <TableBody>
-                  {groupRows}
-                </TableBody>
-              </Table>
-            </TableCell>
-          </TableRow>
-        )
-      } else {
-        return []
-      }
-    }
     return (
       <div className={classes.root}>
         <Paper className={classes.filterContainer}>
-          <Input  fullWidth disableUnderline autoFocus
-                  value={this.filterText}
-                  placeholder={inputMessage}
-                  className={classes.filterInput}
-                  onChange={this.onTextInput}
-                  onKeyDown={this.onKeyDown}
+          <FilterInput placeholder={inputMessage}
+              isFilterInput={this.isFilterInput}
+              onFilter={this.onFilter}
+              clearFilter={this.clearFilter}
+              onActionTextInput={this.props.onActionTextInput}
           />
         </Paper>
         <Table className={classes.tableContainer}>
@@ -562,7 +519,7 @@ export class TableBox extends React.Component<IProps, IState> {
                 <div className={classes.tableBody} onScroll={this.onScroll}>
                   <Table className={classes.table}>
                     <TableBody>
-                      {groups.map((group, gi) => renderGroup(group, gi))}
+                      {renderedRows}
                       <TableRow style={{height: 0}}>
                         <TableCell className={classes.tableSpacerCell}>
                           <div className="bottomDiv" ref={ref => this.bottomRef = ref}/>

@@ -198,6 +198,12 @@ export function compareEnvoyConfigs(onStreamOutput, configs1: any[], configs2: a
         }
       })
     }
+    if(versionMismatchedPairs.length === 0 && otherDiffPairs.length === 0) {
+      output.push([">>Unanalyzed Config Difference", ""])
+      diffPairs.forEach(pair => output.push(
+        [">>>" + (pair[0].name || pair[1].name)], ["<<", pair[0], pair[1]])
+      )
+    }
   } else {
     output.push([">>No Mismatched "+type, ""])
   }
@@ -245,12 +251,12 @@ const plugin : ActionGroupSpec = {
     {
       name: "Compare Envoy Configs",
       order: 30,
-      loadingMessage: "Loading Envoy Sidecars...",
+      loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 2, 2),
+      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 2, 2),
 
       async act(actionContext) {
-        const sidecars = IstioPluginHelper.getSelectedSidecars(actionContext)
+        const sidecars = IstioPluginHelper.getSelectedEnvoyProxies(actionContext)
         const sidecar1 = sidecars[0]
         const sidecar2 = sidecars[1]
 

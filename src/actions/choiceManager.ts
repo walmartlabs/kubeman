@@ -180,7 +180,11 @@ export default class ChoiceManager {
                               name: string, min: number, max: number, useNamespace: boolean = true, ...fields) {
     const operationId = Context.operationCounter
     ++this.pendingChoicesCounter
-    const previousSelections = cache && this.cacheKey === cacheKey ? actionContext.getSelections() : []
+    if(Context.doubleSelections) {
+      Context.doubleSelections = false
+      Context.selections = []
+    }
+    let previousSelections: any[] = cache && this.cacheKey === cacheKey ? actionContext.getSelections() : []
     this.cacheKey !== cacheKey && (Context.selections = [])
     const choices: any[] = await ChoiceManager._createAndStoreItems(cache, cacheKey, actionContext, k8sFunction, useNamespace, ...fields)
     if(choices.length >= min && choices.length <= max) {
@@ -402,6 +406,7 @@ export default class ChoiceManager {
     const choice2SelectionHandler = async (...args) => {
       selections.push({data: await getSelections2()})
       Context.selections = selections
+      Context.doubleSelections = true
       action.act(actionContext)
     }
     const choice1SelectionHandler = async (...args) => {

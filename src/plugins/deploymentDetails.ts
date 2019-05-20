@@ -20,29 +20,19 @@ const plugin : ActionGroupSpec = {
 
       async act(actionContext) {
         const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
-        this.onOutput && this.onOutput([["Keys", "Data"]], ActionOutputStyle.Table)
+        this.onOutput && this.onOutput([["Deployment Details"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
         const clusters = actionContext.getClusters()
         for(const selection of selections) {
           const output: ActionOutput = []
-          output.push([">" + selection.title+"."+selection.namespace+" @ "+selection.cluster, ""])
           const deployment = selection.item
+          output.push([">" + selection.title+"."+selection.namespace+" @ "+selection.cluster + 
+                        ", CreationTimestamp: " + deployment.creationTimestamp])
           const cluster = clusters.filter(c => c.name === selection.cluster)[0]
-          if(deployment) {
-            const scale = (await cluster.k8sClient.apps.namespaces(selection.namespace)
-                                .deployments(deployment.name).scale.get()).body
-            output.push(["name", deployment.name])
-            output.push(["namespace", deployment.namespace])
-            output.push(["cluster", selection.cluster])
-            output.push(["scale", {desired: scale.spec.replicas, current: scale.status.replicas}])
-            output.push(["status", deployment.status])
-            output.push(["creationTimestamp", deployment.creationTimestamp])
-            output.push(["labels", deployment.labels])
-            output.push(["annotations", deployment.annotations])
-            output.push(["replicas", deployment.replicas])
-            output.push(["strategy", deployment.strategy])
-            output.push(["yaml", deployment.yaml])
-          }
+          const scale = (await cluster.k8sClient.apps.namespaces(selection.namespace)
+                              .deployments(deployment.name).scale.get()).body
+          output.push([">>>Scale: Desired = " + scale.spec.replicas + ", Current = " +scale.status.replicas])
+          output.push([deployment.yaml])
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)

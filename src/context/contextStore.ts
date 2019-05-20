@@ -38,6 +38,7 @@ export default class Context {
   static hasIstio: boolean = false
   static operationCounter: number = 0
   static selections: any[] = []
+  static doubleSelections: boolean = false
   static cachedSelections = {}
   static cacheKey: string = ''
   static errorMessage: string = ''

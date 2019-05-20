@@ -3,7 +3,7 @@ import EnvoyFunctions, {EnvoyConfigType} from '../k8s/envoyFunctions'
 import IstioFunctions from '../k8s/istioFunctions';
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import JsonUtil from '../util/jsonUtil';
-import {outputConfig} from './envoySidecarConfigDump'
+import {outputConfig} from './envoyConfigDump'
 import ChoiceManager from '../actions/choiceManager'
 
 
@@ -22,15 +22,16 @@ function getConfigItems(configs, configType, titleField) {
   }
 }
 
-async function outputSidecarConfig(action, actionContext, configType, titleField: string, 
+async function outputEnvoyConfig(action, actionContext, configType, titleField: string, 
                                     dataField?: string, dataTitleField?: string) {
-  const sidecar = IstioPluginHelper.getSelectedSidecars(actionContext)[0]
+  const envoy = IstioPluginHelper.getSelectedEnvoyProxies(actionContext)[0]
+  const title = configType.replace("Dump", "")
   action.showOutputLoading && action.showOutputLoading(true)
-  const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
-  action.onOutput && action.onOutput([["Sidecar Config from Pilot"]], ActionOutputStyle.Log)
+  const cluster = actionContext.getClusters().filter(c => c.name === envoy.cluster)[0]
+  action.onOutput && action.onOutput([["Envoy " + title + " from Pilot"]], ActionOutputStyle.Log)
 
-  const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, sidecar.pilotPod, sidecar.title)
-  action.onStreamOutput && action.onStreamOutput([[">" + configType + " for " + sidecar.title]])
+  const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, envoy.pilotPod, envoy.title)
+  action.onStreamOutput && action.onStreamOutput([[">" + title + " for " + envoy.title]])
   const configs = getConfigItems(pilotConfigs, configType, titleField)
   outputConfig(action.onStreamOutput, configs, dataField, dataTitleField)
   action.showOutputLoading && action.showOutputLoading(false)
@@ -47,10 +48,10 @@ const plugin : ActionGroupSpec = {
       order: 50,
       loadingMessage: "Loading Envoy Proxies...",
       
-      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
+      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
 
       async act(actionContext) {
-        outputSidecarConfig(this, actionContext, "ClustersConfigDump", "cluster.name")
+        outputEnvoyConfig(this, actionContext, "ClustersConfigDump", "cluster.name")
       },
     },
     {
@@ -58,10 +59,10 @@ const plugin : ActionGroupSpec = {
       order: 51,
       loadingMessage: "Loading Envoy Proxies...",
       
-      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
+      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
 
       async act(actionContext) {
-        outputSidecarConfig(this, actionContext, "ListenersConfigDump", "listener.address.socketAddress.portValue")
+        outputEnvoyConfig(this, actionContext, "ListenersConfigDump", "listener.address.socketAddress.portValue")
       },
     },
     {
@@ -69,10 +70,10 @@ const plugin : ActionGroupSpec = {
       order: 52,
       loadingMessage: "Loading Envoy Proxies...",
       
-      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 1),
+      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
 
       async act(actionContext) {
-        outputSidecarConfig(this, actionContext, "RoutesConfigDump", 
+        outputEnvoyConfig(this, actionContext, "RoutesConfigDump", 
                             "routeConfig.name", "routeConfig.virtualHosts", "name")
       },
     },

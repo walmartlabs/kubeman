@@ -12,10 +12,10 @@ const plugin : ActionGroupSpec = {
       selections: undefined,
       logStreams: [],
 
-      choose: IstioPluginHelper.chooseSidecar.bind(IstioPluginHelper, 1, 5),
+      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 5),
 
       async act(actionContext) {
-        this.selections = IstioPluginHelper.getSelectedSidecars(actionContext)
+        this.selections = IstioPluginHelper.getSelectedEnvoyProxies(actionContext)
         this.clear && this.clear(actionContext)
         this.setScrollMode && this.setScrollMode(true)
         this.showOutputLoading && this.showOutputLoading(true)

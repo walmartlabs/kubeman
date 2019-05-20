@@ -95,7 +95,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   },
   tableTitleRow: {
     padding: 0,
-    height: 20,
+    height: 24,
     backgroundBlendMode: 'multiply',
     backgroundColor: palette.type === 'dark' ? '#505050' : '#a0b0c0',
   },
@@ -147,6 +147,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   },
   tableCell: {
     padding: 0,
+    paddingTop: 4,
     paddingLeft: 2,
     color: 'inherit',
     verticalAlign: 'top',
@@ -164,11 +165,13 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   },
   tableGroupCell: {
     verticalAlign: 'middle',
-    paddingLeft: 2,
+    paddingLeft: 6,
+    paddingTop: 0,
   },
   tableSubGroupCell: {
     verticalAlign: 'middle',
-    paddingLeft: 10,
+    paddingLeft: 4,
+    paddingTop: 0,
   },
   tableCellCompare: {
     borderRight: palette.type ==='dark' ? columnSeparatorDark : columnSeparatorLight,
@@ -201,8 +204,9 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   },
   tableCellHidden: {
     padding: 0, 
-    textAlign: 'left',
     paddingLeft: 10,
+    marginBottom: 10,
+    textAlign: 'left',
     backgroundColor: palette.type ==='dark' ? palette.background.default : '#dae1fa',
   },
   tableGridCell: {
