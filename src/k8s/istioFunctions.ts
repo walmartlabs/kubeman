@@ -865,4 +865,14 @@ export default class IstioFunctions {
     const proxies = await IstioFunctions.getAllEnvoyProxies(k8sClient)
     return proxies.filter(s => s.namespace === namespace)
   }
+
+  static async getSidecarInjectorWebhook(k8sClient: K8sClient) {
+    const result = await k8sClient.admissionregistration.mutatingwebhookconfigurations.get()
+    if(result && result.body) {
+      const injector = (result.body.items as any[]).filter(i => i.metadata.name === "istio-sidecar-injector")[0]
+      if(injector) {
+        return injector.webhooks[0]
+      }
+    }
+  }
 }

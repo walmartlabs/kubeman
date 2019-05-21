@@ -31,11 +31,28 @@ const plugin : ActionGroupSpec = {
           output.push([">" + service.name+"."+service.namespace + " @ " + cluster.name])
           output.push([">>Service"], [service.yaml])
 
-          output.push([">>Backing Pods"])
+          output.push([">>Service Endpoints"])
+          const endpointSubsets = await K8sFunctions.getServiceEndpoints(service.name, service.namespace, cluster.k8sClient)
+          const subsetCount = endpointSubsets.length
+          const endpointPods = {}
+          endpointSubsets.forEach((subset, i) => {
+            const subsetPods: any[] = []
+            subset.addresses.forEach(a => {
+              subsetPods.push({pod: a.targetRef.name, ip: a.ip})
+              endpointPods[a.targetRef.name] = a.ip
+            })
+            subsetCount > 1 && output.push([">>>Endpoints Subset #"+(i+1)])
+            output.push([subsetPods])
+          })
+
+          output.push([">>Service Pods Details"])
           const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(service, cluster.k8sClient, true)
           if(podsAndContainers && podsAndContainers.pods && podsAndContainers.pods.length > 0) {
             (podsAndContainers.pods as PodDetails[]).forEach(pod => {
-              output.push([">>>"+pod.name], [pod.yaml])
+              const podIPInEndpoints = endpointPods[pod.name] 
+              output.push([">>>"+pod.name +
+                (podIPInEndpoints ? ", Endpoint IP: ["+podIPInEndpoints+"]" : " (pod not found in service endpoints)")], 
+              [pod.yaml])
             })
           } else {
             output.push(["No pods found for the service"])

@@ -1,6 +1,7 @@
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import K8sFunctions from '../k8s/k8sFunctions';
 import IstioFunctions from '../k8s/istioFunctions';
+import yaml from 'yaml'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
@@ -52,6 +53,16 @@ const plugin : ActionGroupSpec = {
           }
 
           let output: ActionOutput = []
+          const sidecarInjectorWebhook = await IstioFunctions.getSidecarInjectorWebhook(cluster.k8sClient)
+          output.push([">>Sidecar Injection Webhook Details", ""])
+          if(sidecarInjectorWebhook) {
+            output.push(["Namespace Selector", sidecarInjectorWebhook.namespaceSelector])
+            output.push(["Failure Policy", sidecarInjectorWebhook.failurePolicy])
+            output.push(["Timeout Seconds", sidecarInjectorWebhook.timeoutSeconds])
+          } else {
+            output.push(["Sidecar Injection Webhook not configured", ""])
+          }
+
           output.push([">>Namespace", "Sidecar Injection Status"])
       
           const namespaces = await K8sFunctions.getClusterNamespaces(cluster.k8sClient)
@@ -72,7 +83,7 @@ const plugin : ActionGroupSpec = {
                                     .length > 0
                                   )
             if(deployments.length > 0) {
-              output.push([">Sidecar Injection overrides for Namespace: " + namespace.name, ""])
+              output.push([">>Sidecar Injection overrides for Namespace: " + namespace.name, ""])
               deployments.forEach(d => {
                 const sidecarInjectionAnnotation = d.template.annotations && 
                                 d.template.annotations.filter(a => a.includes("sidecar.istio.io/inject"))
@@ -82,6 +93,13 @@ const plugin : ActionGroupSpec = {
               })
             }
           }
+
+          output.push([">>Sidecar Injector ConfigMap", ""])
+          const sidecarInjectorConfigMap = await K8sFunctions.getNamespaceConfigMap("istio-sidecar-injector", "istio-system", cluster.k8sClient)
+          const configData = sidecarInjectorConfigMap && yaml.parse(sidecarInjectorConfigMap.data.config)
+          configData && output.push(["Policy", configData.policy])
+          configData && output.push(["Template", "<pre>"+configData.template+"</pre>"])
+
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)

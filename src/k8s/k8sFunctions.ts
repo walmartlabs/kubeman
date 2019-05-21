@@ -73,7 +73,7 @@ export default class K8sFunctions {
   static getClusterCRDs = async (k8sClient: K8sClient) => {
     const crds : any[] = []
     try {
-      const result = await k8sClient.extensions.customresourcedefinitions.get()
+      const result = await k8sClient.apiextensions.customresourcedefinitions.get()
       if(result && result.body) {
         const items = result.body.items
         items.forEach(item => {
@@ -167,10 +167,22 @@ export default class K8sFunctions {
     return (await K8sFunctions.getAllClusterServices(k8sClient)).filter(s => s.type === "ExternalName")
   }
 
-  static getServiceDetails = async (namespace: string, service: string, k8sClient: K8sClient) => {
+  static getServiceDetails = async (service: string, namespace: string, k8sClient: K8sClient) => {
     let services = await K8sFunctions.getServices("", namespace, k8sClient)
     services = services.filter(s => s.name.includes(service) || service.includes(s.name))
     return services.length > 0 ? services[0] : undefined
+  }
+
+  static async getNamespaceEndpoints(namespace: string, k8sClient: K8sClient) {
+    return k8sClient.namespaces(namespace).endpoints.get()
+  }
+
+  static async getServiceEndpoints(service: string, namespace: string, k8sClient: K8sClient) {
+    const result = await k8sClient.namespaces(namespace).endpoints(service).get()
+    if(result && result.body) {
+      return result.body.subsets as any[]
+    }
+    return []
   }
 
   static getClusterServiceNames = async (cluster: string, k8sClient: K8sClient) => {
@@ -362,9 +374,9 @@ export default class K8sFunctions {
   }
 
   static getNamespaceConfigMap = async (configMapName: string, namespace: string, k8sClient: K8sClient) => {
-    const result = await k8sClient.namespaces(namespace).configmaps.get()
+    const result = await k8sClient.namespaces(namespace).configmaps(configMapName).get()
     if(result && result.body) {
-      const item = result.body.items[0]
+      const item = result.body
       return {
         ...K8sFunctions.extractMetadata(item),
         data: item.data
@@ -444,7 +456,7 @@ export default class K8sFunctions {
 
   static async getPodsAndContainersForServiceName(serviceName: string, serviceNamespace: string, k8sClient: K8sClient, loadDetails: boolean = false) {
     return K8sFunctions.getPodsAndContainersForService(
-      await K8sFunctions.getServiceDetails(serviceNamespace, serviceName, k8sClient), k8sClient, loadDetails)
+      await K8sFunctions.getServiceDetails(serviceName, serviceNamespace, k8sClient), k8sClient, loadDetails)
   }
 
   static async getPodsAndContainersForService(service: ServiceDetails, k8sClient: K8sClient, loadDetails: boolean = false) {
