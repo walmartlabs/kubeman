@@ -15,7 +15,6 @@ export interface K8sClient extends k8s.ApiV1 {
   policy: k8s.ApisPolicyV1beta1
   networking: k8s.ApisNetworking_k8s_ioV1
   extensions: k8s.ApisExtensionsV1beta1
-  events: k8s.ApisEvents_k8s_ioV1beta1
   batch: k8s.ApisBatchV1
   settings: k8s.ApisSettings_k8s_ioV1alpha1
   storage: k8s.ApisStorage_k8s_ioV1
@@ -55,7 +54,6 @@ export async function getClientForCluster(cluster: Cluster) {
     policy: client.apis.policy.v1beta1,
     networking: client.apis["networking.k8s.io"].v1,
     extensions: client.apis.extensions.v1beta1,
-    events: client.apis["events.k8s.io"].v1beta1,
     batch: client.apis.batch.v1,
     settings: client.apis["settings.k8s.io"].v1alpha1,
     storage: client.apis["storage.k8s.io"].v1,

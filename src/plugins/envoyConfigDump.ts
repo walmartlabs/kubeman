@@ -3,6 +3,8 @@ import EnvoyFunctions from '../k8s/envoyFunctions'
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import ActionContext from '../actions/actionContext';
 import JsonUtil from '../util/jsonUtil';
+import { EnvoyConfigType } from '../k8s/envoyFunctions';
+import EnvoyPluginHelper from '../k8s/envoyPluginHelper'
 
 
 export function outputConfig(onStreamOutput, configs: any[], dataField?: string, dataTitleField?: string) {
@@ -39,10 +41,21 @@ async function outputEnvoyConfig(action: ActionSpec, actionContext: ActionContex
   action.showOutputLoading && action.showOutputLoading(true)
 
   for(const envoy of envoys) {
-    action.onStreamOutput  && action.onStreamOutput([[">Envoy Proxy: " + envoy.title]])
+    action.onStreamOutput  && action.onStreamOutput([["^^", "Envoy Proxy: " + envoy.title + " @ Cluster: " + envoy.cluster]])
     const cluster = actionContext.getClusters().filter(c => c.name === envoy.cluster)[0]
     const configs = await configFn(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
-    outputConfig(action.onStreamOutput, configs, dataField, dataTitleField)
+    switch(configType) {
+      case EnvoyConfigType.Bootstrap:
+      case EnvoyConfigType.Routes:
+        outputConfig(action.onStreamOutput, configs)
+        break
+      case EnvoyConfigType.Clusters:
+        EnvoyPluginHelper.outputClusterConfig(action.onStreamOutput, configs)
+        break;
+      case EnvoyConfigType.Listeners:
+        EnvoyPluginHelper.outputListenerConfig(action.onStreamOutput, configs)
+        break
+    }
   }
   action.showOutputLoading && action.showOutputLoading(false)
 }
@@ -73,7 +86,7 @@ const plugin : ActionGroupSpec = {
       order: 22,
       loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
+      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 2),
       
       async act(actionContext) {
         await outputEnvoyConfig(this, actionContext, 
@@ -89,7 +102,7 @@ const plugin : ActionGroupSpec = {
       order: 23,
       loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
+      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 2),
       
       async act(actionContext) {
         await outputEnvoyConfig(this, actionContext, 
@@ -105,7 +118,7 @@ const plugin : ActionGroupSpec = {
       order: 24,
       loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
+      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 2),
       
       async act(actionContext) {
         await outputEnvoyConfig(this, actionContext, 
@@ -122,7 +135,7 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 30,
       loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
+      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 2),
       
       async act(actionContext) {
         this.onOutput && this.onOutput([["Envoy Proxy Stats"]], ActionOutputStyle.Log)
@@ -146,7 +159,7 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 30,
       loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 5),
+      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 2),
       
       async act(actionContext) {
         this.onOutput && this.onOutput([["Envoy Proxy ServerInfo"]], ActionOutputStyle.Log)

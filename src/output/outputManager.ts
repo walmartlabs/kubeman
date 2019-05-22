@@ -793,12 +793,6 @@ export default class OutputManager {
         row.parent.showRow()
         this.updateRowVisibility(row.parent)
       }
-      row.children.forEach(childRow => {
-        if(row.isMatched && !childRow.isVisible) {
-          childRow.isSomeGroup || childRow.isMatched ? childRow.showRow() : childRow.hideRow()
-          childRow.isVisible && this.updateRowVisibility(childRow)
-        }
-      })
       if(row.isTitle) {
         const titleRows = row.getRowsForTitle()
         titleRows && titleRows.forEach(tr => tr.showRow())

@@ -8,6 +8,35 @@ import JsonUtil from '../util/jsonUtil'
 
 export default class EnvoyPluginHelper {
 
+  static outputClusterConfig(onStreamOutput, configs: any[]) {
+    const output: ActionOutput = []
+    const clustersByType = {}
+    configs.forEach(config => {
+      const cluster = config.cluster
+      clustersByType[cluster.type] = (clustersByType[cluster.type] || [])
+      clustersByType[cluster.type].push(config)
+    })
+    Object.keys(clustersByType).forEach(type => {
+      output.push([">Cluster Type: "+type])
+      const clusterConfigsForType = clustersByType[type]
+      clusterConfigsForType.forEach(config => {
+        const cluster = config.cluster
+        output.push([">>"+config.title])
+        output.push([{
+          metadata: cluster.metadata && cluster.metadata.filter_metadata,
+          version_info: config.version_info,
+          lastUpdated: config.lastUpdated, 
+          connect_timeout: cluster.connect_timeout,
+        }])
+        cluster.eds_cluster_config && output.push([">>>EDS Config"], [cluster.eds_cluster_config])
+        cluster.circuit_breakers && output.push([">>>Circuit Breakers"], [cluster.circuit_breakers])
+        cluster.tls_context && output.push([">>>TLS Context"], [cluster.tls_context])
+        config.status && output.push([">>>Status"], [config.status])
+      })
+    })
+    onStreamOutput(output)
+  }
+
   static outputListenerConfig(onStreamOutput, configs: any[]) {
     const output: ActionOutput = []
     configs.forEach(config => {
@@ -20,7 +49,12 @@ export default class EnvoyPluginHelper {
       if(listener.filter_chains) {
         listener.filter_chains.forEach((fc, i) => {
           const serverNames = fc.filter_chain_match ? fc.filter_chain_match.server_names : []
-          const fcTitle = "Filter Chain #" + (i+1) + (serverNames.length > 0 ? " [ "+serverNames.join(", ")+" ]" : "")
+          const httpConnectionManager = fc.filters.filter(f => f.name.includes("envoy.http_connection_manager"))[0]
+          const rdsRoute = httpConnectionManager && httpConnectionManager.config && httpConnectionManager.config.rds &&
+                            httpConnectionManager.config.rds.route_config_name
+          const fcTitle = "Filter Chain #" + (i+1) + 
+          (serverNames.length > 0 ? " [ "+serverNames.join(", ")+" ]" : "") + 
+          (rdsRoute ? " -> RDS Route: [ "+rdsRoute+" ]" : "")
           output.push([">>"+fcTitle])
           if(fc.filter_chain_match) {
             output.push([{filter_chain_match: fc.filter_chain_match}])

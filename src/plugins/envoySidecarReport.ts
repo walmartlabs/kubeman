@@ -5,41 +5,11 @@ import yaml from 'yaml'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
-  title: "Envoy Proxy Recipes",
+  title: "Analysis Recipes",
   actions: [
     {
-      name: "List Envoy Proxies",
-      order: 1,
-      async act(actionContext) {
-        this.onOutput && this.onOutput([["", "Envoy Proxies List"]], ActionOutputStyle.Table)
-        this.showOutputLoading && this.showOutputLoading(true)
-
-        const clusters = actionContext.getClusters()
-        for(const cluster of clusters) {
-          const output: ActionOutput = []
-          output.push([">Envoy Proxies @ Cluster: " + cluster.name, ""])
-      
-          if(cluster.hasIstio) {
-            const sidecars = await IstioFunctions.getAllEnvoyProxies(cluster.k8sClient)
-            sidecars.length === 0 && output.push(["", "No envoy proxies found"])
-            sidecars.forEach(sc => {
-              output.push([">>" + sc.pod+"."+sc.namespace, ""])
-              output.push(["IP", sc.ip])
-            })
-          } else {
-            output.push(["", "Istio not installed"])
-          }
-          this.onStreamOutput && this.onStreamOutput(output)
-        }
-        this.showOutputLoading && this.showOutputLoading(false)
-      },
-      refresh(actionContext) {
-        this.act(actionContext)
-      }
-    },
-    {
-      name: "Envoy Sidecar Injection Report",
-      order: 2,
+      name: "Sidecar Injection Report",
+      order: 4,
       async act(actionContext) {
         const clusters = actionContext.getClusters()
         this.onOutput && this.onOutput([["", "Sidecar Injection Report"]], ActionOutputStyle.Table)

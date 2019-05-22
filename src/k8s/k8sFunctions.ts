@@ -530,7 +530,7 @@ export default class K8sFunctions {
     const events : any[] = []
     if(result && result.body) {
       const items = result.body.items
-      if(items.length > 0) {
+      if(items && items.length > 0) {
         const eventsData = jsonUtil.extractMulti(items, "$[*]", "type", "source", "reason", "message", "count", "lastTimestamp")
         eventsData.forEach(event => {
           events.push({

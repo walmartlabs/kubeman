@@ -9,8 +9,7 @@ export default class PluginLoader {
     for(const i in keys) {
       let tsPlugin = keys[i]
       delete __webpack_require__.c[pluginRequire.resolve(tsPlugin)]
-      const pieces = tsPlugin.split("/")
-      tsPlugin = pieces[pieces.length-1]
+      tsPlugin = tsPlugin.replace("./", "")
       let plugin = require("../plugins/" + tsPlugin)
       if(plugin.default && plugin.default.actions) {
         plugin = plugin.default

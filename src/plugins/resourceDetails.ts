@@ -24,7 +24,7 @@ const plugin : ActionGroupSpec = {
         for(const selection of selections) {
           this.onStreamOutput && this.onStreamOutput([
             [">"+selection.title+"."+selection.namespace+" @ "+selection.cluster],
-            [selection.item]
+            [selection.item.yaml]
           ])
         }
         this.showOutputLoading && this.showOutputLoading(false)

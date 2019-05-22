@@ -50,7 +50,8 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
       fontFamily: 'Courier, monospace',
       fontSize: '0.95rem',
       height: '15px',
-      filter: palette.type ==='dark' ? 'brightness(120%)' : 'brightness(70%)'
+      color: palette.type ==='dark' ? '#a0a0a0' : 'rgba(15, 15, 150, 0.8)',
+      filter: palette.type ==='dark' ? 'brightness(140%)' : 'brightness(40%)'
     },
   },
   tableHeaderRow: {

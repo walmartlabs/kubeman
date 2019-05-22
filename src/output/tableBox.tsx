@@ -176,6 +176,9 @@ export class TableBox extends React.Component<IProps, IState> {
 
   appendOutput(output: ActionOutput) {
     OutputManager.appendRows(output)
+    if(this.isFilterInput(this.filterText)) {
+      this.filter()
+    }
     this.props.scrollMode && this.scrollToBottom()
     this.forceUpdate()
   }

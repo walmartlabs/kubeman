@@ -151,6 +151,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   onRefreshActionChoices = () => {
     ChoiceManager.clear()
+    Context.selections = []
     this.currentAction && this.currentAction.chooseAndAct()
   }
 
@@ -207,6 +208,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   onUpdateContext = () => {
     this.streamOutput = []
     ChoiceManager.clear()
+    Context.selections = []
     this.setState({output: []})
   }
 

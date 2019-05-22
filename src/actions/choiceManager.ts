@@ -47,7 +47,6 @@ export default class ChoiceManager {
     this.cacheKey = undefined
     this.clearItemsTimer = undefined
     this.pendingChoicesCounter = 0
-    Context.selections = []
   }
 
   static createChoices(items, namespace, cluster, ...fields) {
