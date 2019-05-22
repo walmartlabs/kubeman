@@ -10,16 +10,8 @@
 .json-string {
   color: #666600;
 }
-.hljs-attr {
-  color: #708090;
-}
-.hljs-string {
-  color: #af6926;
-  font-weight: 400;
-  mix-blend-mode: darken;
-}
 ::selection {
-  background: #a09090;
+  background: #aa9090;
 }
 .hljs-number {
   color: rgb(184, 61, 61);

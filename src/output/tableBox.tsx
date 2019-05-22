@@ -78,6 +78,7 @@ const GridCell = withStyles(styles)(({index, cell, colSpan, className, classes}:
 
 interface FilterInputProps extends WithStyles<typeof styles> {
   placeholder: string
+  filterText: string
   isFilterInput: (string) => boolean
   onFilter: (...any) => any
   clearFilter: () => any
@@ -92,6 +93,14 @@ const FilterInput = withStyles(styles)(
 class extends React.Component<FilterInputProps, FilterInputState> {
   state: FilterInputState = {
     filterText: '',
+  }
+
+  componentDidMount() {
+    this.componentWillReceiveProps(this.props)
+  }
+
+  componentWillReceiveProps(props: FilterInputProps) {
+    this.setState({filterText: props.filterText})
   }
 
   onKeyDown = (event) => {
@@ -505,6 +514,7 @@ export class TableBox extends React.Component<IProps, IState> {
       <div className={classes.root}>
         <Paper className={classes.filterContainer}>
           <FilterInput placeholder={inputMessage}
+              filterText={this.filterText}
               isFilterInput={this.isFilterInput}
               onFilter={this.onFilter}
               clearFilter={this.clearFilter}

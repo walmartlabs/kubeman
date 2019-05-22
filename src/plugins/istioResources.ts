@@ -19,17 +19,17 @@ export async function listResources(type: string, getResources: (k8sClient) => P
           yaml: r.yaml
         }
       })
-      output.push([">"+type+" @ Cluster: " + cluster.name + " (" + resources.length + " found)", ""])
-      resources.length === 0 && output.push(["", "No resource found"])
+      output.push([">"+type+" @ Cluster: " + cluster.name + " (" + resources.length + " found)"])
+      resources.length === 0 && output.push(["No resource found"])
       resources.forEach(resource => {
         let title = resource.name
-        title && (title += "."+(resource.namespace))
-        output.push([">>" + title, ""])
-        Object.keys(resource).forEach(key => resource[key] && output.push([key, resource[key]]))
+        title && (title += "."+(resource.namespace) + " (created: " + resource.creationTimestamp + ")")
+        output.push([">>" + title])
+        output.push([resource.yaml])
       })
     } else {
-      output.push([">"+type+" @ Cluster: " + cluster.name, ""])
-      output.push(["", "Istio not installed"])
+      output.push([">"+type+" @ Cluster: " + cluster.name])
+      output.push(["Istio not installed"])
     }
     onStreamOutput(output)
   }

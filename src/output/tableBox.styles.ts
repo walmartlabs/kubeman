@@ -51,7 +51,13 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
       fontSize: '0.95rem',
       height: '15px',
       color: palette.type ==='dark' ? '#a0a0a0' : 'rgba(15, 15, 150, 0.8)',
-      filter: palette.type ==='dark' ? 'brightness(140%)' : 'brightness(40%)'
+      filter: palette.type ==='dark' ? 'brightness(110%)' : 'brightness(90%)'
+    },
+    '& .hljs-string': {
+      color: palette.type ==='dark' ? '#d17d2e' : '#202090'
+    },
+    '& .hljs-attr': {
+      color: palette.type ==='dark' ? '#b0b0b0' : '#505050'
     },
   },
   tableHeaderRow: {
@@ -83,7 +89,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   tableSubgroupRow: {
     padding: 0,
     height: 32,
-    backgroundColor: palette.type ==='dark' ? '#234B6D' : '#9abede',
+    backgroundColor: palette.type ==='dark' ? '#1d2349' : '#9abede',
     backgroundBlendMode: 'multiply',
     cursor: 'pointer',
   },
@@ -91,7 +97,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     padding: 0,
     height: 24,
     backgroundBlendMode: 'multiply',
-    backgroundColor: palette.type === 'dark' ? '#455A64' : '#80a8ff',
+    backgroundColor: palette.type === 'dark' ? '#2d3a47' : '#80a8ff',
     cursor: 'pointer',
   },
   tableTitleRow: {
