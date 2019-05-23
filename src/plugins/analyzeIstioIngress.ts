@@ -19,9 +19,8 @@ export async function outputIngressVirtualServicesAndGatewaysForService(service:
 async function outputIngressVirtualServicesAndGateways(virtualServices: any[], k8sClient: K8sClient, output, asGroup: boolean = false) {
   const vsGateways = await IstioFunctions.getIngressGatewaysForVirtualServices(virtualServices, k8sClient)
   output.push([(asGroup?">":">>") + "Relevant VirtualServices + Gateways: "])
-  vsGateways.length === 0 && output.push(["No VirtualServices/Gateways"])
-
   const vsGatewayMatchingServers = getVSAndGatewaysWithMatchingServers(vsGateways)
+  vsGatewayMatchingServers.length === 0 && output.push(["No VirtualServices/Gateways"])
   const ingressCerts: {[key: string] : string} = {}
   for(const vsg of vsGatewayMatchingServers) {
     vsg.matchingServers.filter(s => s.tls && s.tls.serverCertificate && s.tls.privateKey)
@@ -61,7 +60,7 @@ function getVSAndGatewaysWithMatchingServers(vsGateways: any[]) {
   const vsGatewayMatchingServers: any[] = []
   vsGateways.forEach(vsg => {
       const vs = vsg.virtualService
-      vsg.gateways.forEach(g => {
+      vsg.gateways && vsg.gateways.forEach(g => {
         const matchingServers = g.servers
           .filter(server => server.port && 
             (vs.http && server.port.protocol === 'HTTP') ||

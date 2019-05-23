@@ -65,14 +65,14 @@ export default class IstioFunctions {
   }
 
   static matchGatewaysForVirtualService(virtualService: any, gateways: any[]) {
-    return virtualService && gateways && virtualService.gateways && 
+    return virtualService && gateways && virtualService.gateways ?
       gateways.filter(gateway =>
         virtualService.gateways.filter(vsg => 
           vsg === gateway.name && virtualService.namespace === gateway.namespace
           || vsg === gateway.name+"."+gateway.namespace
           || vsg.includes(gateway.name+"."+gateway.namespace+".") 
           || vsg === gateway.namespace+"/"+gateway.name
-        ).length > 0)
+        ).length > 0) : []
   }
 
   static getIngressGatewaysForVirtualServices = async (virtualServices: any[], k8sClient: K8sClient, yaml: boolean = false) => {
