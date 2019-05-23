@@ -5,7 +5,7 @@ import {ActionContextType, ActionGroupSpec, ActionGroupSpecs, ActionContextOrder
         ActionOutputCollector, ActionStreamOutputCollector, ActionChoiceMaker, BoundActionAct, ActionOnInfo, ActionSpec, } from './actionSpec'
 import Context from "../context/contextStore";
 import ActionContext from './actionContext'
-import contextMenu from '../main/contextMenu';
+import OutputManager from '../output/outputManager'
 
 export class ActionLoader {
   static actions: ActionSpec[]
@@ -114,6 +114,8 @@ export class ActionLoader {
         action.showInfo = this.onShowInfo
         action.chooseAndAct = () => {
           Context.incrementOperation()
+          OutputManager.clearContent()
+          OutputManager.clearFilter()
           this.actionContext.inputText = undefined
           action.stopped = false
           if(this.checkSelections({

@@ -62,7 +62,12 @@ export default class K8sFunctions {
             capacity: status.capacity
           }
         }
-        status.addresses.forEach(a => node.network[a.type] = a.address)
+        const nodeAddressesByType = {}
+        status.addresses.forEach(a => {
+          nodeAddressesByType[a.type] = (nodeAddressesByType[a.type] || new Set)
+          nodeAddressesByType[a.type].add(a.address)
+        })
+        Object.keys(nodeAddressesByType).forEach(type => node.network[type] = Array.from(nodeAddressesByType[type]))
         status.conditions.forEach(c => node.condition[c.type] = {status:c.status, message:c.message})
         nodes.push(node)
       })

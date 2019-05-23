@@ -1,7 +1,7 @@
 import k8sFunctions from '../k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, 
         ActionOutput, ActionOutputStyle, } from '../actions/actionSpec'
-import JsonUtil from '../util/jsonUtil';
+import OutputManager from '../output/outputManager'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Cluster,
@@ -23,7 +23,8 @@ const plugin : ActionGroupSpec = {
         ]], ActionOutputStyle.Table)
 
         const ipAddresses = actionContext.inputText ? actionContext.inputText.split(",").map(value => value.trim()) : []
-        let countIPToFind = ipAddresses.length
+        ipAddresses.length > 0 && OutputManager.filter(ipAddresses.join(" "))
+        OutputManager.setShowAllGroupsInSearch()
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
           this.onStreamOutput && this.onStreamOutput([[">Cluster: " + cluster.name, "", "", ""]])
@@ -37,10 +38,6 @@ const plugin : ActionGroupSpec = {
                 node.name, cluster.name, "", node.network
               ]])
             })
-            countIPToFind -= matchingNodes.length
-            if(countIPToFind === 0) {
-              return
-            }
           } else {
             this.onStreamOutput && this.onStreamOutput([[">>No Matching Nodes", "", "", ""]])
           }
@@ -54,10 +51,6 @@ const plugin : ActionGroupSpec = {
                 service.name, cluster.name, service.namespace, {clusterIP: service.clusterIP}
               ]])
             })
-            countIPToFind -= matchingServices.length
-            if(countIPToFind === 0) {
-              return
-            }
           } else {
             this.onStreamOutput && this.onStreamOutput([[">>No Matching Services", "", "", ""]])
           }
@@ -71,10 +64,6 @@ const plugin : ActionGroupSpec = {
                 pod.name, cluster.name, pod.namespace, {podIP: pod.podIP, hostIP: pod.hostIP, nodeName: pod.nodeName}
               ]])
             })
-            countIPToFind -= matchingPods.length
-            if(countIPToFind === 0) {
-              return
-            }
           } else {
             this.onStreamOutput && this.onStreamOutput([[">>No Matching Pods", "", "", ""]])
           }

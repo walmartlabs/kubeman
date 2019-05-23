@@ -20,7 +20,7 @@ import OutputManager from '../output/outputManager'
 import styles from './workspace.styles'
 
 interface IState {
-  output: ActionOutput|string[]
+  output: ActionOutput
   outputStyle: ActionOutputStyle
   loading: boolean
   loadingMessage: string
@@ -76,7 +76,6 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   commandHandler?: ((string) => void) = undefined
   tableBox?: TableBox
   actions?: Actions
-  streamOutput: ActionOutput = []
 
   componentDidMount() {
     this.componentWillReceiveProps(this.props)
@@ -87,9 +86,11 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   onAction = (action: BoundAction) => {
     this.currentAction = action
-    this.streamOutput = []
+    this.tableBox && this.tableBox.clearContent()
     this.tableBox && this.tableBox.clearFilter()
+    this.tableBox && this.tableBox.clearActionInput()
     OutputManager.clearContent()
+    OutputManager.clearFilter()
     this.setState({
       scrollMode: false, 
       outputRowLimit: action.outputRowLimit || 0,
@@ -102,7 +103,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
 
   showOutput : ActionOutputCollector = (output, outputStyle) => {
-    this.streamOutput = []
+    this.tableBox && this.tableBox.clearContent()
     this.setState({
       output,
       outputStyle: outputStyle || ActionOutputStyle.Text, 
@@ -111,7 +112,6 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
 
   showStreamOutput : ActionStreamOutputCollector = (output) => {
-    this.streamOutput = this.streamOutput.concat(output)
     this.tableBox && this.tableBox.appendOutput(output as ActionOutput)
   }
 
@@ -120,7 +120,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
 
   onActionInitChoices : ActionChoiceMaker = (act, title, choices, minChoices, maxChoices, showChoiceSubItems, previousSelections) => {
-    this.streamOutput = []
+    this.tableBox && this.tableBox.clearContent()
     this.setState({
       choices,
       minChoices,
@@ -206,7 +206,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   }
 
   onUpdateContext = () => {
-    this.streamOutput = []
+    this.tableBox && this.tableBox.clearContent()
     ChoiceManager.clear()
     Context.selections = []
     this.setState({output: []})
@@ -229,8 +229,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     const compare = outputStyle === ActionOutputStyle.Compare
     const acceptInput = this.currentAction && this.currentAction.react ? true : false
     const allowRefresh = this.currentAction && this.currentAction.refresh ? true : false
-    const accumulatedOutput = (output as any[]).concat(this.streamOutput)
-        
+
     return (
       <div className={classes.root} tabIndex={0}>
         <Table className={classes.table}>
@@ -274,7 +273,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                 {showBlackBox && <BlackBox output={output} />}
                 {!showBlackBox && 
                     <TableOutput  innerRef={ref => this.tableBox=ref}
-                                  output={accumulatedOutput}
+                                  output={output}
                                   compare={compare} 
                                   log={log}
                                   health={health}

@@ -156,7 +156,6 @@ export class Cell {
 
   match(filters: string[]) : any[] {
     const appliedFilters: Set<string> = new Set
-    this.isMatched = false
     this.filteredIndexes = []
     let negated = false
     let isExcluded = false;
@@ -177,7 +176,7 @@ export class Cell {
               }
             }
           })
-          this.isMatched = !isExcluded && this.filteredIndexes.length > 0
+          this.isMatched = !isExcluded && (this.isMatched || this.filteredIndexes.length > 0)
         } else {
           const isMatched = this.stringContent.includes(filter)
           isExcluded = isExcluded || negated && isMatched
@@ -194,6 +193,7 @@ export class Cell {
 
   clearFilter() {
     this.isFiltered = false
+    this.isMatched = false
     this.filteredIndexes = []
     this.isMatched = false
     this.formattedContent = this.content
@@ -208,13 +208,13 @@ export class Cell {
       const arrayContent = this.content as []
       arrayContent.forEach((item,i) => {
         const isJSON = jsonUtil.isObject(item) || jsonUtil.isArray(item)
-        const {content, changed} = applyHighlight(isJSON ? yaml.stringify(item) : item, filters)
+        const {content, changed} = applyHighlight(item ? isJSON ? yaml.stringify(item) : (item as any).toString() : '', filters)
         cellChanged = cellChanged || changed
         newContent.push(content)
       })
     } else {
       const {content, changed} = applyHighlight(
-        this.isJSON ? yaml.stringify(this.content) : this.content as string, filters)
+        this.content ? this.isJSON ? yaml.stringify(this.content) : this.content.toString() : '', filters)
       changed && (newContent = content)
       cellChanged = changed
     }
@@ -490,6 +490,9 @@ export class Row {
         }
       }
     })
+    if(this.isSomeGroup && OutputManager.showAllGroupsInSearch) {
+      this.isMatched = true
+    }
     this.isMatched ? this.showRow() : this.hideRow()
     return this.isMatched
   }
@@ -499,8 +502,17 @@ export class Row {
   }
 
   updateFilteredChild(childRow: Row) {
-    this.filteredChildren.forEach((row,i) => row.index === childRow.index 
-      && (this.filteredChildren[i]= childRow))
+    let found = false
+    for(const i in this.filteredChildren) {
+      const row = this.filteredChildren[i]
+      if(row.index === childRow.index) {
+        found = true
+        this.filteredChildren[i]= childRow
+      }
+    }
+    if(!found) {
+      this.filteredChildren.push(childRow)
+    }
   }
 
   getNextSibling() {
@@ -560,6 +572,7 @@ export default class OutputManager {
   static filteredRows: Row[] = []
   static topRows: Row[] = []
   static matchedColumns: Set<number> = new Set
+  static showAllGroupsInSearch: boolean = false
 
   private static healthColumnIndex: number = -1
   private static appliedFilters: string[][] = []
@@ -590,9 +603,13 @@ export default class OutputManager {
           return row
         }) 
         : []
-    this.filteredRows = this.rows.concat()
-    this.identifyTopRows()
-    this.filteredRows.forEach(row => row.filteredChildren = row.children.concat())
+    if(this.appliedFilters.length === 0) {
+      this.filteredRows = this.rows.concat()
+      this.identifyTopRows()
+      this.filteredRows.forEach(row => row.filteredChildren = row.children.concat())
+    } else {
+      this.applyFilter()
+    }
   }
 
   static appendRows(rows: ActionOutput) {
@@ -615,17 +632,17 @@ export default class OutputManager {
         this.updateRowVisibility(row)
         if(row.isMatched) {
           row.matchedColumns.forEach(index  => this.matchedColumns.add(index))
-          this.filteredRows = this.rows.filter(row => row.isMatched)
-          this.highlightFilter()
         }
       }
     })
+    this.filteredRows = this.rows.filter(row => row.isVisible)
     if(this.rowLimit > 0) {
       this.filteredRows = this.filteredRows.slice(-this.rowLimit)
     }
-    if(appendedCount > this.rowLimit) {
+    if(this.filteredRows.length > 0 && appendedCount > this.rowLimit) {
       this.filteredRows[0].isFirstAppendedRow = true
     }
+    this.highlightFilter()
     this.identifyTopRows()
     if(this.appliedFilters.length === 0) {
       this.filteredRows.forEach(row => row.filteredChildren = row.children.concat())
@@ -643,7 +660,6 @@ export default class OutputManager {
     this.rowLimit = 0
     this.groupCount = this.subGroupCount = this.sectionCount = 0
     this.currentGroupings = {}
-    this.appliedFilters = []
   }
 
   private static updateRowMetaData(row: Row) {
@@ -709,15 +725,12 @@ export default class OutputManager {
       }
       if(this.currentGroupings.currentGroup) {
         row.parent = this.currentGroupings.currentGroup
-        //this.currentGroupings.currentGroup && this.currentGroupings.currentGroup.children.push(row)
       }
       if(this.currentGroupings.currentSubGroup) {
         row.parent = this.currentGroupings.currentSubGroup
-        //this.currentGroupings.currentSubGroup && this.currentGroupings.currentSubGroup.children.push(row)
       }
       if(this.currentGroupings.currentSection) {
         row.parent = this.currentGroupings.currentSection
-        //this.currentGroupings.currentSection && this.currentGroupings.currentSection.children.push(row)
       }
       row.parent && row.parent.children.push(row)
       row.superGroupIndex = this.superGroupCount
@@ -749,7 +762,12 @@ export default class OutputManager {
     this.filteredRows = this.rows.concat()
     this.matchedColumns.clear()
     this.appliedFilters = []
+    this.showAllGroupsInSearch = false
     this.identifyTopRows()
+  }
+
+  static setShowAllGroupsInSearch() {
+    this.showAllGroupsInSearch = true
   }
 
   static get columnCount() {
@@ -764,6 +782,16 @@ export default class OutputManager {
     return this.filteredRows && this.filteredRows.length > 0
   }
 
+  static applyFilter() {
+    if(this.appliedFilters.length > 0) {
+      const filteredRows = this.rows.filter(row => row.filter(this.appliedFilters))
+      filteredRows.forEach(row => this.updateRowVisibility(row))
+      this.filteredRows = this.rows.filter(row => row.isVisible)
+      this.highlightFilter()
+      this.identifyTopRows()
+    }
+  }
+
   static filter(inputText: string) {
     inputText = inputText.toLowerCase().trim()
     inputText = inputText.endsWith(" or") ? inputText.slice(0, inputText.length-2) : inputText
@@ -776,22 +804,21 @@ export default class OutputManager {
     this.clearFilter()
     if(filters.length > 0) {
       this.appliedFilters = filters
-      const filteredRows = this.rows.filter(row => row.filter(filters))
-      filteredRows.forEach(row => this.updateRowVisibility(row))
-      this.filteredRows = this.rows.filter(row => row.isVisible)
-      this.highlightFilter()
-      this.identifyTopRows()
+      this.applyFilter()
     }
   }
 
   private static updateRowVisibility(row: Row) {
-    if(row.isMatched) {
+    if(row.isMatched || this.showAllGroupsInSearch && row.isSomeGroup) {
       row.showRow()
     }
     if(row.isVisible) {
-      if(row.parent && !row.parent.isVisible) {
-        row.parent.showRow()
-        this.updateRowVisibility(row.parent)
+      if(row.parent) {
+        if(!row.parent.isVisible) {
+          row.parent.showRow()
+          this.updateRowVisibility(row.parent)
+        }
+        row.parent.updateFilteredChild(row)
       }
       if(row.isTitle) {
         const titleRows = row.getRowsForTitle()

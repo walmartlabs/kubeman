@@ -18,7 +18,7 @@ const plugin : ActionGroupSpec = {
 
       async choose(actionContext) {
         await ChoiceManager.prepareCachedChoices(actionContext, IstioFunctions.getVirtualServices, 
-                                                    "VirtualServices", 1, 5, true, "name")
+                                                    "VirtualServices", 1, 3, true, "name")
       },
 
       async act(actionContext) {

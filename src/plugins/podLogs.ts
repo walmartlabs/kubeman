@@ -89,6 +89,7 @@ const plugin : ActionGroupSpec = {
       choose: ChoiceManager.choosePods.bind(ChoiceManager, 1, 5, true, false),
 
       async act(actionContext) {
+        this.filter = undefined
         this.clear && this.clear(actionContext)
       },
       

@@ -1,10 +1,10 @@
 import k8sFunctions from '../k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionSpec, } from '../actions/actionSpec'
 import ChoiceManager from '../actions/choiceManager'
-import ActionContext from '../actions/actionContext';
-import { ServiceDetails } from '../k8s/k8sObjectTypes';
+import ActionContext from '../actions/actionContext'
+import { ServiceDetails } from '../k8s/k8sObjectTypes'
 import StreamLogger from '../logger/streamLogger'
-import OutputManager from '../output/outputManager';
+import OutputManager from '../output/outputManager'
 
 
 const plugin : ActionGroupSpec = {
@@ -157,6 +157,7 @@ const plugin : ActionGroupSpec = {
       },
 
       async act(actionContext) {
+        this.filter = undefined
         await plugin.storeSelectedServices(actionContext, this)
         this.clear && this.clear(actionContext)
       },

@@ -47,6 +47,7 @@ const plugin : ActionGroupSpec = {
       choose: ChoiceManager.chooseClusters.bind(ChoiceManager, 1, 1),
       
       async act(actionContext) {
+        this.filter = undefined
         this.clear && this.clear(actionContext)
         this.selectedCluster = ChoiceManager.getSelectedClusters(actionContext)[0]
       },

@@ -51,7 +51,7 @@ export type ActionAct = (actionContext: ActionContext, ...params) => void
 export type ActionDirectAct = (...params) => void
 export type BoundActionAct = (...params) => void
 export type BoundActionDirectAct = (...params) => void
-export type ActionOutputCollector = (output: ActionOutput|string[], style: ActionOutputStyle) => void
+export type ActionOutputCollector = (output: ActionOutput, style: ActionOutputStyle) => void
 export type ActionStreamOutputCollector = (output: ActionOutput|string[]) => void
 export type ActionOnInfo = (title: string, info: any[]) => void
 

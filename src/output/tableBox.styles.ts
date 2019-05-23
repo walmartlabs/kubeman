@@ -50,14 +50,14 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
       fontFamily: 'Courier, monospace',
       fontSize: '0.95rem',
       height: '15px',
-      color: palette.type ==='dark' ? '#a0a0a0' : 'rgba(15, 15, 150, 0.8)',
+      color: palette.type ==='dark' ? '#d0d0d0' : 'rgba(15, 15, 150, 0.8)',
       filter: palette.type ==='dark' ? 'brightness(110%)' : 'brightness(90%)'
     },
     '& .hljs-string': {
       color: palette.type ==='dark' ? '#d17d2e' : '#202090'
     },
     '& .hljs-attr': {
-      color: palette.type ==='dark' ? '#b0b0b0' : '#505050'
+      color: palette.type ==='dark' ? '#c0c0c0' : '#505050'
     },
   },
   tableHeaderRow: {

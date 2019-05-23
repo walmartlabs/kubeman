@@ -81,7 +81,8 @@ interface FilterInputProps extends WithStyles<typeof styles> {
   filterText: string
   isFilterInput: (string) => boolean
   onFilter: (...any) => any
-  clearFilter: () => any
+  clearFilter: (boolean) => any
+  clearActionInput: () => any
   onActionTextInput: (string) => any
 }
 
@@ -108,13 +109,14 @@ class extends React.Component<FilterInputProps, FilterInputState> {
     switch(event.which) {
       case 27: /*Esc*/
         this.setState({filterText: ''})
-        this.props.clearFilter()
+        this.props.clearFilter(true)
+        this.props.clearActionInput()
         break
       case 13: /*Enter*/
         if(this.props.isFilterInput(filterText)) {
           this.props.onFilter(filterText)
         } else {
-          this.props.onActionTextInput(filterText.slice(1))
+          this.props.onActionTextInput(filterText)
         }
         break
     }
@@ -122,7 +124,10 @@ class extends React.Component<FilterInputProps, FilterInputState> {
 
   onTextInput = (event: ChangeEvent<HTMLInputElement>) => {
     const filterText = event.target.value
-    if(this.props.isFilterInput(filterText)) {
+    if(filterText.length === 0) {
+      this.props.clearFilter(true)
+      this.props.clearActionInput()
+    } else if(this.props.isFilterInput(filterText)) {
       this.props.onFilter(filterText)
     }
     this.setState({filterText})
@@ -168,26 +173,28 @@ export class TableBox extends React.Component<IProps, IState> {
   scrollToRef: any
   bottomRef: any
   filterText: string = ''
+  actionInputText: string = ''
   loading: boolean = false
+  streamOutput: ActionOutput = []
 
   componentDidMount() {
+    this.streamOutput = []
     this.componentWillReceiveProps(this.props)
   }
 
   componentWillReceiveProps(props: IProps) {
     this.isScrolled = false
     this.lastScrollTop = -1
-    OutputManager.setOutput(props.output, props.log, props.rowLimit)
-    if(this.isFilterInput(this.filterText)) {
-      this.filter()
-    }
+    const output = props.output.concat(this.streamOutput)
+    OutputManager.setOutput(output, props.log, props.rowLimit)
+    this.filterText.length > 0 && this.isFilterInput(this.filterText) && this.filter()
+    this.forceUpdate()
   }
 
   appendOutput(output: ActionOutput) {
+    this.streamOutput = this.streamOutput.concat(output)
     OutputManager.appendRows(output)
-    if(this.isFilterInput(this.filterText)) {
-      this.filter()
-    }
+    this.filterText.length > 0 && this.isFilterInput(this.filterText) && this.filter()
     this.props.scrollMode && this.scrollToBottom()
     this.forceUpdate()
   }
@@ -197,23 +204,37 @@ export class TableBox extends React.Component<IProps, IState> {
     this.forceUpdate()
   }
 
-  clearFilter = () => {
-    OutputManager.clearFilter()
+  clearFilter = (resetOutput?: boolean) => {
     this.filterText = ''
     this.forceUpdate()
+    resetOutput && OutputManager.clearFilter()
+  }
+
+  clearActionInput = () => {
+    this.actionInputText = ''
+  }
+
+  clearContent = () => {
+    this.isScrolled = false
+    this.lastScrollTop = -1
+    this.streamOutput = []
+    this.filterTimer = undefined
+    this.lastScrollTop = -1
+    this.scrollToRef = undefined
+    this.bottomRef = undefined
+    this.loading = false
   }
 
   isFilterInput = (filterText: string) : boolean => {
-    return !((this.props.acceptInput || this.props.allowRefresh) && filterText.startsWith("/"))
+    return !(this.props.acceptInput || this.props.allowRefresh) || !filterText ||
+                  filterText.length === 0 || !filterText.startsWith("/") ? true : false
   }
 
   filter = () => {
-    if(this.filterText.length === 0) {
-      this.clearFilter()
-    } else {
+    if(this.filterText.length > 0) {
       OutputManager.filter(this.filterText)
+      this.forceUpdate()
     }
-    this.forceUpdate()
   }
 
   onFilter = (filterText: string) => {
@@ -222,6 +243,11 @@ export class TableBox extends React.Component<IProps, IState> {
       clearTimeout(this.filterTimer)
     }
     this.filterTimer = setTimeout(this.filter, 500)
+  }
+
+  onActionTextInput= (text: string) => {
+    this.actionInputText = text
+    this.props.onActionTextInput(text.slice(1))
   }
 
   scrollToBottom() {
@@ -514,11 +540,12 @@ export class TableBox extends React.Component<IProps, IState> {
       <div className={classes.root}>
         <Paper className={classes.filterContainer}>
           <FilterInput placeholder={inputMessage}
-              filterText={this.filterText}
+              filterText={this.filterText.length > 0 ? this.filterText : this.actionInputText}
               isFilterInput={this.isFilterInput}
               onFilter={this.onFilter}
               clearFilter={this.clearFilter}
-              onActionTextInput={this.props.onActionTextInput}
+              clearActionInput={this.clearActionInput}
+              onActionTextInput={this.onActionTextInput}
           />
         </Paper>
         <Table className={classes.tableContainer}>
