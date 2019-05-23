@@ -104,6 +104,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   showOutput : ActionOutputCollector = (output, outputStyle) => {
     this.tableBox && this.tableBox.clearContent()
+    OutputManager.clearContent()
     this.setState({
       output,
       outputStyle: outputStyle || ActionOutputStyle.Text, 

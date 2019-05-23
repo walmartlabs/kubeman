@@ -6,8 +6,6 @@ import IstioFunctions from '../k8s/istioFunctions'
 import ChoiceManager, {ItemSelection} from '../actions/choiceManager'
 import { ContainerInfo, PodDetails, ServiceDetails, Cluster } from '../k8s/k8sObjectTypes';
 import { K8sClient } from '../k8s/k8sClient';
-import JsonUtil from '../util/jsonUtil';
-import {matchSubsetHosts} from '../util/matchUtil'
 import {outputIngressVirtualServicesAndGatewaysForService} from './analyzeIstioIngress'
 
 const plugin : ActionGroupSpec = {
@@ -41,7 +39,7 @@ const plugin : ActionGroupSpec = {
         this.outputPodsAndContainers(podsAndContainers)
         if(cluster.hasIstio) {
           const serviceEntries = await this.outputServiceEntries(service, cluster.k8sClient)
-          const sidecarResources = await this.outputSidecarResources(service, cluster.k8sClient)
+          const sidecarConfigs = await this.outputSidecarConfigs(service, cluster.k8sClient)
           const vsGateways = await this.outputVirtualServicesAndGateways(service, cluster.k8sClient)
           const ingressPods = await IstioFunctions.getIngressGatewayPods(cluster.k8sClient, true)
           if(Object.keys(vsGateways.ingressCerts).length > 0) {
@@ -50,7 +48,7 @@ const plugin : ActionGroupSpec = {
           await this.outputPolicies(service, cluster.k8sClient)
           await this.outputDestinationRules(service, cluster.k8sClient)
           await this.outputRoutingAnalysis(service, podsAndContainers, vsGateways, ingressPods, 
-                                                  sidecarResources, cluster)
+                                                  sidecarConfigs, cluster)
           await this.outputIngressGatewayConfigs(service, cluster.k8sClient)
 
         } else {
@@ -132,7 +130,7 @@ const plugin : ActionGroupSpec = {
       },
 
       async outputRoutingAnalysis(service: ServiceDetails, podsAndContainers: any, vsGateways: any, ingressPods: any[], 
-                                  sidecarResources, cluster: Cluster, asSubgroups: boolean = false) {
+                                  sidecarConfigs, cluster: Cluster, asSubgroups: boolean = false) {
         const output: ActionOutput = []
         output.push([(asSubgroups ? ">>" : ">") + "Routing Analysis"])
 
@@ -206,7 +204,7 @@ const plugin : ActionGroupSpec = {
             output.push(["Cannot verify pod reachability as no Ingress Gateway pods available"])
           }
         }
-        const egressHosts = _.uniqBy(_.flatten(_.flatten(sidecarResources.egressSidecarResources.map(s => s.egress))
+        const egressHosts = _.uniqBy(_.flatten(_.flatten(sidecarConfigs.egressSidecarConfigs.map(s => s.egress))
                                       .filter(e => e.hosts).map(e => e.hosts)))
         if(egressHosts.length > 0) {
           output.push(["Service can only reach out to the following namespace/service destinations: " + egressHosts.join(", ")])
@@ -286,27 +284,27 @@ const plugin : ActionGroupSpec = {
         return serviceEntries
       },
 
-      async outputSidecarResources(service: ServiceDetails, k8sClient: K8sClient) {
-        const egressSidecarResources = await IstioFunctions.getServiceEgressSidecarResources(service, k8sClient)
-        const incomingSidecarResources = await IstioFunctions.getServiceIncomingSidecarResources(service, k8sClient)
+      async outputSidecarConfigs(service: ServiceDetails, k8sClient: K8sClient) {
+        const egressSidecarConfigs = await IstioFunctions.getServiceEgressSidecarConfigs(service, k8sClient)
+        const incomingSidecarConfigs = await IstioFunctions.getServiceIncomingSidecarConfigs(service, k8sClient)
         const output: ActionOutput = []
         output.push([">Sidecar resources relevant to this service"])
         output.push([">>Egress Sidecar resources"])
-        egressSidecarResources.length === 0 && output.push(["No Sidecar Resources"])
-        egressSidecarResources.forEach(sc => {
+        egressSidecarConfigs.length === 0 && output.push(["No Sidecar Resources"])
+        egressSidecarConfigs.forEach(sc => {
           delete sc.yaml
           output.push([">>>"+sc.name+"."+sc.namespace])
           output.push([sc])
         })
         output.push([">>Incoming Sidecar resources"])
-        incomingSidecarResources.length === 0 && output.push(["No Sidecar Resources"])
-        incomingSidecarResources.forEach(sc => {
+        incomingSidecarConfigs.length === 0 && output.push(["No Sidecar Resources"])
+        incomingSidecarConfigs.forEach(sc => {
           delete sc.yaml
           output.push([">>>"+sc.name+"."+sc.namespace])
           output.push([sc])
         })
         this.onStreamOutput && this.onStreamOutput(output) 
-        return {egressSidecarResources, incomingSidecarResources}
+        return {egressSidecarConfigs, incomingSidecarConfigs}
       },
 
       async outputIngressGatewayConfigs(service: ServiceDetails, k8sClient: K8sClient) {

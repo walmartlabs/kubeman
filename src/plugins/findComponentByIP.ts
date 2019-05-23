@@ -23,8 +23,10 @@ const plugin : ActionGroupSpec = {
         ]], ActionOutputStyle.Table)
 
         const ipAddresses = actionContext.inputText ? actionContext.inputText.split(",").map(value => value.trim()) : []
-        ipAddresses.length > 0 && OutputManager.filter(ipAddresses.join(" "))
+
+        ipAddresses.length > 0 && OutputManager.filter(ipAddresses.join(" or "))
         OutputManager.setShowAllGroupsInSearch()
+
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
           this.onStreamOutput && this.onStreamOutput([[">Cluster: " + cluster.name, "", "", ""]])

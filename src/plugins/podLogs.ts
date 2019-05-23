@@ -45,7 +45,7 @@ const plugin : ActionGroupSpec = {
 
   actions: [
     {
-      name: "Check Container Logs",
+      name: "Check Pod/Container Logs",
       order: 10,
       autoRefreshDelay: 30,
       loadingMessage: "Loading Containers@Pods...",
@@ -63,7 +63,7 @@ const plugin : ActionGroupSpec = {
       }
     },
     {
-      name: "Tail Container Logs",
+      name: "Tail Pod/Container Logs",
       order: 11,
       loadingMessage: "Loading Containers@Pods...",
       outputRowLimit: 100,
@@ -80,7 +80,7 @@ const plugin : ActionGroupSpec = {
       }
     },
     {
-      name: "Tail Filtered Container Logs",
+      name: "Tail Filtered Pod/Container Logs",
       order: 12,
       loadingMessage: "Loading Containers@Pods...",
       outputRowLimit: 100,

@@ -128,6 +128,11 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
       backgroundColor: '#1d2349',
       color: '#fff',
     },
+    '& td' :{
+      borderLeft: '1px dotted',
+      paddingLeft: 2,
+      paddingRight: 2,
+    },
   },
   tableGroupRowSpacer: {
     height: 12,

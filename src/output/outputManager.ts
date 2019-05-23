@@ -662,6 +662,15 @@ export default class OutputManager {
     this.currentGroupings = {}
   }
 
+  static clearFilter() {
+    this.rows.forEach(row => row.clearFilter())
+    this.filteredRows = this.rows.concat()
+    this.matchedColumns.clear()
+    this.appliedFilters = []
+    this.showAllGroupsInSearch = false
+    this.identifyTopRows()
+  }
+
   private static updateRowMetaData(row: Row) {
     row.superGroupIndex = -1
     row.groupIndex = -1
@@ -755,15 +764,6 @@ export default class OutputManager {
           this.healthColumnIndex = isHealthKeywordFound ? index : this.headers.length-1
         })
     }
-  }
-
-  static clearFilter() {
-    this.rows.forEach(row => row.clearFilter())
-    this.filteredRows = this.rows.concat()
-    this.matchedColumns.clear()
-    this.appliedFilters = []
-    this.showAllGroupsInSearch = false
-    this.identifyTopRows()
   }
 
   static setShowAllGroupsInSearch() {

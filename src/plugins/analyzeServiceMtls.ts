@@ -132,14 +132,14 @@ const plugin : ActionGroupSpec = {
           const portStatus = serviceMtlsStatus.servicePortAccess[sp.port]
           const portDefaultMtlsDestinationRuleStatus = serviceMtlsStatus.servicePortDefaultMtlsDestinationRuleStatus[sp.port]
           const servicePortClientMtlsModes = serviceMtlsStatus.effectiveServicePortClientMtlsModes[sp.port]
-          const portMtlsMode = portStatus.service.conflict ? "Conflict" :
+          const portMtlsMode = portStatus.service.conflict ? "[Conflict]" :
                     !portStatus.service.mtls ? ClientMtlsMode.DISABLE :
                     portStatus.service.servicePortMtlsMode ? portStatus.service.servicePortMtlsMode : 
                     namespaceMtlsStatus.namespaceDefaultMtlsMode ? namespaceMtlsStatus.namespaceDefaultMtlsMode :
                     globalMtlsStatus.globalMtlsMode || "N/A"
           portMtls.push(portMtlsMode)
 
-          policyConflicts.push(portStatus.service.conflict ? "Has Conflicts" : "No Conflicts")
+          policyConflicts.push(portStatus.service.conflict ? "[Found Policy Conflicts]" : "[No]")
 
           
           const clientNamespacesWithDRPolicyConflicts = Object.keys(portStatus.client.clientNamespacesInConflictWithMtlsPolicy)
@@ -148,7 +148,7 @@ const plugin : ActionGroupSpec = {
           
           const impactedClientItems: any[] = []
           impactedClientItems.push(clientNamespacesWithConflicts.length === 0 ? "" :
-              clientNamespacesWithConflicts.map(n => n.length > 0 ? n : "All Sidecar Clients"))
+              clientNamespacesWithConflicts.map(n => n.length > 0 ? n : "[All Sidecar Clients]"))
           clientNamespacesWithConflicts.length === 1 && clientNamespacesWithConflicts[0] === ""
                 && portStatus.client.sidecarAccessNamespaces.length > 0 &&
                 impactedClientItems.push(" (Except: " + portStatus.client.sidecarAccessNamespaces.map(ns => ns.namespace).join(", ") + ")")
@@ -176,15 +176,15 @@ const plugin : ActionGroupSpec = {
             drConflictsItems = _.uniqBy(drConflictsItems)
             drConflicts.push(drConflictsItems)
           } else {//if(!portStatus.client.conflict && clientNamespacesWithConflicts.length === 0) {
-            drConflicts.push("No Conflicts")
+            drConflicts.push("[No]")
           }
 
-          let clientAccessConflictMessage = portStatus.client.noAccess ? "Blocked for all clients" :
-                portStatus.client.allAccess ? drConflictsItems.length === 0 ? "Open to all clients" : "Open to all clients except DR conflicts" :
-                portStatus.client.nonSidecarOnly ? "Non-Sidecar Clients Only" : 
-                portStatus.client.sidecarOnly ? drConflictsItems.length > 0 ? "All sidecar clients except DR conflicts" :
-                 portDefaultMtlsDestinationRuleStatus.onlyDefaultMtlsDestinationRuleDefined ? "All sidecar clients" : "Select sidecar clients (see DR)" :
-                portStatus.client.conflict ? "Some namespaces have conflicts" : ""
+          let clientAccessConflictMessage = portStatus.client.noAccess ? "[Blocked for all clients]" :
+                portStatus.client.allAccess ? drConflictsItems.length === 0 ? "[Open to all clients]" : "[Open to all clients]<br/>[Found DR conflicts]" :
+                portStatus.client.nonSidecarOnly ? "[Non-Sidecar Clients Only]" : 
+                portStatus.client.sidecarOnly ? drConflictsItems.length > 0 ? "[All sidecar clients except DR conflicts]" :
+                 portDefaultMtlsDestinationRuleStatus.onlyDefaultMtlsDestinationRuleDefined ? "[All sidecar clients]" : "[Select sidecar clients (see DR)]" :
+                portStatus.client.conflict ? "[Some namespaces have conflicts]" : ""
           clientAccessConflictMessage.length > 0 && clientAccess.push(clientAccessConflictMessage)
 
         })
@@ -204,7 +204,7 @@ const plugin : ActionGroupSpec = {
                     globalMtlsStatus.globalMtlsMode || "N/A"
           portMtls.push(portMtlsMode)
 
-          policyConflicts.push(portStatus.service.conflict ? "Has Conflicts" : "No Conflicts")
+          policyConflicts.push(portStatus.service.conflict ? "[Found Policy Conflicts]" : "[No]")
 
           
           const clientNamespacesWithDRPolicyConflicts = Object.keys(portStatus.client.clientNamespacesInConflictWithMtlsPolicy)
@@ -213,7 +213,7 @@ const plugin : ActionGroupSpec = {
 
           const clientConflictInfo: any[] = []
           impactedClients.push(clientNamespacesWithConflicts.length === 0 ? "" :
-              clientNamespacesWithConflicts.map(n => n.length > 0 ? n : "All Sidecar Clients").join(", ") 
+              clientNamespacesWithConflicts.map(n => n.length > 0 ? n : "[All Sidecar Clients]").join(", ") 
               +
               (clientNamespacesWithConflicts.length === 1 && clientNamespacesWithConflicts[0] === ""
                 && portStatus.client.sidecarAccessNamespaces.length > 0 ? 

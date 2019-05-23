@@ -86,7 +86,7 @@ const plugin : ActionGroupSpec = {
                 IstioFunctions.getNamespaceDestinationRules.bind(IstioFunctions), this.onStreamOutput)
 
           await listResources("Sidecar Resources", namespace.name, cluster.k8sClient, 
-                IstioFunctions.getNamespaceSidecarResources.bind(IstioFunctions), this.onStreamOutput)
+                IstioFunctions.getNamespaceSidecarConfigs.bind(IstioFunctions), this.onStreamOutput)
 
           await listResources("Rules", namespace.name, cluster.k8sClient, 
                 IstioFunctions.getNamespaceRules.bind(IstioFunctions), this.onStreamOutput)

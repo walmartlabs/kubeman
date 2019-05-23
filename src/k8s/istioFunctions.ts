@@ -279,7 +279,7 @@ export default class IstioFunctions {
     }
   }
 
-  static listAllSidecarResources = async (k8sClient: K8sClient) => {
+  static listAllSidecarConfigs = async (k8sClient: K8sClient) => {
     if(k8sClient.istio && k8sClient.istio.sidecars) {
       return IstioFunctions.extractResource(await k8sClient.istio.sidecars.get(), 
                       "workloadSelector", "ingress", "egress", "yaml") as any[]
@@ -288,7 +288,7 @@ export default class IstioFunctions {
     }
   }
 
-  static getNamespaceSidecarResources = async (namespace: string, k8sClient: K8sClient) => {
+  static getNamespaceSidecarConfigs = async (namespace: string, k8sClient: K8sClient) => {
     if(k8sClient.istio && k8sClient.istio.sidecars) {
       return (IstioFunctions.extractResource(await k8sClient.istio.sidecars.get(), 
                       "workloadSelector", "ingress", "egress", "yaml") as any[])
@@ -298,17 +298,21 @@ export default class IstioFunctions {
     }
   }
 
-  static getServiceEgressSidecarResources = async (service: ServiceDetails, k8sClient: K8sClient) => {
+  static getServiceEgressSidecarConfigs = async (service: ServiceDetails, k8sClient: K8sClient) => {
+    return IstioFunctions.getPodEgressSidecarConfigs((service.selector||[]), service.namespace, k8sClient)
+  }
+
+  static getPodEgressSidecarConfigs = async (podLabels: string[], namespace: string, k8sClient: K8sClient) => {
     if(k8sClient.istio) {
-      const allSidecarResources = await IstioFunctions.listAllSidecarResources(k8sClient)
-      const nsSidecarResources = allSidecarResources.filter(sc => sc.namespace === service.namespace)
-      const serviceSidecarResources = nsSidecarResources.filter(sc => 
+      const allSidecarConfigs = await IstioFunctions.listAllSidecarConfigs(k8sClient)
+      const nsSidecarConfigs = allSidecarConfigs.filter(sc => sc.namespace === namespace)
+      const podSidecarConfigs = nsSidecarConfigs.filter(sc => 
         sc.workloadSelector && sc.workloadSelector.labels 
-        && matchObjects(sc.workloadSelector.labels, service.selector))
-      if(serviceSidecarResources.length > 0) {
-        return serviceSidecarResources
+        && matchObjects(sc.workloadSelector.labels, podLabels))
+      if(podSidecarConfigs.length > 0) {
+        return podSidecarConfigs
       } else {
-        return nsSidecarResources.filter(sc => !sc.workloadSelector)
+        return nsSidecarConfigs.filter(sc => !sc.workloadSelector)
       }
     } else {
       return []
@@ -332,21 +336,21 @@ export default class IstioFunctions {
     ).length > 0
   }
 
-  static getServiceIncomingSidecarResources = async (service: ServiceDetails, k8sClient: K8sClient) => {
+  static getServiceIncomingSidecarConfigs = async (service: ServiceDetails, k8sClient: K8sClient) => {
     if(k8sClient.istio) {
       FqdnMatcher.initWithService(service.name, service.namespace)
-      const allSidecarResources = await IstioFunctions.listAllSidecarResources(k8sClient)
-      return allSidecarResources.filter(sc => IstioFunctions.matchSidecarEgressHost(sc, true))
+      const allSidecarConfigs = await IstioFunctions.listAllSidecarConfigs(k8sClient)
+      return allSidecarConfigs.filter(sc => IstioFunctions.matchSidecarEgressHost(sc, true))
     } else {
       return []
     }
   }
 
-  static getSidecarResourcesForFqdn = async (fqdn: string, k8sClient: K8sClient) => {
+  static getSidecarConfigsForFqdn = async (fqdn: string, k8sClient: K8sClient) => {
     if(k8sClient.istio) {
       FqdnMatcher.init(fqdn)
-      const allSidecarResources = await IstioFunctions.listAllSidecarResources(k8sClient)
-      return allSidecarResources.filter(sc => 
+      const allSidecarConfigs = await IstioFunctions.listAllSidecarConfigs(k8sClient)
+      return allSidecarConfigs.filter(sc => 
         FqdnMatcher.matchNamespace(sc.namespace) || IstioFunctions.matchSidecarEgressHost(sc, false)
       )
     } else {
