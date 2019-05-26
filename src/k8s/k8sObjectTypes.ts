@@ -176,5 +176,7 @@ export interface ServiceDetails extends Metadata {
   sessionAffinityConfig?: any,
   type: any,
   loadBalancer?: any,
+  shortFqdn?: string,
+  fullFqdn?: string,
   yaml?: any
 }

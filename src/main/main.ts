@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu } from 'electron'
+import { app, BrowserWindow, Menu, ipcMain as ipc} from 'electron'
 import installExtension, { REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS } from 'electron-devtools-installer';
 import fs from 'fs'
 import path from 'path'
@@ -22,6 +22,7 @@ if (isDevelopment) {
 
 // global reference to mainWindow (necessary to prevent window from being garbage collected)
 const windows : (BrowserWindow|null)[] = []
+let lastContext
 
 async function createWindow() {
   const window = new BrowserWindow({
@@ -68,6 +69,7 @@ async function createWindow() {
       window && window.focus()
     })
   })
+  setTimeout(window.webContents.send.bind(window.webContents, 'updateContext', lastContext), 3000)
 }
 
 app.on('window-all-closed', () => {
@@ -83,6 +85,12 @@ app.on('activate', () => {
 app.on('ready', function () {
   if (windows.length === 0) {
     createWindow()
+  }
+})
+
+ipc.on('context', (event: Electron.Event, context: {clusters: string[], namespaces: any[]}) => {
+  if(context.clusters && context.clusters.length > 0) {
+    lastContext = context
   }
 })
 

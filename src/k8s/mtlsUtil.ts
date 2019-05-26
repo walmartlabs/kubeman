@@ -94,12 +94,20 @@ export class MtlsUtil {
     }
   }
   private static filterMtlsDestinationRules(drules: any[]) {
-    return drules.filter(dr => dr.host && dr.trafficPolicy && 
-      ( dr.trafficPolicy.tls && dr.trafficPolicy.tls.mode
-        || 
+    return drules.filter(dr => dr.host && dr.trafficPolicy)
+    .filter(dr => {
+      if(dr.trafficPolicy.tls && dr.trafficPolicy.tls.mode || 
         dr.trafficPolicy.portLevelSettings && 
-          dr.trafficPolicy.portLevelSettings.filter(p => p.tls).length > 0)
-      )
+          dr.trafficPolicy.portLevelSettings.filter(p => p.tls).length > 0) {
+            return true
+      } else {
+        dr.trafficPolicy = (dr.trafficPolicy || {})
+        dr.trafficPolicy.tls = (dr.trafficPolicy.tls || {})
+        dr.trafficPolicy.tls.mode = 'DISABLE'
+        dr.trafficPolicy.tls.note = "** DR missing TLS mode, defaults to DISABLE **"
+        return true
+      }
+    })
   }
 
   private static async filterGlobalMtlsDestinationRules(drules: any[], configNamespace: string) {
@@ -326,7 +334,7 @@ export class MtlsUtil {
   }
 
   static getServiceMtlsStatus = async (k8sClient: K8sClient, namespace: string, service?: ServiceDetails) => {
-    return MtlsUtil.getNamespaceServiceMtlsStatuses(k8sClient, [namespace], service && [service])
+    return (await MtlsUtil.getNamespaceServiceMtlsStatuses(k8sClient, [namespace], service && [service]))[namespace]
   }
 
   static getServiceMtlsStatuses = async (k8sClient: K8sClient, services: ServiceDetails[]) => {

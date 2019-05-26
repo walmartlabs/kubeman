@@ -132,7 +132,8 @@ const plugin : ActionGroupSpec = {
           const portStatus = serviceMtlsStatus.servicePortAccess[sp.port]
           const portDefaultMtlsDestinationRuleStatus = serviceMtlsStatus.servicePortDefaultMtlsDestinationRuleStatus[sp.port]
           const servicePortClientMtlsModes = serviceMtlsStatus.effectiveServicePortClientMtlsModes[sp.port]
-          const portMtlsMode = portStatus.service.conflict ? "[Conflict]" :
+          const portMtlsModes = serviceMtlsStatus.effectiveServicePortMtlsModes[sp.port]
+          const portMtlsMode = portStatus.service.conflict ? "[CONFLICT] " + portMtlsModes.join(", ") :
                     !portStatus.service.mtls ? ClientMtlsMode.DISABLE :
                     portStatus.service.servicePortMtlsMode ? portStatus.service.servicePortMtlsMode : 
                     namespaceMtlsStatus.namespaceDefaultMtlsMode ? namespaceMtlsStatus.namespaceDefaultMtlsMode :
@@ -196,8 +197,9 @@ const plugin : ActionGroupSpec = {
           portsAnalysis.push([">>>Service Port " + sp.port + " Analysis"])
           portNumbers.push(sp.port)
           const portStatus = serviceMtlsStatus.servicePortAccess[sp.port]
+          const portMtlsModes = serviceMtlsStatus.effectiveServicePortMtlsModes[sp.port]
           const servicePortClientMtlsModes = serviceMtlsStatus.effectiveServicePortClientMtlsModes[sp.port]
-          const portMtlsMode = portStatus.service.conflict ? "Conflict" :
+          const portMtlsMode = portStatus.service.conflict ? "[CONFLICT] " + portMtlsModes.join(",") :
                     !portStatus.service.mtls ? "N/A" :
                     portStatus.service.servicePortMtlsMode ? portStatus.service.servicePortMtlsMode : 
                     namespaceMtlsStatus.namespaceDefaultMtlsMode ? namespaceMtlsStatus.namespaceDefaultMtlsMode :

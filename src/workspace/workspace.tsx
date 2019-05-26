@@ -1,4 +1,5 @@
-import React from "react";
+import {ipcRenderer as ipc} from 'electron'
+import React from "react"
 import { withStyles, WithStyles } from '@material-ui/core/styles'
 import { Table, TableBody, TableRow, TableCell, CircularProgress,
       FormControlLabel, Typography, Switch, LinearProgress } from "@material-ui/core";
@@ -18,6 +19,7 @@ import ChoiceManager from "../actions/choiceManager"
 import OutputManager from '../output/outputManager'
 
 import styles from './workspace.styles'
+import { Cluster, Namespace } from '../k8s/k8sObjectTypes'
 
 interface IState {
   output: ActionOutput
@@ -79,6 +81,20 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   componentDidMount() {
     this.componentWillReceiveProps(this.props)
+    const workspace = this
+    ipc.on('updateContext', async (event: Electron.Event, context: {clusters: string[], namespaces: any[]}) => {
+      if(Context.clusters.length === 0 && context && context.clusters && context.clusters.length > 0) {
+        for(const c of context.clusters) {
+          await Context.addCluster(new Cluster(c))
+        }
+        if(context.namespaces && context.namespaces.length > 0) {
+          context.namespaces.forEach(ns => {
+            Context.addNamespace(new Namespace(ns.namespace, Context.cluster(ns.cluster)))
+          })
+        }
+        workspace.forceUpdate()
+      }
+    })
   }
 
   componentWillReceiveProps(props: IProps) {
@@ -211,6 +227,10 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     ChoiceManager.clear()
     Context.selections = []
     this.setState({output: []})
+    ipc.send('context', {clusters: Context.clusters.map(c => c.name), 
+          namespaces: Context.namespaces.map(ns => {
+            return {cluster: ns.cluster.name, namespace: ns.name}
+          })})
   }
 
   runAction = (name, ...params) => {

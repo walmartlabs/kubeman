@@ -35,8 +35,12 @@ export default class ContextSelector extends React.Component<IProps, IState> {
   }
 
   componentWillReceiveProps(nextProps: IProps) {
+    const selectedClusters = new Map<string, Cluster>()
+    const selectedNamespaces = new Map<string, Namespace>()
+    Context.clusters.forEach(c => selectedClusters.set(c.text(), c))
+    Context.namespaces.forEach(ns => selectedNamespaces.set(ns.text(), ns))
+    this.setState({ selectedClusters, selectedNamespaces })
   }
-
   
   async onSelection(clusters: Map<string, Cluster>, namespaces: Map<string, Namespace>, filter: string) {
     await Context.store(clusters, namespaces)

@@ -209,6 +209,24 @@ const plugin : ActionGroupSpec = {
         if(egressHosts.length > 0) {
           output.push(["Service can only reach out to the following namespace/service destinations: " + egressHosts.join(", ")])
         }
+
+        const shortFqdn = "/"+service.name+"."+service.namespace
+        const fullFqdn = "/"+shortFqdn+".svc.cluster.local"
+        const sidecarsWithInvalidIncomingHosts = {}
+        sidecarConfigs.incomingSidecarConfigs.forEach(s => {
+          s.egress && s.egress.forEach(e => {
+            e.hosts && e.hosts.forEach(h => {
+              if(h.endsWith(shortFqdn) && ! h.endsWith(fullFqdn)) {
+                sidecarsWithInvalidIncomingHosts[s.name+"."+s.namespace] = h
+              }
+            })
+          })
+        })
+        const invalidSidecarNames = Object.keys(sidecarsWithInvalidIncomingHosts)
+        if(invalidSidecarNames.length > 0) {
+          output.push(["Following sidecars have invalid Egress Hosts config (must use full FQDN): " + invalidSidecarNamess.join(", ")])
+        }
+
         this.onStreamOutput && this.onStreamOutput(output)
       },
 
@@ -288,16 +306,16 @@ const plugin : ActionGroupSpec = {
         const egressSidecarConfigs = await IstioFunctions.getServiceEgressSidecarConfigs(service, k8sClient)
         const incomingSidecarConfigs = await IstioFunctions.getServiceIncomingSidecarConfigs(service, k8sClient)
         const output: ActionOutput = []
-        output.push([">Sidecar resources relevant to this service"])
-        output.push([">>Egress Sidecar resources"])
-        egressSidecarConfigs.length === 0 && output.push(["No Sidecar Resources"])
+        output.push([">Sidecar configs relevant to this service"])
+        output.push([">>Egress Sidecar configs"])
+        egressSidecarConfigs.length === 0 && output.push(["No Sidecar configs"])
         egressSidecarConfigs.forEach(sc => {
           delete sc.yaml
           output.push([">>>"+sc.name+"."+sc.namespace])
           output.push([sc])
         })
-        output.push([">>Incoming Sidecar resources"])
-        incomingSidecarConfigs.length === 0 && output.push(["No Sidecar Resources"])
+        output.push([">>Incoming Sidecar configs"])
+        incomingSidecarConfigs.length === 0 && output.push(["No Sidecar configs"])
         incomingSidecarConfigs.forEach(sc => {
           delete sc.yaml
           output.push([">>>"+sc.name+"."+sc.namespace])

@@ -121,5 +121,5 @@ ReactDOM.render(<App/>, document.getElementById("app"))
 
 window.addEventListener('contextmenu', (event) => {
   event.preventDefault()
-  ipc.send('show-context-menu', {x: event.x, y: event.y})
+  ipc.send('showContextMenu', {x: event.x, y: event.y})
 })

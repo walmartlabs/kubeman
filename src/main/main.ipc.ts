@@ -20,7 +20,7 @@ contextMenu.append(new MenuItem({
   }
 }))
 
-ipc.on('show-context-menu', (event: Electron.Event, point: {x: number, y: number}) => {
+ipc.on('showContextMenu', (event: Electron.Event, point: {x: number, y: number}) => {
   coords = point
   
   const win = BrowserWindow.fromWebContents(event.sender)

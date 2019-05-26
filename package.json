@@ -1,11 +1,10 @@
 {
   "name": "kubeman",
   "author": {
-    "name": "uk",
-    "email": "uk0000@gmail.com"
+    "name": "uk/Walmart"
   },
-  "version": "0.3.0",
-  "license": "MIT",
+  "version": "0.4.0",
+  "license": "Apache",
   "scripts": {
     "clean": "rm -rf dist/mac",
     "dev": "npm run clean && electron-webpack dev",

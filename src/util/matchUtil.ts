@@ -28,8 +28,11 @@ export const getFqdnAndPortFromCluster = (cluster: string) => {
               : {fqdn: cluster}
 }
 
-export const extractNamespaceFromFqdn = (fqdn) => {
+export const extractNamespaceFromFqdn = (fqdn: string) => {
   if(!fqdn) return "*"
+  if(fqdn.includes("/")) {
+    return fqdn.split("/")[0]
+  }
   let namespace = fqdn.replace(".svc.cluster.local", "")
   namespace = namespace.replace("*.cluster.local", "")
   namespace = namespace.replace("*.local", "")
@@ -46,6 +49,9 @@ export const extractNamespaceFromFqdn = (fqdn) => {
 
 export const extractServiceFromFqdn = (fqdn) => {
   if(!fqdn) return "*"
+  if(fqdn.includes("/")) {
+    fqdn = fqdn.split("/")[1]
+  }
   if(!fqdn.includes(".")) return fqdn
   let service = fqdn.replace(".svc.cluster.local", "")
   const parts = service.split(".")
@@ -115,7 +121,7 @@ export class FqdnMatcher {
       return serviceFqdn.includes("*")
     } else {
       const service = extractServiceFromFqdn(serviceFqdn)
-      let namespace = extractNamespaceFromFqdn(serviceFqdn)
+      let namespace: string|undefined = extractNamespaceFromFqdn(serviceFqdn)
       if(namespace === service) {
         namespace = undefined
       }

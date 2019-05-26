@@ -81,7 +81,7 @@ interface FilterInputProps extends WithStyles<typeof styles> {
   filterText: string
   isFilterInput: (string) => boolean
   onFilter: (...any) => any
-  clearFilter: (boolean) => any
+  clearFilter: (resetOutput?: boolean, refresh?: boolean) => any
   clearActionInput: () => any
   onActionTextInput: (string) => any
 }
@@ -109,7 +109,7 @@ class extends React.Component<FilterInputProps, FilterInputState> {
     switch(event.which) {
       case 27: /*Esc*/
         this.setState({filterText: ''})
-        this.props.clearFilter(true)
+        this.props.clearFilter(true, true)
         this.props.clearActionInput()
         break
       case 13: /*Enter*/
@@ -125,10 +125,13 @@ class extends React.Component<FilterInputProps, FilterInputState> {
   onTextInput = (event: ChangeEvent<HTMLInputElement>) => {
     const filterText = event.target.value
     if(filterText.length === 0) {
-      this.props.clearFilter(true)
+      this.props.clearFilter(true, true)
       this.props.clearActionInput()
     } else if(this.props.isFilterInput(filterText)) {
       this.props.onFilter(filterText)
+      this.props.clearActionInput()
+    } else {
+      this.props.clearFilter(true)
     }
     this.setState({filterText})
   }
@@ -204,10 +207,10 @@ export class TableBox extends React.Component<IProps, IState> {
     this.forceUpdate()
   }
 
-  clearFilter = (resetOutput?: boolean) => {
+  clearFilter = (resetOutput?: boolean, refresh?: boolean) => {
     this.filterText = ''
-    this.forceUpdate()
     resetOutput && OutputManager.clearFilter()
+    refresh && this.forceUpdate()
   }
 
   clearActionInput = () => {

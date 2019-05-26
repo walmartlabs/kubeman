@@ -63,7 +63,7 @@ const plugin : ActionGroupSpec = {
       }
     },
     {
-      name: "List Sidecar Resources",
+      name: "List Sidecar Configs",
       order: 14,
       act(actionContext) {
         listResources("Sidecars", IstioFunctions.listAllSidecarConfigs, actionContext, this.onStreamOutput, this.onOutput, this.showOutputLoading)

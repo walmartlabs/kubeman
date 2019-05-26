@@ -48,7 +48,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
       wordWrap: 'break-word',
       wordBreak: 'break-all',
       fontFamily: 'Courier, monospace',
-      fontSize: '0.95rem',
+      fontSize: '0.99rem',
       height: '15px',
       color: palette.type ==='dark' ? '#d0d0d0' : 'rgba(15, 15, 150, 0.8)',
       filter: palette.type ==='dark' ? 'brightness(110%)' : 'brightness(90%)'
@@ -89,7 +89,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   tableSubgroupRow: {
     padding: 0,
     height: 32,
-    backgroundColor: palette.type ==='dark' ? '#1d2349' : '#9abede',
+    backgroundColor: palette.type ==='dark' ? '#262f63' : '#9abede',
     backgroundBlendMode: 'multiply',
     cursor: 'pointer',
   },
@@ -156,6 +156,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     color: 'inherit',
     verticalAlign: 'top',
     width: 'auto',
+    fontSize: '0.99rem',
   },
   tableCell: {
     padding: 0,
@@ -165,6 +166,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     verticalAlign: 'top',
     width: 'auto',
     minWidth: 120,
+    fontSize: '0.90rem',
     [breakpoints.up('sm')]: {
       maxWidth: '200px'
     },
