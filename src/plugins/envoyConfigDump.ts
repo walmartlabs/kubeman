@@ -46,7 +46,6 @@ async function outputEnvoyConfig(action: ActionSpec, actionContext: ActionContex
     const configs = await configFn(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
     switch(configType) {
       case EnvoyConfigType.Bootstrap:
-      case EnvoyConfigType.Routes:
         outputConfig(action.onStreamOutput, configs)
         break
       case EnvoyConfigType.Clusters:
@@ -54,6 +53,9 @@ async function outputEnvoyConfig(action: ActionSpec, actionContext: ActionContex
         break;
       case EnvoyConfigType.Listeners:
         EnvoyPluginHelper.outputListenerConfig(action.onStreamOutput, configs)
+        break
+      case EnvoyConfigType.Routes:
+        EnvoyPluginHelper.outputRouteConfig(action.onStreamOutput, configs)
         break
     }
   }

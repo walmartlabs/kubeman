@@ -17,7 +17,6 @@ async function outputIngresEnvoyConfig(action: ActionSpec, actionContext: Action
     const configs = await configFn(selection.k8sClient, selection.podName)
     switch(configType) {
       case EnvoyConfigType.Bootstrap:
-      case EnvoyConfigType.Routes:
         outputConfig(action.onStreamOutput, configs)
         break
       case EnvoyConfigType.Clusters:
@@ -25,6 +24,9 @@ async function outputIngresEnvoyConfig(action: ActionSpec, actionContext: Action
           break;
       case EnvoyConfigType.Listeners:
         EnvoyPluginHelper.outputListenerConfig(action.onStreamOutput, configs)
+        break
+      case EnvoyConfigType.Routes:
+        EnvoyPluginHelper.outputRouteConfig(action.onStreamOutput, configs)
         break
     }
   }

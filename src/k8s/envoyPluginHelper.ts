@@ -70,5 +70,17 @@ export default class EnvoyPluginHelper {
     })
     onStreamOutput(output)
   }
-   
+
+  static outputRouteConfig(onStreamOutput, configs: any[]) {
+    const output: ActionOutput = []
+    configs.forEach(config => {
+      output.push([">"+config.title + " Last Updated: "+config.last_updated])
+      output.push([{"virtualHost.name": config.name, "virtualHost.domains": config.domains}])
+      config.routes.forEach(r => {
+        output.push([">>"+r.route.cluster])
+        Object.keys(r).forEach(key => output.push([">>>"+key], [r[key]]))
+      })
+    })
+    onStreamOutput(output)
+  }
 }

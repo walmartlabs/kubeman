@@ -127,6 +127,7 @@ export default class EnvoyFunctions {
             vh.title = vh.name
           }
           vh.title += " ("+key+")"
+          vh.last_updated = r.last_updated || r.lastUpdated
           preparedRouteConfigs.push(vh)
         })
       })

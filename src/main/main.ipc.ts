@@ -16,13 +16,12 @@ contextMenu.append(new MenuItem({
   click: (...args) => {
     const window = BrowserWindow.getFocusedWindow()
     window && window.webContents.openDevTools()
-    window && window.webContents.inspectElement(coords.x, coords.y)
+    window && window.webContents.inspectElement(coords.x+55, coords.y+55)
   }
 }))
 
 ipc.on('showContextMenu', (event: Electron.Event, point: {x: number, y: number}) => {
-  coords = point
-  
+  coords = point  
   const win = BrowserWindow.fromWebContents(event.sender)
   contextMenu.popup({window: win})
 })

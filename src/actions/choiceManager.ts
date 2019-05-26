@@ -25,7 +25,7 @@ export interface PodSelection {
 }
 
 export default class ChoiceManager {
-  static clearSelectionsDelay = 180000
+  static clearSelectionsDelay = 300000
   static items: StringStringArrayMap = {}
   static useNamespace: boolean = true
   static showChoiceSubItems: boolean = true

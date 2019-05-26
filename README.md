@@ -99,7 +99,10 @@ These recipes let you view or compare information related to services and/or the
 - Compare Namespace Services: compare services across namespaces
 - View Service Details, 
 - Compare Two Services
-- Tail Service Logs, Tail Filtered Service Logs: tail logs from all backing pods for a service
+   ![Compare Two Services](/static/kubeman-compare-two-services.png)   
+- Check Service Logs: check logs from all backing containers+pods for a service at current point in time. Doesn't tail. Useful to look at latest logs without being bothered by constant flow due to tailing.
+- Tail Service Logs: tail logs from all backing containers+pods for a service. Useful to keep an eye on the latest logs. Can be filtered on the fly.
+- Tail Filtered Service Logs: Grep service logs by applying a filter. Requires a filter as input in order to start tailing logs. Useful when the service pods are expected to produce high volume of log.
 - Execute Command on Service Pods: execute a command on all backing pods for a service (use '/c' to clear output, '&&' to execute multiple commands)
    ![Service Execute Command](/static/kubeman-service-command.png)   
 
@@ -112,8 +115,10 @@ These recipes let you view or compare information from selected pods
 - View Pod(s) Details, View Pod(s) Status: details of one or more selected pods
 - View Pod(s) Resource Configurations: view resource requests and limits config for all pods of a namespace
    ![Pod Resources](/static/kubeman-pod-resources.png)   
-- Check Container Logs, Tail Container Logs, Tail Filtered Container Logs: let you check logs of one or more selected pod-containers
-- Compare Two Pods
+- Check Container Logs: check logs from one or more selected containers/pods at current point in time. Doesn't tail. Useful to look at latest logs without being bothered by constant flow due to tailing.
+- Tail Container Logs: tail logs from one or more selected pod-containers. Can be filtered on the fly.
+- Tail Filtered Container Logs: Grep logs from one or more selected pod-containers by applying a filter. Requires a filter as input in order to start tailing logs. Useful when the containers are expected to produce high volume of log.
+- Compare Two Pods: compare details of two selected pods
 - Test Containers Reachability: performs a ping check from one another for all selected pod-containers
    ![Container Reachability](/static/kubeman-pod-reachability.png)   
 - Execute Pod Command: execute a command on all selected pod-containers (use '/c' to clear output, '&&' to execute multiple commands)
@@ -121,9 +126,11 @@ These recipes let you view or compare information from selected pods
 #### Istio Ingress Recipes
 These recipes let you view or analyze information related to Istio IngressGateway
 ###### Recipes:
-- View Ingress Details: shows details of IngressGateway service, its backing pods and containers, and a list of VirtualServices and Gateways defined in the cluster for ingress
+- View Ingress Details: shows details of IngressGateway service, its backing pods and containers, and a list of    ![Ingress Details](/static/kubeman-ingress-details.png)   
+VirtualServices and Gateways defined in the cluster for ingress
 - View Ingress Gateways and VirtualServices: a list of VirtualServices and Gateways defined in the cluster for ingress
-- Tail Ingress Logs, Tail Filtered Ingress Logs: let you check logs from all ingressgateway pods
+- Tail Ingress Logs: let you check logs from all ingressgateway pods
+- Tail Filtered Ingress Logs: Grep ingress logs by applying a filter. Requires a filter as input in order to start tailing logs. Useful as ingress logs are usually produced in high volume.
 - Execute Command on Ingress Pods: execute a command on all ingressgateway pods
 - Find Overlapping Gateways: finds gateways with same host+port
 - Gateways with Missing Certs: finds gateways for which the referenced TLS cert secret is missing
@@ -154,9 +161,11 @@ These recipes let you view or analyze information related to Istio Pilot
 These recipes let you view or analyze information related to envoy proxies deployed as a part of Istio mesh
 ###### Recipes:
 - List Envoy Proxies: see a list of all envoy proxies running in the cluster
-- Envoy Sidecar Injection Report: list of namespaces that have sidecar injection enabled
 - Tail Envoy Logs: check logs of a selected envoy proxy
-- Envoy Bootstrap Config, Envoy Clusters Config, Envoy Listeners Config, Envoy Routes Config, Envoy Stats, Envoy ServerInfo: view envoy configs and metrics from selected envoy proxies
+- Envoy Bootstrap Config, Envoy Clusters Config, Envoy Listeners Config, Envoy Routes Config
+   ![Envoy Listeners Config](/static/kubeman-envoy-listener-config.png)
+   ![Envoy Routes Config](/static/kubeman-envoy-route-config.png)
+- Envoy Stats, Envoy ServerInfo: view envoy configs and metrics from selected envoy proxies
 - Compare Envoy Configs: compare envoy configs from two selected envoy proxies
 
 #### More Istio Recipes
@@ -172,6 +181,9 @@ These recipes focus on advanced analysis of information from various components,
 - Analyze Service mTLS Status: analyze mTLS setup related to a selected service
    ![mTLS Status](/static/kubeman-mtls-status.png)
 - Cluster mTLS Report: see a report of mTLS setup for the cluster
+   ![Cluster mTLS Report](/static/kubeman-cluster-mtls-report.png)
+- Envoy Sidecar Injection Report: list of namespaces that have sidecar injection enabled
+   ![Sidecar Injection Report](/static/kubeman-sidecar-injection-report.png)
 
 
 ## To build and run the app

@@ -17,7 +17,7 @@ export default class K8sPluginHelper {
     const outputRows: ActionOutput = []
     outputRows.push(["cluster"])
     const firstItem = selections[0].item
-    const outputKeys = firstItem && typeof firstItem !== 'string' ? Object.keys(firstItem) : []
+    const outputKeys = firstItem && typeof firstItem !== 'string' ? Object.keys(firstItem).filter(key => key != "yaml") : []
     outputKeys.forEach(key => outputRows.push([key]))
 
     selections.forEach(selection => {
