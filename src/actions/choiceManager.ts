@@ -307,8 +307,8 @@ export default class ChoiceManager {
     return ChoiceManager._chooseNamespaces(clusters, unique, min, max, actionContext)
   }
 
-  static async choosePods(min: number = 1, max: number = 1, chooseContainers: boolean = false, 
-                          loadDetails: boolean = false, actionContext: ActionContext) {
+  static async choosePods(min: number, max: number, chooseContainers: boolean, 
+                          loadDetails: boolean, actionContext: ActionContext) {
     ChoiceManager.prepareCachedChoices(actionContext, 
       async (cluster, namespace, k8sClient) => {
         let pods : any[] = namespace ? await K8sFunctions.getAllPodsForNamespace(namespace, k8sClient) : []

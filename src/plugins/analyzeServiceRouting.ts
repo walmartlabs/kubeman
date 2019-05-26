@@ -224,7 +224,7 @@ const plugin : ActionGroupSpec = {
         })
         const invalidSidecarNames = Object.keys(sidecarsWithInvalidIncomingHosts)
         if(invalidSidecarNames.length > 0) {
-          output.push(["Following sidecars have invalid Egress Hosts config (must use full FQDN): " + invalidSidecarNamess.join(", ")])
+          output.push(["Following sidecars have invalid Egress Hosts config (must use full FQDN): " + invalidSidecarNames.join(", ")])
         }
 
         this.onStreamOutput && this.onStreamOutput(output)
