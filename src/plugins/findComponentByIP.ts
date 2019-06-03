@@ -31,7 +31,7 @@ const plugin : ActionGroupSpec = {
         for(const cluster of clusters) {
           this.onStreamOutput && this.onStreamOutput([[">Cluster: " + cluster.name, "", "", ""]])
           const nodes = await k8sFunctions.getClusterNodes(cluster.name, cluster.k8sClient)
-          const matchingNodes = nodes.filter(node => Object.values(node.network).filter(value => 
+          const matchingNodes = nodes.filter(node => Object.values(node.network).filter((value: any) => 
                                     ipAddresses.includes(value ? value.toString() : '')).length > 0)
           if(matchingNodes.length > 0) {
             this.onStreamOutput && this.onStreamOutput([[">>Nodes", "", "", ""]])
