@@ -3,6 +3,10 @@
   "author": {
     "name": "uk/Walmart"
   },
+  "repository": {
+    "type" : "git",
+    "url" : "https://gecgithub01.walmart.com/platform/kubeman"
+  },
   "version": "0.4.0",
   "license": "Apache",
   "scripts": {
