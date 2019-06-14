@@ -1,3 +1,10 @@
+/*
+Copyright (c) Walmart Inc.
+
+This source code is licensed under the Apache 2.0 license found in the
+LICENSE file in the root directory of this source tree.
+*/
+
 import K8sFunctions, {StringStringStringBooleanMap} from '../k8s/k8sFunctions'
 import ChoiceManager from '../actions/choiceManager';
 import {ActionGroupSpec, ActionContextType, ActionContextOrder,

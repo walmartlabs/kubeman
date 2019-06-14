@@ -1,3 +1,10 @@
+/*
+Copyright (c) Walmart Inc.
+
+This source code is licensed under the Apache 2.0 license found in the
+LICENSE file in the root directory of this source tree.
+*/
+
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionContextOrder} from '../actions/actionSpec'
 import ActionContext from '../actions/actionContext'
 import K8sFunctions from '../k8s/k8sFunctions'

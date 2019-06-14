@@ -1,3 +1,10 @@
+/*
+Copyright (c) Walmart Inc.
+
+This source code is licensed under the Apache 2.0 license found in the
+LICENSE file in the root directory of this source tree.
+*/
+
 import { Theme, createStyles } from '@material-ui/core/styles'
 import {indigo, blue, red, pink, purple} from '@material-ui/core/colors'
 
