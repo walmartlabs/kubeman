@@ -1,6 +1,5 @@
 ![Kubeman Logo](/static/kubeman-logo.png)
 # Kubeman Rocks!
-Slack Channel: #kubeman
 
 ## What's Kubeman?
 Kubeman is a tool that aims to provide an easy way to view information in Kubernetes clusters and investigate issues related to Kubernetes and Istio. 
