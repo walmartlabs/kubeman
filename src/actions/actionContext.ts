@@ -15,6 +15,7 @@ export default class ActionContext {
   onActionInitChoicesUnbound? : ActionChoiceMaker
   onSkipChoices? : BoundActionAct
   onCancelActionChoice? : () => void
+  sleep: (ms) => void = async (ms) => await new Promise(resolve => setTimeout(resolve, ms))
 
   getClusters: () => Cluster[] = () => Context.clusters || []
 

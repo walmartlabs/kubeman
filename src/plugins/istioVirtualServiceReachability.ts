@@ -45,6 +45,11 @@ const plugin : ActionGroupSpec = {
             this.onStreamOutput && this.onStreamOutput([["Istio not installed"]])
             continue
           }
+          if(!cluster.canPodExec) {
+            this.onStreamOutput && this.onStreamOutput([["Lacking pod command execution privileges"]])
+            continue
+          }
+
           const protocol = virtualService.http ? virtualService.http :
                             virtualService.tls ? virtualService.tls : virtualService.tcp
           const destinations = 
@@ -86,7 +91,7 @@ const plugin : ActionGroupSpec = {
         this.act(actionContext)
       },
       clear() {
-        this.onOutput && this.onOutput([["VirtualService Reachability From IngressGateway"]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["VirtualService Reachability From IngressGateway"]], ActionOutputStyle.LogWithHealth)
       }
     }
   ]

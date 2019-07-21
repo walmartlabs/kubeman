@@ -10,7 +10,6 @@ import { createStyles, Theme } from '@material-ui/core/styles'
 const styles = ({ palette, spacing }: Theme) => createStyles({
   root: {
     padding: spacing.unit,
-    backgroundColor: palette.type === 'dark' ? palette.background.default : '#edeef8',
     color: palette.primary.main,
     width: '100%',
     position: 'absolute',
@@ -68,7 +67,6 @@ const styles = ({ palette, spacing }: Theme) => createStyles({
     margin: 0,
     paddingLeft: '2px !important',
     paddingRight: '2px !important',
-    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
   },
   button: {
     margin: spacing.unit,

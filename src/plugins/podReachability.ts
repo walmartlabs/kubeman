@@ -6,7 +6,7 @@ LICENSE file in the root directory of this source tree.
 */
 
 import k8sFunctions from '../k8s/k8sFunctions'
-import {ActionGroupSpec, ActionContextType, ActionOutputStyle, } from '../actions/actionSpec'
+import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, } from '../actions/actionSpec'
 import ChoiceManager from '../actions/choiceManager'
 import { PodContainerDetails } from '../k8s/k8sObjectTypes';
 
@@ -26,48 +26,51 @@ const plugin : ActionGroupSpec = {
       
       async act(actionContext) {
         this.clear && this.clear(actionContext)
-        const selections = await ChoiceManager.getPodSelections(actionContext, true)
+        const selections = await ChoiceManager.getPodSelections(actionContext, false, true)
         this.setScrollMode && this.setScrollMode(true)
         this.showOutputLoading && this.showOutputLoading(true)
 
         for(const i in selections) {
+          const output: ActionOutput = []
           const sourceIndex = parseInt(i)
           const selection = selections[sourceIndex]
-          this.onStreamOutput && this.onStreamOutput([[
-            ">From: " + selection.title + ", Cluster: " + selection.cluster, "",""]])
+          output.push([">From: " + selection.title + ", Cluster: " + selection.cluster, "",""])
+
+          if(!selection.k8sClient.canPodExec) {
+            output.push(["Lacking pod command execution privileges"])
+            this.onStreamOutput && this.onStreamOutput(output)
+            continue
+          }
           try {
-            const result = await k8sFunctions.podExec(selection.namespace, selection.podName, selection.containerName, 
+            const result = await k8sFunctions.podExec(selection.namespace, selection.podName, selection.containerName,
                                 selection.k8sClient, ["ping", "-c", "1", "127.0.0.1"])
             const pingExists = result.includes("transmitted")
+            console.log(result)
             if(!pingExists) {
-              this.onStreamOutput && this.onStreamOutput([
-                ["", "Cannot test reachability from " + selection.title + " because ping command not found", ""]
-              ])
+              output.push(["", "Cannot test reachability from " + selection.title + " because ping command not found", ""])
+              this.onStreamOutput && this.onStreamOutput(output)
               continue
             }
           } catch(error) {
-            this.onStreamOutput && this.onStreamOutput([
-              ["", "Error from pod " + selection.title + ": " + error.message, ""]
-            ])
+            output.push(["", "Error from pod " + selection.title + ": " + error.message, ""])
+            this.onStreamOutput && this.onStreamOutput(output)
             continue
           }
           for(const j in selections) {
             const target = selections[j]
-            const podContainerDetails = target.podContainerDetails as PodContainerDetails
-            if(i === j || !podContainerDetails || !podContainerDetails.podStatus 
-              || !podContainerDetails.podStatus.podIP) {
+            if(i === j || !target || !target.podIP) {
               continue
             }
-            const ip = podContainerDetails.podStatus.podIP
+            const ip = target.podIP
             const result = await k8sFunctions.podExec(selection.namespace, selection.podName, selection.containerName, 
               selection.k8sClient, ["ping", "-c", "2", ip])
             const pingSuccess = result.includes("0% packet loss")
-            this.onStreamOutput && this.onStreamOutput([[
-              [target.podName, "IP: "+ip, "Cluster: " + target.cluster],
+            output.push([[target.podName, "IP: "+ip, "Cluster: " + target.cluster],
               result,
               pingSuccess ? "Reachable" : "Unreachable"
-            ]])
+            ])
           }
+          this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },

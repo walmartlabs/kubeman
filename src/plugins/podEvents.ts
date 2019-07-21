@@ -31,8 +31,7 @@ const plugin : ActionGroupSpec = {
         this.clear && this.clear(this.actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
 
-        for(const i in selections) {
-          const selection = selections[i]
+        for(const selection of selections) {
           const pod = selection.podName
           const namespace = selection.namespace
           const cluster = selection.cluster

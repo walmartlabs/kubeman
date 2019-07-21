@@ -9,9 +9,10 @@ import _ from 'lodash'
 import {K8sClient} from './k8sClient'
 import K8sFunctions from './k8sFunctions'
 import EnvoyFunctions from './envoyFunctions'
-import { ServiceDetails } from './k8sObjectTypes'
+import { ServiceDetails, Cluster } from './k8sObjectTypes'
 import {matchObjects, extractServiceFromFqdn, extractNamespaceFromFqdn, 
         getUniqueResources, FqdnMatcher, getUniqueResourcesByField} from '../util/matchUtil'
+import KubectlClient from './kubectlClient'
 
 export default class IstioFunctions {
 
@@ -24,9 +25,7 @@ export default class IstioFunctions {
       }
       specKeys.forEach(key => obj.spec[key] && (resource[key] = obj.spec[key]))
       if(yaml) {
-        delete obj.metadata["creationTimestamp"]
         delete obj.metadata["generation"]
-        delete obj.metadata["resourceVersion"]
         delete obj.metadata["selfLink"]
         delete obj.metadata["uid"]
         resource["yaml"] = obj
@@ -572,11 +571,16 @@ export default class IstioFunctions {
     }})
   }
 
-  static async getIstioServicePods(labelSelector: string, k8sClient: K8sClient, loadDetails: boolean = false) {
-    const ingressPods = await K8sFunctions.getPodsByLabels("istio-system", labelSelector, k8sClient)
+  static async getIstioServicePodsList(labels: string, k8sClient: K8sClient) {
+    return K8sFunctions.getPodsListByLabels("istio-system", labels, k8sClient)
+  }
+
+  static async getIstioServicePods(labels: string, k8sClient: K8sClient, loadDetails: boolean = false) {
+    const ingressPods = await K8sFunctions.getPodsByLabels("istio-system", labels, k8sClient)
     return ingressPods.map(pod => {
       return {
         name: pod.name,
+        namespace: pod.namespace,
         podIP: pod.podIP,
         hostIP: pod.hostIP,
         startTime: pod.startTime,
@@ -592,6 +596,10 @@ export default class IstioFunctions {
 
   static async getIngressGatewayPods(k8sClient: K8sClient, loadDetails: boolean = false) {
     return IstioFunctions.getIstioServicePods("istio=ingressgateway", k8sClient, loadDetails)
+  }
+
+  static async getIngressGatewayPodsList(k8sClient: K8sClient) {
+    return IstioFunctions.getIstioServicePodsList("istio=ingressgateway", k8sClient)
   }
 
   static async getPilotPods(k8sClient: K8sClient, loadDetails: boolean = false) {
@@ -707,20 +715,30 @@ export default class IstioFunctions {
   }
 
   static async executeOnPilotPod(k8sClient: K8sClient, pilotPod: string, command: string[]) {
-    return K8sFunctions.podExec("istio-system", pilotPod, "discovery", k8sClient, command)
+    if(k8sClient.canPodExec) {
+      return K8sFunctions.podExec("istio-system", pilotPod, "discovery", k8sClient, command)
+    } else {
+      return ""
+    }
   }
 
   static async executeOnAnyPilotPod(k8sClient: K8sClient, command: string[]) {
-    const pilotPods = await IstioFunctions.getPilotPods(k8sClient)
-    return K8sFunctions.podExec("istio-system", pilotPods[0].name, "discovery", k8sClient, command)
+    if(k8sClient.canPodExec) {
+      const pilotPods = await IstioFunctions.getPilotPods(k8sClient)
+      return K8sFunctions.podExec("istio-system", pilotPods[0].name, "discovery", k8sClient, command)
+    } else {
+      return ""
+    }
   }
 
   static async executeOnAllPilotPods(k8sClient: K8sClient, command: string[]) {
-    const pilotPods = await IstioFunctions.getPilotPods(k8sClient)
     const results: any[] = []
-    for(const pod of pilotPods) {
-      const result = await K8sFunctions.podExec("istio-system", pod.name, "discovery", k8sClient, command)
-      results.push({pod,result})
+    if(k8sClient.canPodExec) {
+      const pilotPods = await IstioFunctions.getPilotPods(k8sClient)
+      for(const pod of pilotPods) {
+        const result = await K8sFunctions.podExec("istio-system", pod.name, "discovery", k8sClient, command)
+        results.push({pod,result})
+      }
     }
     return results
   }
@@ -734,7 +752,7 @@ export default class IstioFunctions {
     if(result) {
       let pilotEndpoints = JSON.parse(result) as any[]
       if(service && namespace) {
-        const text = service + "." + namespace
+        const text = service + "." + namespace + ".svc.cluster.local"
         pilotEndpoints = pilotEndpoints.filter(e => e.clusterName.includes(text))
       }
       return pilotEndpoints
@@ -846,9 +864,26 @@ export default class IstioFunctions {
     return IstioFunctions.getConfigResourcesFromPilot(k8sClient, "destination-rule")
   }
 
-  static getAllEnvoyProxies = async (k8sClient: K8sClient) => {
+  static extractEnvoyProxies(data: any[], pilotPod: string) {
     const proxies: any[] = []
-    if(!k8sClient.istio) {
+    data.filter(cds => cds.node.startsWith("sidecar~") || cds.node.startsWith("router~"))
+        .map(cds => cds.node.split("~"))
+        .forEach(pieces => {
+          const podAndNamespace = pieces[2].split(".")
+          proxies.push({
+            ip: pieces[1],
+            pod: podAndNamespace[0],
+            namespace: podAndNamespace[1],
+            pilotPod: pilotPod,
+            title: podAndNamespace[0]+"."+podAndNamespace[1]
+          })
+        })
+    return proxies
+  }
+
+  static getAllEnvoyProxiesViaAPI = async (k8sClient: K8sClient) => {
+    const proxies: any[] = []
+    if(!k8sClient.istio || !k8sClient.canPodExec) {
       return proxies
     }
     const results = await IstioFunctions.executeOnAllPilotPods(k8sClient,
@@ -856,21 +891,35 @@ export default class IstioFunctions {
     results.forEach(({pod,result}) => {
       if(result) {
         const pilotCDSData = JSON.parse(result) as any[]
-        pilotCDSData.filter(cds => cds.node.startsWith("sidecar~") || cds.node.startsWith("router~"))
-          .map(cds => cds.node.split("~"))
-          .forEach(pieces => {
-            const podAndNamespace = pieces[2].split(".")
-            proxies.push({
-              ip: pieces[1],
-              pod: podAndNamespace[0],
-              namespace: podAndNamespace[1],
-              pilotPod: pod.name,
-            })
-          })
+        proxies.push(...IstioFunctions.extractEnvoyProxies(pilotCDSData, pod.name))
       }
     })
     return proxies
   }
+
+  static async getAllEnvoyProxies(k8sClient: K8sClient) {
+    const proxies: any[] = []
+    if(!k8sClient.istio) {
+      return proxies
+    }
+    const cluster = k8sClient.cluster
+    if(cluster.hasKubectl) {
+      const pilotPods = await KubectlClient.getPods(cluster, "istio-system", "pilot")
+      for(const pilotPod of pilotPods) {
+        let result: any = await KubectlClient.executeCommand(
+          "kubectl exec --context " + cluster.context + " -n istio-system " + pilotPod.name 
+            + " -c discovery -- curl -s localhost:8080/debug/adsz")
+        if(result) {
+          const pilotCDSData = JSON.parse(result) as any[]
+          proxies.push(...IstioFunctions.extractEnvoyProxies(pilotCDSData, pilotPod.name))
+        }
+      }
+    } else {
+      return this.getAllEnvoyProxiesViaAPI(k8sClient)
+    }
+    return proxies
+  }
+
 
   static getNamespaceEnvoyProxies = async (namespace: string, k8sClient: K8sClient) => {
     const proxies = await IstioFunctions.getAllEnvoyProxies(k8sClient)

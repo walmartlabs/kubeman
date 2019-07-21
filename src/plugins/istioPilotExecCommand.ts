@@ -60,7 +60,7 @@ const plugin : ActionGroupSpec = {
       clear(actionContext) {
         this.onOutput && this.onOutput([[
           "Send Command To " + this.pilotPods.length + " Pilot Pods across " + actionContext.getClusters().length + " Clusters"
-        ]], ActionOutputStyle.Log)
+        ]], ActionOutputStyle.Mono)
       },
     }
   ]

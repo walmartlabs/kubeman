@@ -19,7 +19,7 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     width: '100%',
     height: '100%',
     padding: 0,
-    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
+    backgroundColor: palette.background.paper,
   },
   filterContainer: {
     paddingLeft: 5,
@@ -30,12 +30,10 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     paddingLeft: 5,
     margin: 0,
     tableLayout: 'fixed',
-    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
   },
   table: {
     padding: 0,
     paddingLeft: 5,
-    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
     wordWrap: 'break-word',
     wordBreak: 'break-all',
   },
@@ -44,9 +42,9 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     height: '100%',
     padding: 0,
     margin: 0,
-    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
     overflowY: 'scroll',
     overflowX: 'hidden',
+    filter: palette.type ==='dark' ? 'brightness(110%)' : 'brightness(80%)',
     '& pre': {
       display: 'inline-block',
       margin: 0,
@@ -54,17 +52,16 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
       overflowWrap: 'break-word',
       wordWrap: 'break-word',
       wordBreak: 'break-all',
-      fontFamily: 'Courier, monospace',
-      fontSize: '0.99rem',
+      fontFamily: 'Roboto Mono, Courier, monospace',
       height: '15px',
-      color: palette.type ==='dark' ? '#d0d0d0' : 'rgba(15, 15, 150, 0.8)',
-      filter: palette.type ==='dark' ? 'brightness(110%)' : 'brightness(90%)'
+      color: palette.type ==='dark' ? '#d0d0d0' : '#000',
+      filter: palette.type ==='dark' ? 'brightness(120%)' : 'brightness(80%)'
     },
     '& .hljs-string': {
-      color: palette.type ==='dark' ? '#d17d2e' : '#202090'
+      color: palette.type ==='dark' ? '#d17d2e' : '#2020c0'
     },
     '& .hljs-attr': {
-      color: palette.type ==='dark' ? '#c0c0c0' : '#505050'
+      color: palette.type ==='dark' ? '#aaaaaa' : '#505050'
     },
   },
   tableHeaderRow: {
@@ -73,45 +70,65 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     backgroundBlendMode: 'multiply',
     background: palette.type ==='dark' ? '#003099' : '#3141b4',
     cursor: 'pointer',
-  },
-  tableHeaderText: {
-    color: '#ffffff !important',
+    '& p' : {
+      color: '#ffffff',
+      fontWeight: palette.type ==='dark' ? 400 : 500,
+    }
   },
   tableSuperGroupRow: {
     padding: 0,
     height: 38,
     backgroundBlendMode: 'multiply',
-    color: '#ffffff !important',
     background: '#150230',
     cursor: 'pointer',
+    '& td' : {
+      color: '#ffffff',
+      fontWeight: palette.type ==='dark' ? 400 : 500,
+    }
   },
   tableGroupRow: {
     padding: 0,
     height: 36,
     backgroundBlendMode: 'multiply',
-    color: '#ffffff !important',
     background: '#142952',
     cursor: 'pointer',
+    '& td' : {
+      color: '#ffffff',
+      fontWeight: palette.type ==='dark' ? 400 : 500,
+    }
   },
   tableSubgroupRow: {
     padding: 0,
     height: 32,
-    backgroundColor: palette.type ==='dark' ? '#262f63' : '#9abede',
+    backgroundColor: palette.type ==='dark' ? '#262f63' : '#80a8ff',
     backgroundBlendMode: 'multiply',
     cursor: 'pointer',
+    '& td' : {
+      color: palette.type === 'dark' ? '#cccccc' : 'inherit',
+      fontWeight: palette.type ==='dark' ? 400 : 500,
+    }
   },
   tableSectionRow: {
     padding: 0,
     height: 24,
     backgroundBlendMode: 'multiply',
-    backgroundColor: palette.type === 'dark' ? '#2d3a47' : '#80a8ff',
+    fontStyle: 'italic',
+    backgroundColor: palette.type === 'dark' ? '#1d2d5d' : '#9abede',
     cursor: 'pointer',
+    '& td' : {
+      color: palette.type === 'dark' ? '#cccccc' : 'inherit',
+      fontWeight: palette.type ==='dark' ? 400 : 500,
+    }
   },
   tableTitleRow: {
     padding: 0,
     height: 24,
     backgroundBlendMode: 'multiply',
-    backgroundColor: palette.type === 'dark' ? '#505050' : '#a0b0c0',
+    backgroundColor: palette.type === 'dark' ? '#4a5a9a' : '#bbccff',
+    '& td' : {
+      color: '#000',
+      fontWeight: 500,
+    }
   },
   tableEmptyRow: {
     padding: 0,
@@ -125,7 +142,8 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   },
   tableCellInnerRow: {
     padding: 0,
-    height: 24,
+    margin: 0,
+    marginBottom: 2,
     '&:not(:last-child)': {
       //borderBottom: '1px dotted #909090',
     },
@@ -143,14 +161,12 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
   },
   tableGroupRowSpacer: {
     height: 12,
-    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
   },
   tableRowHidden: {
     height: 20,
   },
   tableRowSpacer: {
     height: 4,
-    backgroundColor: palette.type ==='dark' ? palette.background.default : '#edeef8',
   },
   tableAppendedRow: {
     borderColor: palette.type ==='dark' ? '#806f00' : '#ffdd00',
@@ -169,19 +185,23 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     padding: 0,
     paddingTop: 4,
     paddingLeft: 2,
-    color: 'inherit',
+    paddingRight: 2,
+    color: palette.type === 'dark' ? '#cccccc' : 'inherit',
     verticalAlign: 'top',
     width: 'auto',
     minWidth: 120,
     fontSize: '0.90rem',
-    [breakpoints.up('sm')]: {
-      maxWidth: '200px'
-    },
-    [breakpoints.up('md')]: {
-      maxWidth: '250px'
-    },
-    [breakpoints.up('lg')]: {
-      maxWidth: '300px'
+    fontFamily: "Roboto",
+    '&:not(:last-child)': {
+      [breakpoints.up('sm')]: {
+        maxWidth: '200px'
+      },
+      [breakpoints.up('md')]: {
+        maxWidth: '250px'
+      },
+      [breakpoints.up('lg')]: {
+        maxWidth: '300px'
+      }
     }
   },
   tableGroupCell: {
@@ -194,11 +214,15 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
     paddingLeft: 4,
     paddingTop: 0,
   },
+  tableDataCell: {
+    fontSize: '0.87rem',
+    fontWeight: palette.type ==='dark' ? 400 : 500,
+  },
   tableCellCompare: {
     borderRight: palette.type ==='dark' ? columnSeparatorDark : columnSeparatorLight,
   },
   tableKeyCell: {
-    backgroundColor: palette.type ==='dark' ? '#3e3e3e' : '#bcccdc',
+    backgroundColor: palette.type ==='dark' ? '#2e2e2e' : '#e0eef0',
     width: '22%',
     minWidth: 120,
   },
@@ -251,15 +275,17 @@ const styles = ({ palette, spacing, typography, breakpoints }: Theme) => createS
 
   },
   filterInput: {
-    fontSize: '0.9rem',
+    fontSize: '0.89rem',
   },
   loading: {
     position: 'absolute',
+    zIndex: 1000,
     top: '60%',
     left: '60%',
     marginLeft: 'auto',
     marginRight: 'auto',
-    backgroundColor: 'transparent',
+    margin: spacing.unit * 2,
+    color: palette.secondary.main,
   },
 })
 

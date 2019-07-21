@@ -144,12 +144,11 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
 
   onClusterSelection = async (cluster: Cluster) => {
     const selected = this.onSelectComponent(SelectionStore.selectedClusters, cluster)
-    if(selected) {
-      await SelectionManager.loadClusterData(cluster)
-      this.setTab(this.activeTabIndex)
-    } else {
+    const loaded = selected ? await SelectionManager.loadClusterData(cluster) : false
+    if(!loaded) {
       SelectionManager.deselectCluster(cluster)
     }
+    this.setTab(this.activeTabIndex)
     this.setState({reportClusterError: SelectionManager.isAnyClusterInError})
   }
 
@@ -229,7 +228,10 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                 <Tab label="Namespaces" disabled={selectedClusters.size === 0} />
               </Tabs>
             </AppBar>
-            {initialLoading && <CircularProgress className={classes.loading} />}
+            {initialLoading && 
+              <CircularProgress variant="indeterminate" disableShrink
+                      size={48} thickness={4}
+                      className={classes.loading} />}
             {!initialLoading && activeTab === SelectionTabs.Clusters &&  
               <div>
                 {reportClusterError && 
@@ -246,7 +248,10 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                     onSelection={this.onClusterSelection}
                 />
               </div>}
-            {loading && activeTab !== SelectionTabs.Clusters && <CircularProgress className={classes.loading} />}
+            {loading && activeTab !== SelectionTabs.Clusters && 
+              <CircularProgress variant="indeterminate" disableShrink
+                    size={48} thickness={4}
+                    className={classes.loading} />}
             {!loading && activeTab === SelectionTabs.Namespaces &&  
               <div>
                 {reportClusterError && 
@@ -264,7 +269,10 @@ class SelectionDialog extends React.Component<SelectionDialogProps, SelectionDia
                 />
                 }
               </div>}
-              {updating && <CircularProgress className={classes.updating} />}
+            {updating && 
+              <CircularProgress variant="indeterminate" disableShrink
+                  size={48} thickness={4}
+                  className={classes.updating} />}
           </DialogContent>
           <DialogActions className={classes.dialogActions}>
             <div className={classes.floatLeft}>

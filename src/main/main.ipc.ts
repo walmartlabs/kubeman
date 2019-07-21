@@ -23,7 +23,7 @@ contextMenu.append(new MenuItem({
   click: (...args) => {
     const window = BrowserWindow.getFocusedWindow()
     window && window.webContents.openDevTools()
-    window && window.webContents.inspectElement(coords.x+55, coords.y+55)
+    window && window.webContents.inspectElement(coords.x, coords.y)
   }
 }))
 

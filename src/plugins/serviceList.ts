@@ -13,7 +13,7 @@ import { Namespace } from '../k8s/k8sObjectTypes';
 function outputServices(services: any[], output) {
   services.length === 0 && output.push(["No services found"])
   services.forEach(service => {
-    output.push([">>>"+service.name+"."+service.namespace], [service.yaml])
+    output.push([">>>"+service.name+"."+service.namespace], [service.yaml ? service.yaml : service])
   })
 }
 
@@ -32,13 +32,16 @@ const plugin : ActionGroupSpec = {
 
         const clusters = actionContext.getClusters()
         for(const cluster of clusters) {
-          this.onStreamOutput && this.onStreamOutput([[">Cluster: "+cluster.name]])
+          const clusterServices: any[] = await K8sFunctions.getClusterServices(cluster.k8sClient)
+          this.onStreamOutput && this.onStreamOutput([[">Cluster: "+cluster.name + " ("+clusterServices.length+" services)"]])
           let clusterNamespaces = await K8sFunctions.getClusterNamespaces(cluster.k8sClient)
           for(const namespace of clusterNamespaces) {
             const output: ActionOutput = []
-            output.push([">>Namespace: "+namespace.name])
-            outputServices(await K8sFunctions.getServices(cluster.name, namespace.name, cluster.k8sClient), output)
+            const services = clusterServices.filter(s => s.namespace === namespace.name)
+            output.push([">>Namespace: "+namespace.name + " ("+services.length+" services)"])
+            outputServices(services, output)
             this.onStreamOutput && this.onStreamOutput(output)
+            this.sleep && await this.sleep(200)
           }
         }
         this.showOutputLoading && this.showOutputLoading(false)
@@ -57,15 +60,13 @@ const plugin : ActionGroupSpec = {
 
         const clusters = actionContext.getClusters()
         const selections = await ChoiceManager.getSelections(actionContext)
-        for(const cluster of clusters) {
-          this.onStreamOutput && this.onStreamOutput([[">Cluster: "+cluster.name]])
-          let clusterNamespaces = selections.filter(s => s.cluster === cluster.name).map(s => s.item) as Namespace[]
-          for(const namespace of clusterNamespaces) {
-            const output: ActionOutput = []
-            output.push([">>Namespace: "+namespace.name])
-            outputServices(await K8sFunctions.getServices(cluster.name, namespace.name, cluster.k8sClient), output)
-            this.onStreamOutput && this.onStreamOutput(output)
-          }
+
+        for(const selection of selections) {
+          const services = await K8sFunctions.getServicesWithDetails(selection.name, selection.item.cluster.k8sClient)
+          const output: ActionOutput = []
+          output.push([">Namespace: " + selection.title + ", Cluster: "+selection.cluster + " ("+services.length+" services)"])
+          outputServices(services, output)
+          this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
@@ -86,13 +87,15 @@ const plugin : ActionGroupSpec = {
           const externalServices = await K8sFunctions.getClusterExternalServices(cluster.k8sClient)
           externalServices.length === 0 && output.push(["No external services found"])
 
-          let clusterNamespaces = await K8sFunctions.getClusterNamespaces(cluster.k8sClient)
-          for(const namespace of clusterNamespaces) {
-            const nsServices = externalServices.filter(s => s.namespace === namespace.name)
-            nsServices.length > 0 && output.push([">>Namespace: "+namespace.name])
-            nsServices.forEach(service => {
-              output.push([">>>"+service.name+"."+service.namespace], [service.yaml])
-            })
+          if(externalServices.length > 0) {
+            let clusterNamespaces = await K8sFunctions.getClusterNamespaces(cluster.k8sClient)
+            for(const namespace of clusterNamespaces) {
+              const nsServices = externalServices.filter(s => s.namespace === namespace.name)
+              if(nsServices.length > 0) {
+                output.push([">>Namespace: "+namespace.name + " ("+nsServices.length+" services)"])
+                outputServices(nsServices, output)
+              }
+            }
           }
           this.onStreamOutput && this.onStreamOutput(output)
         }

@@ -13,8 +13,9 @@ import StreamLogger from '../logger/streamLogger'
 import OutputManager from '../output/outputManager';
 
 export default class K8sPluginHelper {
-  static async generateComparisonOutput(actionContext, onOutput, name, ...fields) {
-    let selections = ChoiceManager.getSelections(actionContext)
+  static async generateComparisonOutput(action, actionContext, getSelections, onOutput, onStreamOutput, name, ...fields) {
+    action.setColumnWidths("20%", "40%", "40%")
+    let selections = await getSelections(actionContext)
     if(selections.length < 2) {
       onOutput(["Not enough " + name + " selected"], ActionOutputStyle.Text)
       return
@@ -34,6 +35,8 @@ export default class K8sPluginHelper {
         outputKeys.forEach((key, index) => outputRows[index+1].push(selection.item[key] ||''))
       }
     })
+    onOutput([outputHeaders], "Compare")
+
     outputRows.forEach((row,i) => {
       const hasAnyValue = row.slice(1).map(value => value && value !== '')
                                 .reduce((r1,r2) => r1 || r2, false)
@@ -41,20 +44,19 @@ export default class K8sPluginHelper {
         delete outputRows[i]
       }
     })
-    output.push(outputHeaders)
     output = output.concat(outputRows)
-    onOutput(output, "Compare")
+    onStreamOutput(output)
   }
 
-  static async tailPodLogs(pods: any[], container: string, k8sClient, rowLimit, onStreamOutput, showOutputLoading, setScrollMode, ...filters) {
+  static async getPodLogs(pods: any[], container: string, k8sClient, tail, rowLimit, historyLimit, onStreamOutput, showOutputLoading, setScrollMode, ...filters) {
     showOutputLoading(true)
-    setScrollMode(false)
-    const podRowLimit = Math.ceil((rowLimit || 200)/pods.length)
+    setScrollMode && setScrollMode(false)
+    const podRowLimit = Math.ceil((historyLimit || 200)/pods.length)
     StreamLogger.init(rowLimit, onStreamOutput, ...filters)
     filters.length > 0 && OutputManager.filter(filters.join(" "))
   
     for(const pod of pods) {
-      const logStream = await K8sFunctions.getPodLog(pod.namespace, pod.name, container, k8sClient, true, podRowLimit)
+      const logStream = await K8sFunctions.getPodLog(pod.namespace, pod.name, container, k8sClient, tail, podRowLimit)
       StreamLogger.captureLogStream(pod.name, logStream)
     }
     showOutputLoading(false)

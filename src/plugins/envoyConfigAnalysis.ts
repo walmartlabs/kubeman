@@ -24,10 +24,10 @@ const plugin : ActionGroupSpec = {
 
       choose(actionContext) {
         ChoiceManager.doubleChoices(this, actionContext,
-          IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 3, actionContext),
-          IstioPluginHelper.getSelectedEnvoyProxies.bind(IstioPluginHelper, actionContext),
+          ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 3, actionContext),
+          ChoiceManager.getSelectedEnvoyProxies.bind(ChoiceManager, actionContext),
           ChoiceManager.chooseService.bind(ChoiceManager,1, 3, actionContext),
-          ChoiceManager.getSelections.bind(ChoiceManager, actionContext)
+          ChoiceManager.getServiceSelections.bind(ChoiceManager, actionContext)
         )
       },
 
@@ -53,24 +53,28 @@ const plugin : ActionGroupSpec = {
             output.push([">Service: "+service.name+"."+service.namespace + 
                           " @ Envoy Sidecar: " + sidecarName + " @ Cluster: " + sidecar.cluster])
 
-            const configsByType = await EnvoyFunctions.getEnvoyConfigsForService(service.name, service.namespace,
-                                          sidecar.namespace, sidecar.pod, "istio-proxy", cluster.k8sClient)
+            if(!cluster.canPodExec) {
+              output.push(["Lacking pod command execution privileges"])
+            } else {
+              const configsByType = await EnvoyFunctions.getEnvoyConfigsForService(service.name, service.namespace,
+                                            sidecar.namespace, sidecar.pod, "istio-proxy", cluster.k8sClient)
 
-            Object.keys(configsByType).forEach(configType => {
-              const items = configsByType[configType]
-              output.push([">>" + configType])
-              items.length === 0 && output.push(["No matching data found"])
-              items.length > 0 && items.forEach(item => output.push([">>>"+ item.title], [delete item.title && item]))
-            })
+              Object.keys(configsByType).forEach(configType => {
+                const items = configsByType[configType]
+                output.push([">>" + configType])
+                items.length === 0 && output.push(["No matching data found"])
+                items.length > 0 && items.forEach(item => output.push([">>>"+ item.title], [delete item.title && item]))
+              })
 
-            const podDetails = await K8sFunctions.getPodDetails(sidecar.namespace, sidecar.pod, cluster.k8sClient)
-            if(podDetails) {
-              const egressSidecarConfigs = await IstioFunctions.getPodEgressSidecarConfigs(podDetails.labels, podDetails.namespace, cluster.k8sClient)
-              if(egressSidecarConfigs && egressSidecarConfigs.length > 0) {
-                output.push([">>Egress Sidecar Configs for " + sidecarName])
-                egressSidecarConfigs.forEach(sc => output.push([sc.yaml]))
-              } else {
-                output.push([">>No Egress Sidecar Configs found for " + sidecarName])
+              const podDetails = await K8sFunctions.getPodDetails(sidecar.namespace, sidecar.pod, cluster.k8sClient)
+              if(podDetails) {
+                const egressSidecarConfigs = await IstioFunctions.getPodEgressSidecarConfigs(podDetails.labels, podDetails.namespace, cluster.k8sClient)
+                if(egressSidecarConfigs && egressSidecarConfigs.length > 0) {
+                  output.push([">>Egress Sidecar Configs for " + sidecarName])
+                  egressSidecarConfigs.forEach(sc => output.push([sc.yaml]))
+                } else {
+                  output.push([">>No Egress Sidecar Configs found for " + sidecarName])
+                }
               }
             }
             this.onStreamOutput && this.onStreamOutput(output)
@@ -80,13 +84,12 @@ const plugin : ActionGroupSpec = {
       },
 
       clear() {
-        this.onOutput && this.onOutput([["Sidecar Envoy Config for Service"]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Sidecar Envoy Config for Service"]], ActionOutputStyle.Mono)
       },
       refresh(actionContext) {
         this.act(actionContext)
       },
       onActionOption(actionContext, option) {
-        console.log(option)
       }
     }
   ]

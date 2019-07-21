@@ -11,6 +11,7 @@ import IstioPluginHelper from '../k8s/istioPluginHelper'
 import EnvoyFunctions, {EnvoyConfigType} from '../k8s/envoyFunctions'
 import JsonUtil from '../util/jsonUtil';
 import K8sFunctions from '../k8s/k8sFunctions';
+import ChoiceManager from '../actions/choiceManager';
 
 
 function identifyEnvoyClusterDiffs(diffPairs: any[], versionMismatchedPairs: any[], otherDiffPairs: any[], 
@@ -219,19 +220,9 @@ export function compareEnvoyConfigs(onStreamOutput, configs1: any[], configs2: a
 
 export async function compareTwoEnvoys(namespace1: string, pod1: string, container1: string, k8sClient1,
                                 namespace2: string, pod2: string, container2: string, k8sClient2, onStreamOutput) {
-  const envoy1Bootstrap = await EnvoyFunctions.getEnvoyBootstrapConfig(k8sClient1, namespace1, pod1, container1)
-  const envoy1Clusters = await EnvoyFunctions.getEnvoyClusters(k8sClient1, namespace1, pod1, container1)
-  let envoy1Listeners = await EnvoyFunctions.getEnvoyListeners(k8sClient1, namespace1, pod1, container1)
-  envoy1Listeners = envoy1Listeners.filter(l => l.title.includes("active"))
-  const envoy1Routes = await EnvoyFunctions.getEnvoyRoutes(k8sClient1, namespace1, pod1, container1)
+
   const pod1Details = await K8sFunctions.getPodDetails(namespace1, pod1, k8sClient1)
   const pod1IP = pod1Details && pod1Details.podIP
-
-  const envoy2Bootstrap = await EnvoyFunctions.getEnvoyBootstrapConfig(k8sClient2, namespace2, pod2, container2)
-  const envoy2Clusters = await EnvoyFunctions.getEnvoyClusters(k8sClient2, namespace2, pod2, container2)
-  let envoy2Listeners = await EnvoyFunctions.getEnvoyListeners(k8sClient2, namespace2, pod2, container2)
-  envoy2Listeners = envoy1Listeners.filter(l => l.title.includes("active"))
-  const envoy2Routes = await EnvoyFunctions.getEnvoyRoutes(k8sClient2, namespace2, pod2, container2)
   const pod2Details = await K8sFunctions.getPodDetails(namespace2, pod2, k8sClient2)
   const pod2IP = pod2Details && pod2Details.podIP
 
@@ -239,14 +230,23 @@ export async function compareTwoEnvoys(namespace1: string, pod1: string, contain
   pod1IP && valuesToIgnore.push(pod1IP)
   pod2IP && valuesToIgnore.push(pod2IP)
 
+  const envoy1Bootstrap = await EnvoyFunctions.getEnvoyBootstrapConfig(k8sClient1, namespace1, pod1, container1)
+  const envoy2Bootstrap = await EnvoyFunctions.getEnvoyBootstrapConfig(k8sClient2, namespace2, pod2, container2)
   compareEnvoyConfigs(onStreamOutput, envoy1Bootstrap, envoy2Bootstrap, EnvoyConfigType.Bootstrap, false, valuesToIgnore)
 
-  compareEnvoyConfigs(onStreamOutput, envoy1Clusters, envoy2Clusters, EnvoyConfigType.Clusters, false, valuesToIgnore)
-
+  let envoy1Listeners = await EnvoyFunctions.getEnvoyListeners(k8sClient1, namespace1, pod1, container1)
+  envoy1Listeners = envoy1Listeners.filter(l => l.title.includes("active"))
+  let envoy2Listeners = await EnvoyFunctions.getEnvoyListeners(k8sClient2, namespace2, pod2, container2)
+  envoy2Listeners = envoy1Listeners.filter(l => l.title.includes("active"))
   compareEnvoyConfigs(onStreamOutput, envoy1Listeners, envoy2Listeners, EnvoyConfigType.Listeners, false, valuesToIgnore)
 
+  const envoy1Routes = await EnvoyFunctions.getEnvoyRoutes(k8sClient1, namespace1, pod1, container1)
+  const envoy2Routes = await EnvoyFunctions.getEnvoyRoutes(k8sClient2, namespace2, pod2, container2)
   compareEnvoyConfigs(onStreamOutput, envoy1Routes, envoy2Routes, EnvoyConfigType.Routes, false, valuesToIgnore)
 
+  const envoy1Clusters = await EnvoyFunctions.getEnvoyClusters(k8sClient1, namespace1, pod1, container1)
+  const envoy2Clusters = await EnvoyFunctions.getEnvoyClusters(k8sClient2, namespace2, pod2, container2)
+  compareEnvoyConfigs(onStreamOutput, envoy1Clusters, envoy2Clusters, EnvoyConfigType.Clusters, false, valuesToIgnore)
 }
 
 
@@ -260,17 +260,17 @@ const plugin : ActionGroupSpec = {
       order: 30,
       loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 2, 2),
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 2, 2),
 
       async act(actionContext) {
-        const sidecars = IstioPluginHelper.getSelectedEnvoyProxies(actionContext)
+        const sidecars = ChoiceManager.getSelectedEnvoyProxies(actionContext)
         const sidecar1 = sidecars[0]
         const sidecar2 = sidecars[1]
 
         this.onOutput && this.onOutput([["Sidecar Config Comparison for " + 
           sidecar1.pod+"."+sidecar1.namespace+"@"+sidecar1.cluster + " and " +
           sidecar2.pod+"."+sidecar2.namespace+"@"+sidecar2.cluster, 
-          ""]], ActionOutputStyle.Log)
+          ""]], ActionOutputStyle.Mono)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const cluster1 = actionContext.getClusters().filter(c => c.name === sidecar1.cluster)[0]

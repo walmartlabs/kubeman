@@ -26,13 +26,17 @@ const styles = ({ palette, spacing, typography, transitions }: Theme) => createS
   expansionDetails: {
     display: 'block',
   },
-  selectedAction: {
+  menuItem: {
+  },
+  selectedMenuItem: {
     backgroundColor: palette.type === 'dark' ? '#666600' : '#80a8ff',
-    fontStyle: 'bold',
     fontWeight: 800,
   },
   listText: {
     fontSize: typography.pxToRem(10),
+    '& p': {
+      fontWeight: palette.type ==='dark' ? 400 : 500,
+    }
   },
   refreshRoot: {
     'label + &': {

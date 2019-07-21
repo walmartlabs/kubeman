@@ -52,6 +52,8 @@ export default class SelectionManager {
   }
 
   static setSelections(selectedClusters: SelectedClusters, selectedNamespaces: SelectedNamespaces) {
+    this.clustersInError = []
+    this.namespacesInError = []
     this.selectedClusters = new Map(selectedClusters)
     this.selectedNamespaces = new Map(selectedNamespaces)
   }
@@ -119,7 +121,6 @@ export default class SelectionManager {
       }
     })
     this.selectedClusters.delete(cluster.text())
-    this.clustersInError = this.clustersInError.filter(c => c !== cluster.text())
   }
 
   static deselectAllClusters() {

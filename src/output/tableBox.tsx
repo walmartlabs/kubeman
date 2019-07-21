@@ -8,9 +8,9 @@ LICENSE file in the root directory of this source tree.
 import React, { ChangeEvent, KeyboardEvent, SyntheticEvent } from "react"
 
 import { withStyles, WithStyles } from '@material-ui/core/styles'
-import { Table, TableHead, TableBody, TableRow, TableCell } from "@material-ui/core";
-import { Paper, Typography, InputBase, CircularProgress } from '@material-ui/core';
-import { ActionOutput } from "../actions/actionSpec";
+import { Table, TableHead, TableBody, TableRow, TableCell } from "@material-ui/core"
+import { Paper, Typography, InputBase, CircularProgress } from '@material-ui/core'
+import { ActionOutput } from "../actions/actionSpec"
 import OutputManager, {Row, Cell} from './outputManager'
 import styles from './tableBox.styles'
 import './tableBox.css'
@@ -18,18 +18,20 @@ import './tableBox.css'
 interface ITableCellProps extends WithStyles<typeof styles> {
   index: number
   cell: Cell
-  colSpan?: number
+  width: any
+  colSpan: number
   className: string
 }
 
 function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, compare: boolean, 
-                          health: boolean, log: boolean, wide: boolean, classes: any) : string {
+                          health: boolean, mono: boolean, wide: boolean, classes: any) : string {
   let className = classes.tableCell
   if(cell.isSuperGroup || cell.isGroup) {
     className += " " + classes.tableGroupCell
   } else if(cell.isSubGroup || cell.isSection) {
     className += " " + classes.tableSubGroupCell
   } else {
+    className += " " + classes.tableDataCell
     if(isKeyColumn && !wide) {
       className = className + " " + classes.tableKeyCell
     }
@@ -50,34 +52,27 @@ function computeCellClass(cell: Cell, isKeyColumn: boolean, highlight: boolean, 
   return className
 }
 
-const TextCell = withStyles(styles)(({index, cell, colSpan, className, classes}: ITableCellProps) => {
+const TextCell = withStyles(styles)(({index, cell, width, colSpan, className, classes}: ITableCellProps) => {
   return cell.render((formattedText) => {
     return (
-      <TableCell key={"textcell"+index} scope="row" colSpan={colSpan}
+      <TableCell key={"textcell"+index} scope="row" 
+                style={{width}} colSpan={colSpan}
                 className={className}
                 dangerouslySetInnerHTML={{__html:formattedText}} />
     )})
 })
 
-const GridCell = withStyles(styles)(({index, cell, colSpan, className, classes}: ITableCellProps) => {
+const GridCell = withStyles(styles)(({index, cell, width, colSpan, className, classes}: ITableCellProps) => {
   return (
-    <TableCell key={"gridcell"+index} component="th" scope="row" colSpan={colSpan}
+    <TableCell key={"gridcell"+index} scope="row" colSpan={colSpan}
               className={className}
-              style={{paddingLeft: 2, paddingRight: 2}} >
-      <Table>
-        <TableBody>
-          {cell.render((formattedText, gridIndex) => {
-            return (
-              <TableRow key={gridIndex} className={classes.tableCellInnerRow}>
-                <TableCell scope="row" colSpan={colSpan}
-                className={className}
-                dangerouslySetInnerHTML={{__html:formattedText}} />
-              </TableRow>
-            )
-          })}
-        </TableBody>  
-      </Table>        
-      
+              style={{paddingLeft: 2, paddingRight: 2, width}} >
+      {cell.render((formattedText, gridIndex) => {
+        return (
+          <p key={gridIndex} className={classes.tableCellInnerRow}
+            dangerouslySetInnerHTML={{__html:formattedText}} />
+        )
+      })}
     </TableCell>
   )
 })
@@ -90,7 +85,8 @@ interface FilterInputProps extends WithStyles<typeof styles> {
   onFilter: (...any) => any
   clearFilter: (resetOutput?: boolean, refresh?: boolean) => any
   clearActionInput: () => any
-  onActionTextInput: (string) => any
+  onActionInput: (string) => any
+  updateActionInputText: (string) => any
 }
 
 interface FilterInputState {
@@ -123,7 +119,7 @@ class extends React.Component<FilterInputProps, FilterInputState> {
         if(this.props.isFilterInput(filterText)) {
           this.props.onFilter(filterText)
         } else {
-          this.props.onActionTextInput(filterText)
+          this.props.onActionInput(filterText)
         }
         break
     }
@@ -139,6 +135,7 @@ class extends React.Component<FilterInputProps, FilterInputState> {
       this.props.clearActionInput()
     } else {
       this.props.clearFilter(true)
+      this.props.updateActionInputText(filterText)
     }
     this.setState({filterText})
   }
@@ -158,16 +155,38 @@ class extends React.Component<FilterInputProps, FilterInputState> {
 })
 
 
+interface LogOutputProps extends WithStyles<typeof styles> {
+  output: ActionOutput
+}
+
+const LogOutput = withStyles(styles)(
+class extends React.Component<LogOutputProps> {
+  render() {
+    const {classes} = this.props
+    return this.props.output.map((row,index) => 
+      <TableRow key={"log"+index}>
+        <TableCell className={classes.tableCell + " " + classes.tableDataCell + " " + classes.tableKeyCell} 
+                  dangerouslySetInnerHTML={{__html: row[0] ? "<pre>"+row[0]+"</pre>" : ''}} />
+        <TableCell className={classes.tableCell + " " + classes.tableDataCell} 
+                  dangerouslySetInnerHTML={{__html: row[1] ? "<pre>"+row[1]+"</pre>" : ''}} />
+      </TableRow>
+    )
+  }
+})  
+
+
 interface IProps extends WithStyles<typeof styles> {
   output: ActionOutput
   compare: boolean
   log: boolean
+  mono: boolean
   health: boolean
   acceptInput: boolean
   allowRefresh: boolean
+  columnWidths: any[]
   scrollMode: boolean
   rowLimit: number
-  onActionTextInput: (text: string) => void
+  onActionInput: (text: string) => void
 }
 
 interface IState {
@@ -196,7 +215,7 @@ export class TableBox extends React.Component<IProps, IState> {
     this.isScrolled = false
     this.lastScrollTop = -1
     const output = props.output.concat(this.streamOutput)
-    OutputManager.setOutput(output, props.log, props.rowLimit)
+    OutputManager.setOutput(output, props.log, props.mono, props.rowLimit)
     this.filterText.length > 0 && this.isFilterInput(this.filterText) && this.filter()
     this.forceUpdate()
   }
@@ -222,6 +241,15 @@ export class TableBox extends React.Component<IProps, IState> {
 
   clearActionInput = () => {
     this.actionInputText = ''
+  }
+
+  updateActionInputText = (actionInputText: string) => {
+    this.actionInputText = actionInputText
+  }
+
+  onActionInput= (text: string) => {
+    this.actionInputText = text
+    this.props.onActionInput(text.slice(1))
   }
 
   clearContent = () => {
@@ -253,11 +281,6 @@ export class TableBox extends React.Component<IProps, IState> {
       clearTimeout(this.filterTimer)
     }
     this.filterTimer = setTimeout(this.filter, 500)
-  }
-
-  onActionTextInput= (text: string) => {
-    this.actionInputText = text
-    this.props.onActionTextInput(text.slice(1))
   }
 
   scrollToBottom() {
@@ -317,6 +340,7 @@ export class TableBox extends React.Component<IProps, IState> {
                 index={i}
                 cell={cell}
                 className={cellClass}
+                width={'100%'}
                 colSpan={colspans[i]}
               />
             )
@@ -335,18 +359,19 @@ export class TableBox extends React.Component<IProps, IState> {
   }
 
   renderCells(row, cells, gap) {
-    const {classes, compare, health, log} = this.props
+    const {classes, columnWidths, compare, health, mono} = this.props
     let highlight = compare ? row.columnsDiffer : false
 
     return cells.map((cell, ci) => {
       const isKeyColumn = !row.isNoKey && !row.isTitle && cell.isFirstColumn && row.columnCount > 1
-      const cellClass = computeCellClass(cell, isKeyColumn, highlight, compare, health, log, row.isWide, classes)
+      const cellClass = computeCellClass(cell, isKeyColumn, highlight, compare, health, mono, row.isWide, classes)
       if(cell.isArray) {
         return (
           <GridCell key={"GridCell"+ci} 
                     index={ci} 
                     cell={cell}
                     className={cellClass}
+                    width={columnWidths[ci]}
                     colSpan={ci === 0 ? gap : 1}
           />
         )
@@ -355,6 +380,7 @@ export class TableBox extends React.Component<IProps, IState> {
                         index={ci} 
                         cell={cell}
                         className={cellClass}
+                        width={columnWidths[ci]}
                         colSpan={ci === 0 ? gap : 1}
               />
       }
@@ -401,10 +427,9 @@ export class TableBox extends React.Component<IProps, IState> {
   }
 
   renderHeaderRow() {
-    const {classes} = this.props
+    const {classes, columnWidths} = this.props
     let headers = OutputManager.headers
     const filterMatchedColumns = OutputManager.matchedColumns
-    const keyColumnWidth = 'auto'
     const headersWithData = headers.filter(h => h.length > 0)
     const emptyCount = headers.length - headersWithData.length
     const showMultipleColumns = headersWithData.length > 1
@@ -416,9 +441,10 @@ export class TableBox extends React.Component<IProps, IState> {
         {headers.map((header, i) => {
           const columnMatchedFilter = filterMatchedColumns.has(i)
           return(
-            <TableCell key={i} style={{width: i===0?keyColumnWidth:'auto', paddingLeft: 10}}
+            <TableCell key={i} style={{width: columnWidths[i] ? columnWidths[i] : 'auto', 
+                                        paddingLeft: 10}}
                     colSpan={emptyCount === 0 ? 1 : i === 0 ? 1+emptyCount : 1} >
-              <Typography className={classes.tableHeaderText}>
+              <Typography>
                 {(header instanceof Array) ? header.map((text,hi) => {
                   return (
                     <span key={hi} style={{display: 'block'}}>
@@ -460,7 +486,7 @@ export class TableBox extends React.Component<IProps, IState> {
       <TableRow key={index+"hidden"} className={classes.tableRowHidden}>
         <TableCell className={classes.tableCellHidden}
                   style={{cursor: 'pointer'}}
-                  colSpan={OutputManager.columnCount}
+                  colSpan={100}
                   onClick={parentRow && parentRow.isSomeGroup ? this.onRowClick.bind(this, parentRow) : undefined}
         >
         ...
@@ -488,17 +514,21 @@ export class TableBox extends React.Component<IProps, IState> {
     const {classes} = this.props
     const columnCount = OutputManager.columnCount
 
+    const childDataRowCounts: number[] = []
     const renderedRows: any[] = []
     const renderRow = (row: Row, index) => {
       const currentRows: any[] = []
       const childRows: any[] = []
-      let dataChildRowCount = 0
+      let childDataRowCount = 0
+      let hasHiddenChildren = false
+      let hiddenIndicatorShown = false
       if(row.isVisible && row.isFirstAppendedRow && (!row.isSomeGroup || row.visibleChildCount > 0)) {
         currentRows.push(this.renderScrollPoint(index))
       }
       if(row.isSomeGroup) {
         row.isVisible && currentRows.push(...this.renderGroupRow(row, index))
-        if(row.isVisible && row.hiddenChildCount > 0) {
+        if(!hiddenIndicatorShown && row.isVisible && row.hiddenChildCount > 0) {
+          hiddenIndicatorShown = true
           childRows.push(...this.renderHiddenIndicatorRow(index+"opening", row, classes))
         }
       } else {
@@ -506,15 +536,24 @@ export class TableBox extends React.Component<IProps, IState> {
       }
       row.filteredChildren.map((childRow,ri) => {
         childRows.push(...renderRow(childRow, index+"."+ri))
-        !childRow.isSomeGroup && ++dataChildRowCount
+        if(childRow.isSomeGroup) {
+          childDataRowCount += (childDataRowCounts.pop() || 0)
+        } else if(childRow.isVisible) { 
+          ++childDataRowCount
+        } else {
+          hasHiddenChildren = true
+        }
       })
-      if(row.isSomeGroup && row.isVisible && dataChildRowCount > 0 && row.hiddenChildCount > 0 && row.visibleChildCount > 0) {
+      if(!hiddenIndicatorShown && row.isSomeGroup && row.isVisible && childDataRowCount > 0 && row.hiddenChildCount > 0 && row.visibleChildCount > 0) {
+        hiddenIndicatorShown = true
         childRows.push(...this.renderHiddenIndicatorRow(index+"closing", row, classes))
       }
-      if(currentRows.length > 0 && row.isSomeGroup) {
+      childDataRowCounts.push(hasHiddenChildren ? childDataRowCount + 1 : childDataRowCount)
+      if(currentRows.length > 0 && childDataRowCount > 0 && row.isSomeGroup) {
         currentRows.push(...this.wrapRowsInTable(childRows, index, classes))
         return currentRows
       } else if(currentRows.length > 0) {
+        currentRows.push(...childRows)
         return currentRows
       } else {
         return []
@@ -534,7 +573,9 @@ export class TableBox extends React.Component<IProps, IState> {
       return <div/>
     }
 
-    const renderedRows = this.renderRows()
+    const renderedRows = this.props.log ? 
+      [<LogOutput key="0" output={OutputManager.logOutput} />]
+      : this.renderRows()
 
     const columnCount = OutputManager.columnCount
     let inputMessage = "Type to filter results"
@@ -555,7 +596,8 @@ export class TableBox extends React.Component<IProps, IState> {
               onFilter={this.onFilter}
               clearFilter={this.clearFilter}
               clearActionInput={this.clearActionInput}
-              onActionTextInput={this.onActionTextInput}
+              onActionInput={this.onActionInput}
+              updateActionInputText={this.updateActionInputText}
           />
         </Paper>
         <Table className={classes.tableContainer}>
@@ -565,7 +607,10 @@ export class TableBox extends React.Component<IProps, IState> {
           <TableBody>
             <TableRow>
               <TableCell colSpan={columnCount} style={{width: '100%', padding: 0}}>
-                {this.loading && <CircularProgress className={classes.loading} />}
+                {this.loading && 
+                  <CircularProgress variant="indeterminate" disableShrink
+                    size={48} thickness={4}
+                    className={classes.loading} />}
                 <div className={classes.tableBody} onScroll={this.onScroll}>
                   <Table className={classes.table}>
                     <TableBody>

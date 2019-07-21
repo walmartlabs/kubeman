@@ -11,11 +11,14 @@ import Yaml from 'js-yaml'
 import jp from 'jsonpath'
 import fs from 'fs'
 import * as k8s from 'kubernetes-client'
+import {config as KubeConfig} from 'kubernetes-client/backends/request'
 import {Cluster} from "./k8sObjectTypes"
+import KubectlClient from './kubectlClient'
 
 const homedir = os.homedir()
 
 export interface K8sClient extends k8s.ApiV1 {
+  cluster: Cluster
   apps: k8s.ApisAppsV1
   autoscaling: k8s.ApisAutoscalingV1
   rbac: k8s.ApisRbac_authorization_k8s_ioV1
@@ -32,8 +35,9 @@ export interface K8sClient extends k8s.ApiV1 {
   certificates: k8s.ApisCertificates_k8s_ioV1beta1
   authorization: k8s.ApisAuthorization_k8s_ioV1
   authentication: k8s.ApisAuthentication_k8s_ioV1
-  istio?: any,
   crds: any,
+  istio?: any,
+  canPodExec?: boolean,
 }
 
 export type K8sAdminClient = k8s.Api
@@ -51,9 +55,10 @@ export async function getClientForCluster(cluster: Cluster) {
     throw new Error("Cannot identify cluster " + cluster.name + " from config.")
   }
   const config = k8s.config.fromKubeconfig(kubeConfig)
-  const client = new k8s.Client1_10({config})
+  const client = new k8s.Client1_13({config})
 
   const k8sClient: K8sClient = {
+    cluster,
     ...client.api.v1,
     autoscaling: client.apis.autoscaling.v1,
     apps: client.apis.apps.v1,
@@ -120,6 +125,48 @@ export async function getClientForCluster(cluster: Cluster) {
     cluster.hasIstio = false
     console.log("Failed to load Istio CRDs for cluster " + cluster.name)
     console.log(error)
+  }
+  console.clear()
+  await KubectlClient.getPods(cluster, "kube-system")
+    .then(results => {
+      cluster.hasKubectl = true
+      console.log("kubectl is accessible")
+    })
+    .catch(error => {
+      cluster.hasKubectl = false
+      console.log("kubectl is not accessible")
+    })
+  let podExecResult
+  try {
+    const pods = await k8sClient.namespace("kube-system").pods.get({qs: {labelSelector: "component=kube-apiserver"}})
+    if(pods && pods.body && pods.body.items && pods.body.items.length > 0) {
+      const pod = pods.body.items[0].metadata.name
+      try {
+        podExecResult = await k8sClient.namespaces("kube-system").pods(pod).exec.post({
+          qs: {
+            container: "kube-apiserver",
+            command: ["ls"],
+            stdout: true,
+            stderr: true,
+          }
+        })
+        podExecResult = podExecResult.body
+      } catch(error) {
+        if(cluster.hasKubectl) {
+          podExecResult = await KubectlClient.executePodCommand(cluster, "kube-system", pod, "kube-apiserver", "ls")
+        }
+      }
+    }
+  } catch(error) {
+    console.log("Cannot execute commands on pods")
+    console.log(error)
+  }
+  if(podExecResult && podExecResult.length > 0) {
+    cluster.canPodExec = true
+    k8sClient.canPodExec = true
+  } else {
+    cluster.canPodExec = false
+    k8sClient.canPodExec = false
   }
   return k8sClient
 }

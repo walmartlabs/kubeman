@@ -28,7 +28,7 @@ const plugin : ActionGroupSpec = {
       choose: ChoiceManager.chooseService.bind(ChoiceManager, 1, 1),
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
+        const selections: ItemSelection[] = await ChoiceManager.getServiceSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
@@ -54,8 +54,10 @@ const plugin : ActionGroupSpec = {
           }
           await this.outputPolicies(service, cluster.k8sClient)
           await this.outputDestinationRules(service, cluster.k8sClient)
+          this.showOutputLoading && this.showOutputLoading(true)
           await this.outputRoutingAnalysis(service, podsAndContainers, vsGateways, ingressPods, 
                                                   sidecarConfigs, cluster)
+          this.showOutputLoading && this.showOutputLoading(true)
           await this.outputIngressGatewayConfigs(service, cluster.k8sClient)
 
         } else {
@@ -192,23 +194,27 @@ const plugin : ActionGroupSpec = {
         }))
 
         if(hasPods) {
-          if(ingressPods && ingressPods.length > 0 ) {
-            try {
-              const servicePods = podsAndContainers.pods as PodDetails[]
-              for(const pod of servicePods) {
-                if(pod.podIP) {
-                  const result = await K8sFunctions.podExec("istio-system", ingressPods[0].name, 
-                  "istio-proxy", cluster.k8sClient, ["ping", "-c 2", pod.podIP])
-                  const pingSuccess = result.includes("2 received")
-                  output.push([
-                    "Pod " + pod.name + (pingSuccess ? " is Reachable" : ": is Unreachable") + " from ingress gateway"
-                  ])
+          if(cluster.canPodExec) {
+            if(ingressPods && ingressPods.length > 0 ) {
+              try {
+                const servicePods = podsAndContainers.pods as PodDetails[]
+                for(const pod of servicePods) {
+                  if(pod.podIP) {
+                    const result = await K8sFunctions.podExec("istio-system", ingressPods[0].name, 
+                    "istio-proxy", cluster.k8sClient, ["ping", "-c 2", pod.podIP])
+                    const pingSuccess = result.includes("2 received")
+                    output.push([
+                      "Pod " + pod.name + (pingSuccess ? " is Reachable" : ": is Unreachable") + " from ingress gateway"
+                    ])
+                  }
                 }
-              }
-            } catch(error) {}
-          }
-          else {
-            output.push(["Cannot verify pod reachability as no Ingress Gateway pods available"])
+              } catch(error) {}
+            }
+            else {
+              output.push(["Cannot verify pod reachability as no Ingress Gateway pods available"])
+            }
+          } else {
+            output.push(["Cannot verify pod reachability due to lack of pod command execution privileges"])
           }
         }
         const egressHosts = _.uniqBy(_.flatten(_.flatten(sidecarConfigs.egressSidecarConfigs.map(s => s.egress))
@@ -253,27 +259,31 @@ const plugin : ActionGroupSpec = {
           }
         })
         if(certPaths.length > 0) {
-          for(const pod of ingressPods) {
-            output.push([">>Pod: " + pod.name])
-            try {
-              const certsLoadedOnIngress = _.flatten((await IstioFunctions.getIngressCertsFromPod(pod.name, k8sClient))
-                                            .filter(c => c.cert_chain)
-                                            .map(c => c.cert_chain)
-                                            .map(certChain => certChain instanceof Array ? certChain : [certChain]))
+          if(k8sClient.canPodExec) {
+            for(const pod of ingressPods) {
+              output.push([">>Pod: " + pod.name])
+              try {
+                const certsLoadedOnIngress = _.flatten((await IstioFunctions.getIngressCertsFromPod(pod.name, k8sClient))
+                                              .filter(c => c.cert_chain)
+                                              .map(c => c.cert_chain)
+                                              .map(certChain => certChain instanceof Array ? certChain : [certChain]))
 
-              for(const path of certPaths) {
-                const result = (await K8sFunctions.podExec("istio-system", pod.name, "istio-proxy", k8sClient, ["ls", path])).trim()
-                const isPathFound = path === result
-                const certLoadedInfo = certsLoadedOnIngress.filter(info => (info.path || info).includes(path))[0]
-                const isPrivateKey = path.indexOf(".key") > 0
-                output.push([path + (isPathFound ? " is present " : " is NOT present ") + "on the pod filesystem"])
-                if(!isPrivateKey) {
-                  output.push([path + (certLoadedInfo ? " is loaded on pod >> " +JSON.stringify(certLoadedInfo) : " is NOT loaded on ingress gateway pod")])
+                for(const path of certPaths) {
+                  const result = (await K8sFunctions.podExec("istio-system", pod.name, "istio-proxy", k8sClient, ["ls", path])).trim()
+                  const isPathFound = path === result
+                  const certLoadedInfo = certsLoadedOnIngress.filter(info => (info.path || info).includes(path))[0]
+                  const isPrivateKey = path.indexOf(".key") > 0
+                  output.push([path + (isPathFound ? " is present " : " is NOT present ") + "on the pod filesystem"])
+                  if(!isPrivateKey) {
+                    output.push([path + (certLoadedInfo ? " is loaded on pod >> " +JSON.stringify(certLoadedInfo) : " is NOT loaded on ingress gateway pod")])
+                  }
                 }
+              } catch(error) {
+                output.push(["Failed to check cert status due to error: " + error.message])
               }
-            } catch(error) {
-              output.push(["Failed to check cert status due to error: " + error.message])
             }
+          } else {
+            output.push(["Cannot check cert status due to lack of pod command execution privileges"])
           }
         }
         this.onStreamOutput && this.onStreamOutput(output)

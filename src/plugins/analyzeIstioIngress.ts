@@ -98,7 +98,7 @@ const plugin : ActionGroupSpec = {
       choose: ChoiceManager.chooseService.bind(ChoiceManager, 1, 3),
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
+        const selections: ItemSelection[] = await ChoiceManager.getServiceSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
@@ -110,6 +110,10 @@ const plugin : ActionGroupSpec = {
           const service = selection.item
           const namespace = selection.namespace
           const cluster = actionContext.getClusters().filter(c => c.name === selection.cluster)[0]
+          if(!cluster.canPodExec) {
+            this.onStreamOutput && this.onStreamOutput([["Lacking pod command execution privileges"]])
+            continue
+          }
 
           const output: ActionOutput = []
 

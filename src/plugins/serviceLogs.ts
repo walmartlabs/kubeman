@@ -30,8 +30,8 @@ const plugin : ActionGroupSpec = {
     return "[No Service Selected]"
   },
 
-  storeSelectedServices(actionContext: ActionContext, action: ActionSpec) {
-    const selections = ChoiceManager.getSelections(actionContext)
+  async storeSelectedServices(actionContext: ActionContext, action: ActionSpec) {
+    const selections = await ChoiceManager.getServiceSelections(actionContext)
     if(selections.length < 1) {
       action.onOutput && action.onOutput([["No service selected"]], ActionOutputStyle.Text)
       return
@@ -49,7 +49,6 @@ const plugin : ActionGroupSpec = {
 
   async getServicePodLogs(actionContext: ActionContext, action: ActionSpec, tail: boolean, ...filters) {
     const podRowLimit = Math.ceil((action.outputRowLimit || 200)/this.selectedPodAndContainers.length)
-    action.onOutput && action.onOutput([["Logs for: " + this.getSelectionAsText()]], ActionOutputStyle.Log)
     StreamLogger.init(action.outputRowLimit, action.onStreamOutput, ...filters)
     filters.length > 0 && OutputManager.filter(filters.join(" "))
 
@@ -114,7 +113,7 @@ const plugin : ActionGroupSpec = {
       order: 40,
       autoRefreshDelay: 60,
       loadingMessage: "Loading Services...",
-      outputRowLimit: 200,
+      outputRowLimit: 1000,
 
       async choose(actionContext) {
         await plugin.performChoose(actionContext, this)
@@ -135,7 +134,7 @@ const plugin : ActionGroupSpec = {
       name: "Tail Service Logs",
       order: 41,
       loadingMessage: "Loading Services...",
-      outputRowLimit: 100,
+      outputRowLimit: 300,
 
       async choose(actionContext) {
         await plugin.performChoose(actionContext, this)
@@ -156,7 +155,7 @@ const plugin : ActionGroupSpec = {
       name: "Tail Filtered Service Logs",
       order: 42,
       loadingMessage: "Loading Services...",
-      outputRowLimit: 100,
+      outputRowLimit: 300,
       filter: undefined,
 
       async choose(actionContext) {
@@ -170,7 +169,9 @@ const plugin : ActionGroupSpec = {
       },
       
       async react(actionContext) {
+        StreamLogger.stop()
         this.filter = actionContext.inputText
+        this.clear && this.clear(actionContext)
         await plugin.performAction(actionContext, this, true, this.filter)
       },
 

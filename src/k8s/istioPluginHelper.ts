@@ -38,6 +38,10 @@ export default class IstioPluginHelper {
 
   static async checkServiceReachabilityFromIngress(service: ServiceDetails,
                   namespace: string, k8sClient: K8sClient, onStreamOutput) {
+    if(!k8sClient.canPodExec) {
+      onStreamOutput([["Lacking pod command execution privileges"]])
+      return
+    }
     const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(service, k8sClient, true)
     if(!podsAndContainers.pods || podsAndContainers.pods.length === 0) {
       onStreamOutput([["Service has no pods"]])
@@ -74,53 +78,11 @@ export default class IstioPluginHelper {
     }
   }
 
-  static async chooseEnvoyProxy(min: number = 1, max: number = 1, actionContext: ActionContext) {
-    ChoiceManager.prepareCachedChoices(actionContext, 
-      async (cluster, namespace, k8sClient) => {
-        const proxies = (namespace && namespace.length > 0) ?
-                          await IstioFunctions.getNamespaceEnvoyProxies(namespace, k8sClient)
-                          : await IstioFunctions.getAllEnvoyProxies(k8sClient)
-        return proxies.map(s => {
-                  s['title'] = s.pod+"."+s.namespace
-                  return s
-                })
-      }, "Envoy Proxies", min, max, true, "title")
-  }
-
-  static getSelectedEnvoyProxies(actionContext: ActionContext) {
-    const selections = ChoiceManager.getSelections(actionContext)
-    return selections.map(s => {
-      s.item.cluster = s.cluster
-      return s.item
-    })
-  }
-
-  static async chooseIstioCRDs(min: number = 1, max: number = 10, actionContext: ActionContext) {
-    await ChoiceManager.prepareCachedChoices(actionContext, 
-      async (cluster, namespace,k8sClient) => {
-        return k8sClient.istio ? k8sClient.istio.crds : []
-      }, "Istio CRDs", 1, 10, false)
-  }
   static getServicesFromIstioEnabledClusters: GetItemsFunction = async (cluster, namespace, k8sClient) => {
     if(k8sClient.istio) {
-      return K8sFunctions.getServices(cluster, namespace, k8sClient)
+      return ChoiceManager.getClusterServices(cluster, namespace, k8sClient)
     } else {
       return []
     }
   }
-
-  static async chooseIngressGatewayPods(min: number = 1, max: number = 1, actionContext: ActionContext) {
-    ChoiceManager.prepareCachedChoices(actionContext, 
-      async (cluster, namespace, k8sClient) => {
-        return await IstioFunctions.getIngressGatewayPods(k8sClient)
-      }, "IngressGateway Pods", min, max, false, "name")
-  }
-
-  static async choosePilotPods(min: number = 1, max: number = 1, actionContext: ActionContext) {
-    ChoiceManager.prepareCachedChoices(actionContext, 
-      async (cluster, namespace, k8sClient) => {
-        return await IstioFunctions.getPilotPods(k8sClient)
-      }, "Pilot Pods", min, max, false, "name")
-  }
-
 }

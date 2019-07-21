@@ -69,7 +69,7 @@ const plugin : ActionGroupSpec = {
         this.onOutput && this.onOutput([[
           "Send Command To Container [ " + this.selectedContainer.name + " ] on [ " + 
           this.servicePods.length + " ] pods of Service [ " + serviceTitle + " ] on cluster [ " + this.selectedCluster.name + " ]"
-        ]], ActionOutputStyle.Log)
+        ]], ActionOutputStyle.Mono)
       },
     }
   ]

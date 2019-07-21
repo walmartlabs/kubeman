@@ -21,7 +21,8 @@ const plugin : ActionGroupSpec = {
       choose: ChoiceManager.choosePods.bind(ChoiceManager, 2, 2, false, true),
 
       async act(actionContext) {
-        K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Pods")
+        K8sPluginHelper.generateComparisonOutput(this, actionContext, 
+          ChoiceManager.getPodSelections.bind(ChoiceManager, actionContext, true, false), this.onOutput, this.onStreamOutput, "Pods")
       },
     }
   ]

@@ -35,15 +35,17 @@ export default class EnvoyFunctions {
   }
 
   static async getEnvoyConfigDump(k8sClient: K8sClient, namespace: string, pod: string, container: string) : Promise<any[]> {
-    try {
-      const result = JSON.parse(await K8sFunctions.podExec(namespace, pod, container, k8sClient, 
-                                  ["curl", "-s", "http://127.0.0.1:15000/config_dump"]))
-      if(result.configs.clusters) {
-        result.configs = Object.values(result.configs)
+    if(k8sClient.canPodExec) {
+      try {
+        const result = JSON.parse(await K8sFunctions.podExec(namespace, pod, container, k8sClient, 
+                                    ["curl", "-s", "http://127.0.0.1:15000/config_dump"]))
+        if(result.configs.clusters) {
+          result.configs = Object.values(result.configs)
+        }
+        return result.configs
+      } catch(error) {
+        console.log(error)
       }
-      return result.configs
-    } catch(error) {
-      console.log(error)
     }
     return []
   }
@@ -63,11 +65,13 @@ export default class EnvoyFunctions {
 
   static async getEnvoyConfigForType(k8sClient: K8sClient, namespace: string, pod: string, container: string, 
                                       configType: EnvoyConfigType) {
-    try {
-      let configs = await EnvoyFunctions.getEnvoyConfigDump(k8sClient, namespace, pod, container)
-      return EnvoyFunctions.extractEnvoyConfigForType(configs, configType)
-    } catch(error) {
-      console.log(error)
+    if(k8sClient.canPodExec) {
+      try {
+        let configs = await EnvoyFunctions.getEnvoyConfigDump(k8sClient, namespace, pod, container)
+        return EnvoyFunctions.extractEnvoyConfigForType(configs, configType)
+      } catch(error) {
+        console.log(error)
+      }
     }
     return []
   }
@@ -84,7 +88,7 @@ export default class EnvoyFunctions {
   static async prepareEnvoyClustersConfig(clusterConfigs: any, loadStatus: boolean = false, 
                             namespace: string = '', pod: string = '', container: string = '', k8sClient?: K8sClient) {
     const clusterStatusMap = {}
-    if(loadStatus && k8sClient) {
+    if(loadStatus && k8sClient && k8sClient.canPodExec) {
       const result = JSON.parse(await K8sFunctions.podExec(namespace, pod, container, k8sClient,
         ["curl", "-s", "http://127.0.0.1:15000/clusters?format=json"]))
       result.cluster_statuses && result.cluster_statuses.forEach &&
@@ -127,7 +131,7 @@ export default class EnvoyFunctions {
       routesConfigs[key].forEach(r => {
         const routeConfig = r.route_config || r.routeConfig
         const virtualHosts = routeConfig.virtual_hosts || routeConfig.virtualHosts
-        virtualHosts.map(vh => {
+        virtualHosts && virtualHosts.map(vh => {
           if(routeConfig.name) {
             vh.title = routeConfig.name + " > " + vh.name
           } else {
@@ -164,36 +168,50 @@ export default class EnvoyFunctions {
   }
 
   static async getAllEnvoyConfigs(k8sClient: K8sClient, namespace: string, pod: string, container: string) : Promise<Object> {
-    try {
-      let configs = await EnvoyFunctions.getEnvoyConfigDump(k8sClient, namespace, pod, container)
-      const configsByType = {}
-      configsByType[EnvoyConfigType.Clusters] = await EnvoyFunctions.prepareEnvoyClustersConfig(
-                      EnvoyFunctions.extractEnvoyConfigForType(configs, EnvoyConfigType.Clusters), true,
-                      namespace, pod, container, k8sClient)
-      configsByType[EnvoyConfigType.Listeners] = EnvoyFunctions.prepareEnvoyListenersConfig(
-                      EnvoyFunctions.extractEnvoyConfigForType(configs, EnvoyConfigType.Listeners))
-      configsByType[EnvoyConfigType.Routes] = EnvoyFunctions.prepareEnvoyRoutesConfig(
-                      EnvoyFunctions.extractEnvoyConfigForType(configs, EnvoyConfigType.Routes))
-      return configsByType
-    } catch(error) {
-      console.log(error)
+    if(k8sClient.canPodExec) {
+      try {
+        let configs = await EnvoyFunctions.getEnvoyConfigDump(k8sClient, namespace, pod, container)
+        const configsByType = {}
+        configsByType[EnvoyConfigType.Clusters] = await EnvoyFunctions.prepareEnvoyClustersConfig(
+                        EnvoyFunctions.extractEnvoyConfigForType(configs, EnvoyConfigType.Clusters), true,
+                        namespace, pod, container, k8sClient)
+        configsByType[EnvoyConfigType.Listeners] = EnvoyFunctions.prepareEnvoyListenersConfig(
+                        EnvoyFunctions.extractEnvoyConfigForType(configs, EnvoyConfigType.Listeners))
+        configsByType[EnvoyConfigType.Routes] = EnvoyFunctions.prepareEnvoyRoutesConfig(
+                        EnvoyFunctions.extractEnvoyConfigForType(configs, EnvoyConfigType.Routes))
+        return configsByType
+      } catch(error) {
+        console.log(error)
+      }
     }
     return {}
   }
 
   static async getEnvoyStats(k8sClient: K8sClient, namespace: string, pod: string, container: string) {
-    return K8sFunctions.podExec(namespace, pod, container, k8sClient, 
-                                ["curl", "-s", "http://127.0.0.1:15000/stats"])
+    if(k8sClient.canPodExec) {
+      return K8sFunctions.podExec(namespace, pod, container, k8sClient, 
+                                  ["curl", "-s", "http://127.0.0.1:15000/stats"])
+    } else {
+      return ""
+    }
   }
 
   static async getEnvoyServerInfo(k8sClient: K8sClient, namespace: string, pod: string, container: string) {
-    return JSON.parse(await K8sFunctions.podExec(namespace, pod, container, k8sClient, 
+    if(k8sClient.canPodExec) {
+      return JSON.parse(await K8sFunctions.podExec(namespace, pod, container, k8sClient, 
                                 ["curl", "-s", "http://127.0.0.1:15000/server_info"]))
+    } else {
+      return {}
+    }
   }
 
   static async listEnvoyListeners(k8sClient: K8sClient, namespace: string, pod: string, container: string) {
-    return JSON.parse(await K8sFunctions.podExec(namespace, pod, container, k8sClient, 
+    if(k8sClient.canPodExec) {
+      return JSON.parse(await K8sFunctions.podExec(namespace, pod, container, k8sClient, 
                                 ["curl", "-s", "http://127.0.0.1:15000/listeners"]))
+    } else {
+      return []
+    }
   }
 
   static async getEnvoyListenerPorts(k8sClient: K8sClient, namespace: string, pod: string, container: string) {
@@ -202,20 +220,22 @@ export default class EnvoyFunctions {
   }
 
   static async getEnvoyLoadedCerts(k8sClient: K8sClient, namespace: string, pod: string, container: string) {
-    let commandOutput: any = (await K8sFunctions.podExec(namespace, pod, container, k8sClient, 
+    if(k8sClient.canPodExec) {
+      let commandOutput: any = (await K8sFunctions.podExec(namespace, pod, container, k8sClient, 
                                 ["curl", "-s", "http://127.0.0.1:15000/certs"])).trim()
-    try {
-      commandOutput = JSON.parse(commandOutput)
-    } catch(error) {
-      commandOutput = commandOutput.replace(/}/g, "},")
-      commandOutput = commandOutput.slice(0, commandOutput.lastIndexOf(","))
-      commandOutput = "[" + commandOutput + "]"
-      commandOutput = JSON.parse(commandOutput)
-    }
-    if(commandOutput.map) {
-      return commandOutput
-    } else if(commandOutput.certificates) {
-      return commandOutput.certificates
+      try {
+        commandOutput = JSON.parse(commandOutput)
+      } catch(error) {
+        commandOutput = commandOutput.replace(/}/g, "},")
+        commandOutput = commandOutput.slice(0, commandOutput.lastIndexOf(","))
+        commandOutput = "[" + commandOutput + "]"
+        commandOutput = JSON.parse(commandOutput)
+      }
+      if(commandOutput.map) {
+        return commandOutput
+      } else if(commandOutput.certificates) {
+        return commandOutput.certificates
+      }
     }
     return []
   }
@@ -277,9 +297,11 @@ export default class EnvoyFunctions {
       const lbEndpointMatches = clusters
         .filter(c => c.cluster.load_assignment)
         .filter(c => {
-          const endpoints = _.flatten(c.cluster.load_assignment.endpoints.map(e => e.lb_endpoints))
-                              .map(e => e.endpoint.address.socket_address.address)
-          return endpoints.filter(e => FqdnMatcher.matchDomain(e)).length > 0
+          const endpoints = c.cluster.load_assignment.endpoints && 
+                            _.flatten(c.cluster.load_assignment.endpoints
+                                        .filter(e => e.lb_endpoints).map(e => e.lb_endpoints))
+                            .map(e => e.endpoint.address.socket_address.address)
+          return endpoints && endpoints.filter(e => FqdnMatcher.matchDomain(e)).length > 0
         })
       return getUniqueResourcesByField("title", nameMatches, hostMatches, lbEndpointMatches)
     } else {

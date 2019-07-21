@@ -9,7 +9,6 @@ import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, Act
 import ActionContext from '../actions/actionContext';
 import IstioFunctions from '../k8s/istioFunctions';
 import {outputConfig} from './envoyConfigDump'
-import IstioPluginHelper from '../k8s/istioPluginHelper'
 import ChoiceManager from '../actions/choiceManager'
 import EnvoyPluginHelper from '../k8s/envoyPluginHelper'
 import { EnvoyConfigType } from '../k8s/envoyFunctions';
@@ -21,6 +20,10 @@ async function outputIngresEnvoyConfig(action: ActionSpec, actionContext: Action
   const selections = await ChoiceManager.getPodSelections(actionContext, false)
   for(const selection of selections) {
     action.onStreamOutput  && action.onStreamOutput([["^^","IngressGateway Pod: " + selection.podName + " @ Cluster: " + selection.cluster]])
+    if(!selection.k8sClient.canPodExec) {
+      action.onStreamOutput && action.onStreamOutput([["Lacking pod command execution privileges"]])
+      continue
+    }
     const configs = await configFn(selection.k8sClient, selection.podName)
     switch(configType) {
       case EnvoyConfigType.Bootstrap:
@@ -49,7 +52,7 @@ const plugin : ActionGroupSpec = {
       order: 25,
       loadingMessage: "Loading IngressGateway Pods...",
 
-      choose: IstioPluginHelper.chooseIngressGatewayPods.bind(IstioPluginHelper, 1, 2),
+      choose: ChoiceManager.chooseIngressGatewayPods.bind(ChoiceManager, 1, 2),
       
       async act(actionContext) {
         await outputIngresEnvoyConfig(this, actionContext, IstioFunctions.getIngressGatewayEnvoyBootstrapConfig,  "BootstrapConfig")
@@ -63,7 +66,7 @@ const plugin : ActionGroupSpec = {
       order: 26,
       loadingMessage: "Loading IngressGateway Pods...",
 
-      choose: IstioPluginHelper.chooseIngressGatewayPods.bind(IstioPluginHelper, 1, 2),
+      choose: ChoiceManager.chooseIngressGatewayPods.bind(ChoiceManager, 1, 2),
       
       async act(actionContext) {
         await outputIngresEnvoyConfig(this, actionContext, IstioFunctions.getIngressGatewayEnvoyClusters, "ClustersConfig")
@@ -77,7 +80,7 @@ const plugin : ActionGroupSpec = {
       order: 27,
       loadingMessage: "Loading IngressGateway Pods...",
 
-      choose: IstioPluginHelper.chooseIngressGatewayPods.bind(IstioPluginHelper, 1, 2),
+      choose: ChoiceManager.chooseIngressGatewayPods.bind(ChoiceManager, 1, 2),
       
       async act(actionContext) {
         await outputIngresEnvoyConfig(this, actionContext, IstioFunctions.getIngressGatewayEnvoyListeners, "ListenersConfig")
@@ -91,7 +94,7 @@ const plugin : ActionGroupSpec = {
       order: 28,
       loadingMessage: "Loading IngressGateway Pods...",
 
-      choose: IstioPluginHelper.chooseIngressGatewayPods.bind(IstioPluginHelper, 1, 2),
+      choose: ChoiceManager.chooseIngressGatewayPods.bind(ChoiceManager, 1, 2),
       
       async act(actionContext) {
         await outputIngresEnvoyConfig(this, actionContext, IstioFunctions.getIngressGatewayEnvoyRoutes, "RoutesConfig")
@@ -106,15 +109,19 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 60,
       loadingMessage: "Loading IngressGateway Pods...",
 
-      choose: IstioPluginHelper.chooseIngressGatewayPods.bind(IstioPluginHelper, 1, 5),
+      choose: ChoiceManager.chooseIngressGatewayPods.bind(ChoiceManager, 1, 5),
 
       async act(actionContext) {
-        this.onOutput && this.onOutput([["IngressGateway Envoy Stats"]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["IngressGateway Envoy Stats"]], ActionOutputStyle.Mono)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const selections = await ChoiceManager.getPodSelections(actionContext, false)
         for(const selection of selections) {
           this.onStreamOutput  && this.onStreamOutput([[">IngressGateway Pod: " + selection.podName + " @ Cluster: " + selection.cluster]])
+          if(!selection.k8sClient.canPodExec) {
+            this.onStreamOutput && this.onStreamOutput([["Lacking pod command execution privileges"]])
+            continue
+          }
           const ingressEnvoyStats = await IstioFunctions.getIngressGatwayEnvoyStats(selection.podName, selection.k8sClient)
           const output: ActionOutput = []
           output.push(...(ingressEnvoyStats.split("\n").map(line => [line])))
@@ -132,15 +139,19 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 60,
       loadingMessage: "Loading IngressGateway Pods...",
 
-      choose: IstioPluginHelper.chooseIngressGatewayPods.bind(IstioPluginHelper, 1, 5),
+      choose: ChoiceManager.chooseIngressGatewayPods.bind(ChoiceManager, 1, 5),
 
       async act(actionContext) {
-        this.onOutput && this.onOutput([["IngressGateway Envoy ServerInfo"]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["IngressGateway Envoy ServerInfo"]], ActionOutputStyle.Mono)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const selections = await ChoiceManager.getPodSelections(actionContext, false)
         for(const selection of selections) {
           this.onStreamOutput  && this.onStreamOutput([[">IngressGateway Pod: " + selection.podName + " @ Cluster: " + selection.cluster]])
+          if(!selection.k8sClient.canPodExec) {
+            this.onStreamOutput && this.onStreamOutput([["Lacking pod command execution privileges"]])
+            continue
+          }
           const ingressEnvoyServerInfos = await IstioFunctions.getIngressGatwayEnvoyServerInfo(selection.podName, selection.k8sClient)
           const output: ActionOutput = []
           Object.keys(ingressEnvoyServerInfos).forEach(name => output.push([ingressEnvoyServerInfos[name]]))

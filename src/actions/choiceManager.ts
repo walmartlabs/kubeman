@@ -7,27 +7,29 @@ LICENSE file in the root directory of this source tree.
 
 import _ from 'lodash'
 import K8sFunctions, {StringStringArrayMap, GetItemsFunction} from '../k8s/k8sFunctions'
-import {Cluster, PodDetails, PodContainerDetails} from "../k8s/k8sObjectTypes"
+import {Cluster, PodDetails, PodContainerDetails, ServiceDetails} from "../k8s/k8sObjectTypes"
 import { K8sClient } from '../k8s/k8sClient'
 import ActionContext from './actionContext'
 import {Choice} from './actionSpec'
-import Context from "../context/contextStore";
+import Context from "../context/contextStore"
+import IstioFunctions from '../k8s/istioFunctions'
+import KubectlClient from '../k8s/kubectlClient'
 
 export interface ItemSelection {
   title: string
   namespace: string
   cluster: string
-  [key: string]: string
-  item?: any
+  item: any
+  [key: string]: any
 }
 
-export interface PodSelection {
-  title: string
-  containerName: string
+export interface PodSelection extends ItemSelection {
   podName: string
+  containerName: string
   podContainerDetails?: PodDetails|PodContainerDetails
-  namespace: string
-  cluster: string
+  podIP?: string
+  hostIP?: string
+  nodeName?: string
   k8sClient: K8sClient
 }
 
@@ -40,11 +42,37 @@ export default class ChoiceManager {
   static pendingChoicesCounter = 0
   static clearItemsTimer: any = undefined
 
+  static cacheLoadTimer: any = undefined
+  static cacheLoadInterval = 300000
+  static cachedEnvoyProxies: any = {}
+  static cachedServices: any = {}
+
   static startClearItemsTimer() {
     if(this.clearItemsTimer) {
       clearTimeout(this.clearItemsTimer)
     }
     this.clearItemsTimer = setTimeout(this.clear.bind(this), this.clearSelectionsDelay)
+  }
+
+  static startAsyncCacheLoader() {
+    if(this.cacheLoadTimer) {
+      clearInterval(this.cacheLoadTimer)
+    }
+    this.loadPreCachedItems()
+    this.cacheLoadTimer = setInterval(this.loadPreCachedItems.bind(this), this.cacheLoadInterval)
+  }
+
+  static async loadPreCachedItems() {
+    const clusters = Context.clusters
+    for(const cluster of clusters) {
+      //this.cachedEnvoyProxies[cluster.name] = await IstioFunctions.getAllEnvoyProxies(cluster.k8sClient)
+      this.cachedServices[cluster.name] = await K8sFunctions.getClusterServices(cluster.k8sClient)
+    }
+  }
+
+  static clearPreCache() {
+    this.cachedEnvoyProxies = {}
+    this.cachedServices = {}
   }
 
   static clear() {
@@ -193,7 +221,7 @@ export default class ChoiceManager {
     let previousSelections: any[] = cache && this.cacheKey === cacheKey ? actionContext.getSelections() : []
     this.cacheKey !== cacheKey && (Context.selections = [])
     const choices: any[] = await ChoiceManager._createAndStoreItems(cache, cacheKey, actionContext, k8sFunction, useNamespace, ...fields)
-    if(choices.length >= min && choices.length <= max) {
+    if(min === choices.length) {
       Context.selections = choices
       actionContext.onSkipChoices && actionContext.onSkipChoices()
     } else {
@@ -265,7 +293,15 @@ export default class ChoiceManager {
 
   static async _chooseNamespaces(clusters: Cluster[], unique: boolean, min: number, max: number, actionContext: ActionContext) {
     const clusterNames = clusters.map(c => c.name)
+    const clustersMissingNamespaces = clusters.filter(c => c.namespaces.length === 0)
     let namespaces = actionContext.getNamespaces().filter(ns => clusterNames.includes(ns.cluster.name))
+    for(const cluster of clustersMissingNamespaces) {
+      const clusterNamespaces = await K8sFunctions.getClusterNamespaces(cluster.k8sClient)
+      namespaces = namespaces.concat(clusterNamespaces.map(ns => {
+        ns.cluster = cluster
+        return ns
+      }))
+    }
     let namespaceNames: string[] = []
     const uniqueFilter = ns => {
       if(namespaceNames.includes(ns.name)) {
@@ -316,9 +352,15 @@ export default class ChoiceManager {
 
   static async choosePods(min: number, max: number, chooseContainers: boolean, 
                           loadDetails: boolean, actionContext: ActionContext) {
+    const clusterPods = {}
     ChoiceManager.prepareCachedChoices(actionContext, 
       async (cluster, namespace, k8sClient) => {
-        let pods : any[] = namespace ? await K8sFunctions.getAllPodsForNamespace(namespace, k8sClient) : []
+        if(!clusterPods[cluster]) {
+          clusterPods[cluster] = k8sClient.cluster.hasKubectl ? await KubectlClient.getPodsAndContainers(k8sClient.cluster)
+                                  : await K8sFunctions.getAllClusterPods(k8sClient)
+        }
+        let pods : any[] = clusterPods[cluster]
+        namespace && namespace.length > 0 && (pods = pods.filter(pod => pod.namespace === namespace))
         if(chooseContainers) {
           pods = _.flatMap(pods, pod => pod.containers.map(c => {
             return {
@@ -354,11 +396,11 @@ export default class ChoiceManager {
     )
   }
 
-  static async getPodSelections(actionContext: ActionContext, loadContainers: boolean = true) {
+  static async getPodSelections(actionContext: ActionContext, loadDetails: boolean = true, loadContainers: boolean = false) {
     const selections = actionContext.getSelections()
     const podSelections : PodSelection[] = []
     for(const selection of selections) {
-      const namespace = selection.data.namespace
+      const podInfo = selection.data.item
       const clusters = actionContext.getClusters()
       const k8sClient = clusters.filter(c => c.name === selection.data.cluster)
                                 .map(cluster => cluster.k8sClient)[0]
@@ -366,19 +408,75 @@ export default class ChoiceManager {
       const podAndContainerName = loadContainers ? title.split("@") : undefined
       const containerName = loadContainers ? podAndContainerName[0] : undefined
       const podName = loadContainers ? podAndContainerName[1] : title
-      const podContainerDetails = loadContainers ? 
-            await K8sFunctions.getContainerDetails(namespace, podName, containerName, k8sClient) : selection.data.item
+      const podContainerDetails = loadDetails ? loadContainers ? 
+              await K8sFunctions.getContainerDetails(selection.data.namespace, podName, containerName, k8sClient) : 
+              await K8sFunctions.getPodDetails(selection.data.namespace, podName, k8sClient) : undefined
       selection.data.podName = podName
       selection.data.containerName = containerName
-      selection.data.podContainerDetails = podContainerDetails
+      if(podContainerDetails) {
+        selection.data.podContainerDetails = podContainerDetails
+        selection.data.item = podContainerDetails
+      }
       selection.data.k8sClient = k8sClient
-      podSelections.push(selection.data)
+
+      const podSelection: PodSelection = {
+        title,
+        cluster: selection.data.cluster,
+        namespace: selection.data.namespace,
+        podName,
+        containerName,
+        podContainerDetails,
+        item: selection.data.item,
+        podIP: podInfo.podIP,
+        hostIP: podInfo.hostIP,
+        nodeName: podInfo.nodeName,
+        k8sClient
+      }
+      podSelections.push(podSelection)
     }
     return podSelections
   }
 
+  static async getClusterServices(cluster, namespace, k8sClient) {
+    if(ChoiceManager.cachedServices[cluster]) {
+      return (namespace && namespace.length > 0) ? 
+        ChoiceManager.cachedServices[cluster].filter(s => s.namespace === namespace)
+        : ChoiceManager.cachedServices[cluster]
+    } else {
+      return (namespace && namespace.length > 0) ? 
+              await K8sFunctions.getServices(namespace, k8sClient) :
+              await K8sFunctions.getClusterServices(k8sClient)
+    }
+  }
+
   static async chooseService(min, max, actionContext) {
-    ChoiceManager.prepareCachedChoices(actionContext, K8sFunctions.getServices, "Services", min, max, true, "name")
+    ChoiceManager.prepareCachedChoices(actionContext, ChoiceManager.getClusterServices, "Services", min, max, true, "name")
+  }
+
+  static async getServiceSelections(actionContext: ActionContext) {
+    const selections = actionContext.getSelections()
+    const serviceSelections : ItemSelection[] = []
+    for(const selection of selections) {
+      const cluster = actionContext.getClusters().filter(c => c.name === selection.data.cluster)[0]
+      const serviceDetails = await K8sFunctions.getServiceDetails(selection.data.name, selection.data.namespace, cluster.k8sClient)
+      serviceDetails && serviceSelections.push({
+        title: serviceDetails.name+"."+serviceDetails.namespace,
+        name: serviceDetails.name,
+        namespace: serviceDetails.namespace,
+        cluster: cluster.name,
+        item: serviceDetails as any,
+      })
+    }
+    return serviceSelections
+  }
+
+  static async chooseClusterService(targetCluster: string, min, max, actionContext) {
+    ChoiceManager.prepareCachedChoices(actionContext, 
+      async (cluster, namespace, k8sClient) => {
+        return cluster === targetCluster ? 
+          await ChoiceManager.getClusterServices(cluster, namespace, k8sClient) : []
+      },
+      "Services", min, max, true, "name")
   }
 
   static async chooseServiceContainer(serviceName: string, serviceNamespace: string, serviceCluster: string, actionContext: ActionContext) {
@@ -398,7 +496,7 @@ export default class ChoiceManager {
   static async chooseServiceAndContainer(action, actionContext: ActionContext) {
     await ChoiceManager.doubleChoices(action, actionContext,
       await ChoiceManager.chooseService.bind(ChoiceManager, 1, 1, actionContext),
-      await ChoiceManager.getSelections.bind(ChoiceManager, actionContext),
+      await ChoiceManager.getServiceSelections.bind(ChoiceManager, actionContext),
       async serviceSelection => {
         const service = serviceSelection.data[0].item
         await ChoiceManager.chooseServiceContainer(service.name, service.namespace, serviceSelection.data[0].cluster, actionContext)
@@ -424,5 +522,54 @@ export default class ChoiceManager {
     actionContext.onSkipChoices = choice1SelectionHandler
     actionContext.onActionInitChoices = actionContext.onActionInitChoicesUnbound.bind(actionContext, choice1SelectionHandler)
     await choose1()
+  }
+
+  static async chooseEnvoyProxy(min: number = 1, max: number = 1, actionContext: ActionContext) {
+    const clusterEnvoyProxies = {}
+    ChoiceManager.prepareCachedChoices(actionContext, 
+      async (cluster, namespace, k8sClient) => {
+        let proxies: any[] = []
+        if(this.cachedEnvoyProxies[cluster]) {
+          proxies = this.cachedEnvoyProxies[cluster]
+        } else {
+          if(!clusterEnvoyProxies[cluster]) {
+            clusterEnvoyProxies[cluster] = await IstioFunctions.getAllEnvoyProxies(k8sClient)
+          }
+          proxies = clusterEnvoyProxies[cluster]
+        }
+        if(namespace && namespace.length > 0) {
+          proxies = proxies.filter(p => p.namespace === namespace)
+         }
+       return proxies
+      }, "Envoy Proxies", min, max, true, "title")
+  }
+
+  static getSelectedEnvoyProxies(actionContext: ActionContext) {
+    const selections = ChoiceManager.getSelections(actionContext)
+    return selections.map(s => {
+      s.item.cluster = s.cluster
+      return s.item
+    })
+  }
+
+  static async chooseIngressGatewayPods(min: number = 1, max: number = 1, actionContext: ActionContext) {
+    ChoiceManager.prepareCachedChoices(actionContext, 
+      async (cluster, namespace, k8sClient) => {
+        return await IstioFunctions.getIngressGatewayPodsList(k8sClient)
+      }, "IngressGateway Pods", min, max, false, "name")
+  }
+
+  static async choosePilotPods(min: number = 1, max: number = 1, actionContext: ActionContext) {
+    ChoiceManager.prepareCachedChoices(actionContext, 
+      async (cluster, namespace, k8sClient) => {
+        return await IstioFunctions.getPilotPods(k8sClient)
+      }, "Pilot Pods", min, max, false, "name")
+  }
+
+  static async chooseIstioCRDs(min: number = 1, max: number = 10, actionContext: ActionContext) {
+    await ChoiceManager.prepareCachedChoices(actionContext, 
+      async (cluster, namespace,k8sClient) => {
+        return k8sClient.istio ? k8sClient.istio.crds : []
+      }, "Istio CRDs", 1, 10, false)
   }
 }

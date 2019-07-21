@@ -22,12 +22,12 @@ export default class AppMenu {
       submenu: [
         {label: 'About '+app.getName(), role: 'about'},
         {type: 'separator'},
-        {label: 'New Window', accelerator: 'Command+N', 
+        {label: 'New Window', accelerator: 'CmdOrCtrl+N', 
                 click: () => AppMenu.createWindow && AppMenu.createWindow()},
         {type: 'separator'},
         {label: 'Preferences', accelerator: 'Command+,'},
         {type: 'separator'},
-        {label: 'Quit', accelerator: 'Command+Q', click: app.quit}
+        {label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: app.quit}
       ]
     },
     {

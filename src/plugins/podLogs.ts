@@ -8,9 +8,9 @@ LICENSE file in the root directory of this source tree.
 import k8sFunctions from '../k8s/k8sFunctions'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionSpec, } from '../actions/actionSpec'
 import ChoiceManager from '../actions/choiceManager'
-import ActionContext from '../actions/actionContext';
+import ActionContext from '../actions/actionContext'
 import StreamLogger from '../logger/streamLogger'
-import OutputManager from '../output/outputManager';
+import OutputManager from '../output/outputManager'
 
 
 const plugin : ActionGroupSpec = {
@@ -26,7 +26,7 @@ const plugin : ActionGroupSpec = {
   },
 
   async getPodLogs(actionContext: ActionContext, action: ActionSpec, tail: boolean, ...filters) {
-    this.selections = await ChoiceManager.getPodSelections(actionContext)
+    this.selections = await ChoiceManager.getPodSelections(actionContext, false, true)
     action.clear && action.clear(actionContext)
     action.setScrollMode && action.setScrollMode(false)
     const podRowLimit = Math.ceil((action.outputRowLimit || 200)/this.selections.length)
@@ -56,7 +56,7 @@ const plugin : ActionGroupSpec = {
       order: 10,
       autoRefreshDelay: 30,
       loadingMessage: "Loading Containers@Pods...",
-      outputRowLimit: 200,
+      outputRowLimit: 1000,
 
       choose: ChoiceManager.choosePods.bind(ChoiceManager, 1, 5, true, false),
       async act(actionContext) {
@@ -73,7 +73,7 @@ const plugin : ActionGroupSpec = {
       name: "Tail Pod/Container Logs",
       order: 11,
       loadingMessage: "Loading Containers@Pods...",
-      outputRowLimit: 100,
+      outputRowLimit: 300,
 
       choose: ChoiceManager.choosePods.bind(ChoiceManager, 1, 5, true, false),
       async act(actionContext) {
@@ -90,7 +90,7 @@ const plugin : ActionGroupSpec = {
       name: "Tail Filtered Pod/Container Logs",
       order: 12,
       loadingMessage: "Loading Containers@Pods...",
-      outputRowLimit: 100,
+      outputRowLimit: 300,
       filter: undefined,
 
       choose: ChoiceManager.choosePods.bind(ChoiceManager, 1, 5, true, false),

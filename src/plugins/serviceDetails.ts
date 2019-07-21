@@ -24,7 +24,7 @@ const plugin : ActionGroupSpec = {
       choose: ChoiceManager.chooseService.bind(ChoiceManager, 1, 10),
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
+        const selections: ItemSelection[] = await ChoiceManager.getServiceSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
@@ -33,32 +33,89 @@ const plugin : ActionGroupSpec = {
 
         for(const selection of selections) {
           const service = selection.item
-          const cluster = actionContext.getClusters().filter(c => c.name === selections[0].cluster)[0]
+          const cluster = actionContext.getClusters().filter(c => c.name === selection.cluster)[0]
           const output: ActionOutput = []
           output.push([">" + service.name+"."+service.namespace + " @ " + cluster.name])
           output.push([">>Service"], [service.yaml])
+
+          const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(service, cluster.k8sClient, true)
+          const pods: PodDetails[] = podsAndContainers && podsAndContainers.pods ? podsAndContainers.pods as PodDetails[] : []
+          const nodeLocality = {}
+          for(const pod of pods) {
+            if(pod.nodeName && !nodeLocality[pod.nodeName]) {
+              const node = await K8sFunctions.getNodeDetails(pod.nodeName, cluster.k8sClient)
+              if(node) {
+                nodeLocality[node.name] = {
+                  region: node.labels["failure-domain.beta.kubernetes.io/region"],
+                  zone: node.labels["failure-domain.beta.kubernetes.io/zone"]
+                }
+              }
+            }
+          }
 
           output.push([">>Service Endpoints"])
           const endpointSubsets = await K8sFunctions.getServiceEndpoints(service.name, service.namespace, cluster.k8sClient)
           const subsetCount = endpointSubsets.length
           const endpointPods = {}
+
+          const getEndpointInfo = (endpoint) => {
+            const pod = pods.filter(pod => pod.podIP && pod.podIP === endpoint.ip)[0]
+            const node = pod && pod.nodeName
+            const podInfo = {
+              pod: endpoint.targetRef.name, 
+              ip: endpoint.ip,
+              node,
+              locality: node && nodeLocality[node]
+            }
+            return podInfo
+          }
           endpointSubsets.forEach((subset, i) => {
-            const subsetPods: any[] = []
-            subset.addresses.forEach(a => {
-              subsetPods.push({pod: a.targetRef.name, ip: a.ip})
-              endpointPods[a.targetRef.name] = a.ip
+            const readyPods: any[] = []
+            subset.addresses && subset.addresses.forEach(a => {
+              const podInfo = getEndpointInfo(a)
+              readyPods.push(podInfo)
+              endpointPods[a.targetRef.name] = podInfo
             })
-            subsetCount > 1 && output.push([">>>Endpoints Subset #"+(i+1)])
-            output.push([subsetPods])
+            if(readyPods.length > 0) {
+              output.push([">>>Ready Endpoints " + (subsetCount > 1 ? "Subset #"+(i+1):"")])
+              output.push([readyPods])
+            }
+            const notReadyPods: any[] = []
+            subset.notReadyAddresses && subset.notReadyAddresses.forEach(a => {
+              const podInfo = getEndpointInfo(a)
+              notReadyPods.push(podInfo)
+              endpointPods[a.targetRef.name] = podInfo
+            })
+            if(notReadyPods.length > 0) {
+              output.push([">>>Not Ready Endpoints " + (subsetCount > 1 ? "Subset #"+(i+1):"")])
+              output.push([notReadyPods])
+            }
+          })
+
+          const podsByLocality = {}
+          Object.keys(endpointPods).forEach(podName => {
+            const epInfo = endpointPods[podName]
+            const region = epInfo.locality.region || "N/A"
+            const zone = epInfo.locality.zone || "N/A"
+            podsByLocality[region] = podsByLocality[region] || {}
+            podsByLocality[region][zone] = podsByLocality[region][zone] || []
+            podsByLocality[region][zone].push(podName)
+          })
+          output.push([">>Service Endpoints by Locality"])
+          Object.keys(podsByLocality).forEach(region => {
+            Object.keys(podsByLocality[region]).forEach(zone => {
+              const podsList = podsByLocality[region][zone] || []
+              output.push([">>>Region: " + region + ", Zone: " + zone + " (count: " + podsList.length + ")"])
+              output.push([podsList])
+            })
           })
 
           output.push([">>Service Pods Details"])
-          const podsAndContainers = await K8sFunctions.getPodsAndContainersForService(service, cluster.k8sClient, true)
-          if(podsAndContainers && podsAndContainers.pods && podsAndContainers.pods.length > 0) {
-            (podsAndContainers.pods as PodDetails[]).forEach(pod => {
-              const podIPInEndpoints = endpointPods[pod.name] 
+          if(pods.length > 0) {
+            pods.forEach(pod => {
+              const epInfo = endpointPods[pod.name] 
               output.push([">>>"+pod.name +
-                (podIPInEndpoints ? ", Endpoint IP: ["+podIPInEndpoints+"]" : " (pod not found in service endpoints)")], 
+                (epInfo ? ", Endpoint IP: ["+epInfo.ip+"]" : " (pod not found in service endpoints)")], 
               [pod.yaml])
             })
           } else {
@@ -79,7 +136,8 @@ const plugin : ActionGroupSpec = {
       choose: ChoiceManager.chooseService.bind(ChoiceManager, 2, 2),
 
       async act(actionContext) {
-        K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Services")
+        K8sPluginHelper.generateComparisonOutput(this, actionContext, 
+            ChoiceManager.getServiceSelections.bind(ChoiceManager), this.onOutput, this.onStreamOutput, "Services")
       },
     }
   ]

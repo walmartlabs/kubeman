@@ -4,16 +4,15 @@
     "name": "uk/Walmart"
   },
   "repository": {
-    "type" : "git",
-    "url" : "https://gecgithub01.walmart.com/platform/kubeman"
+    "type": "git",
+    "url": "https://github.com/walmartlabs/kubeman"
   },
-  "version": "0.4.0",
+  "version": "0.5.0",
   "license": "Apache",
   "scripts": {
-    "clean": "rm -rf dist/mac",
-    "dev": "npm run clean && electron-webpack dev",
+    "dev": "electron-webpack dev",
     "compile": "electron-webpack",
-    "dist": "npm run clean && npm run compile && electron-builder",
+    "dist": "npm run compile && electron-builder",
     "dist:dir": "npm run dist --dir -c.compression=store -c.mac.identity=null"
   },
   "dependencies": {
@@ -21,17 +20,19 @@
     "@material-ui/core": "^3.9.2",
     "@material-ui/icons": "^3.0.1",
     "electron-devtools-installer": "^2.2.4",
+    "fix-path": "^2.1.0",
     "highlight.js": "^9.13.1",
     "js-yaml": "^3.12.0",
     "json-to-pretty-yaml": "^1.2.2",
     "jsonpath": "^1.0.0",
-    "kubernetes-client": "6.12.1",
+    "kubernetes-client": "8.2.0",
     "lodash": "^4.17.11",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
     "roboto-fontface": "^0.10.0",
     "source-map-support": "^0.5.9",
     "typeface-roboto": "^0.0.54",
+    "typeface-roboto-mono": "0.0.54",
     "typescript": "^3.2.2",
     "yaml": "^1.5.0"
   },

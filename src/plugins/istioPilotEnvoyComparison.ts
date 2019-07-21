@@ -11,6 +11,7 @@ import IstioFunctions from '../k8s/istioFunctions';
 import IstioPluginHelper from '../k8s/istioPluginHelper'
 import JsonUtil from '../util/jsonUtil';
 import {compareEnvoyConfigs} from './envoyConfigComparison'
+import ChoiceManager from '../actions/choiceManager';
 
 
 const plugin : ActionGroupSpec = {
@@ -24,45 +25,46 @@ const plugin : ActionGroupSpec = {
       order: 60,
       loadingMessage: "Loading Envoy Proxies...",
       
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 1),
 
       async act(actionContext) {
-        const envoys = IstioPluginHelper.getSelectedEnvoyProxies(actionContext)
+        const envoys = ChoiceManager.getSelectedEnvoyProxies(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
         const envoy = envoys[0]
         const cluster = actionContext.getClusters().filter(c => c.name === envoy.cluster)[0]
 
         this.onOutput && this.onOutput([[
           "", "Pilot [" + envoy.pilotPod + "] <-> Envoy Proxy ["+ envoy.title + "] Config Comparison", ""
-        ]], ActionOutputStyle.Log)
+        ]], ActionOutputStyle.Mono)
 
+        this.sleep && await this.sleep(200)
         const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, envoy.pilotPod, envoy.title)
         const pilotClusters = await EnvoyFunctions.prepareEnvoyClustersConfig(EnvoyFunctions.extractEnvoyConfigForType(pilotConfigs, EnvoyConfigType.Clusters))
-        const pilotListeners = EnvoyFunctions.prepareEnvoyListenersConfig(EnvoyFunctions.extractEnvoyConfigForType(pilotConfigs, EnvoyConfigType.Listeners))
-        const pilotRoutes = EnvoyFunctions.prepareEnvoyRoutesConfig(EnvoyFunctions.extractEnvoyConfigForType(pilotConfigs, EnvoyConfigType.Routes))
-        
-        let envoyClusters = await EnvoyFunctions.getEnvoyClusters(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
-        const staticClusters = envoyClusters.filter(c => c.title.includes("static"))
-        const dynamicClusters = envoyClusters.filter(c => !c.title.includes("static"))
 
+        this.sleep && await this.sleep(200)
+        const pilotListeners = EnvoyFunctions.prepareEnvoyListenersConfig(EnvoyFunctions.extractEnvoyConfigForType(pilotConfigs, EnvoyConfigType.Listeners))
         const envoyListeners = await EnvoyFunctions.getEnvoyListeners(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
         const activeListeners = envoyListeners.filter(l => l.title.includes("active"))
+        compareEnvoyConfigs(this.onStreamOutput, pilotListeners, activeListeners, EnvoyConfigType.Listeners, true)
         const warmingListeners = envoyListeners.filter(l => l.title.includes("warming"))
         const drainingListeners = envoyListeners.filter(l => l.title.includes("draining"))
-
-        const envoyRoutes = await EnvoyFunctions.getEnvoyRoutes(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
-        const dynamicRoutes = envoyRoutes.filter(r => r.title.includes("dynamic"))
-        const staticRoutes = envoyRoutes.filter(r => r.title.includes("static"))
-
-        compareEnvoyConfigs(this.onStreamOutput, pilotClusters, dynamicClusters, EnvoyConfigType.Clusters, true)
-        staticClusters.length > 0 && this.onStreamOutput && this.onStreamOutput([[">>Skipped Static Clusters"], [staticClusters]])
-
-        compareEnvoyConfigs(this.onStreamOutput, pilotListeners, activeListeners, EnvoyConfigType.Listeners, true)
         warmingListeners.length > 0 && this.onStreamOutput && this.onStreamOutput([[">>Skipped Warming Listeners"], [warmingListeners]])
         drainingListeners.length > 0 && this.onStreamOutput && this.onStreamOutput([[">>Skipped Draining Listeners"], [drainingListeners]])
 
+        this.sleep && await this.sleep(200)
+        const pilotRoutes = EnvoyFunctions.prepareEnvoyRoutesConfig(EnvoyFunctions.extractEnvoyConfigForType(pilotConfigs, EnvoyConfigType.Routes))
+        const envoyRoutes = await EnvoyFunctions.getEnvoyRoutes(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
+        const dynamicRoutes = envoyRoutes.filter(r => r.title.includes("dynamic"))
         compareEnvoyConfigs(this.onStreamOutput, pilotRoutes, dynamicRoutes, EnvoyConfigType.Routes, true)
+        const staticRoutes = envoyRoutes.filter(r => r.title.includes("static"))
         staticRoutes.length > 0 &&  this.onStreamOutput && this.onStreamOutput([[">>Skipped Static Routes"], [staticRoutes]])
+
+        this.sleep && await this.sleep(200)
+        let envoyClusters = await EnvoyFunctions.getEnvoyClusters(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
+        const dynamicClusters = envoyClusters.filter(c => !c.title.includes("static"))
+        compareEnvoyConfigs(this.onStreamOutput, pilotClusters, dynamicClusters, EnvoyConfigType.Clusters, true)
+        const staticClusters = envoyClusters.filter(c => c.title.includes("static"))
+        staticClusters.length > 0 && this.onStreamOutput && this.onStreamOutput([[">>Skipped Static Clusters"], [staticClusters]])
 
         this.showOutputLoading && this.showOutputLoading(false)
       },
@@ -75,19 +77,20 @@ const plugin : ActionGroupSpec = {
       order: 61,
       loadingMessage: "Loading Envoy Proxies...",
       
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 1),
 
       async act(actionContext) {
-        const envoys = IstioPluginHelper.getSelectedEnvoyProxies(actionContext)
+        const envoys = ChoiceManager.getSelectedEnvoyProxies(actionContext)
         this.showOutputLoading && this.showOutputLoading(true)
         const envoy = envoys[0]
         const cluster = actionContext.getClusters().filter(c => c.name === envoy.cluster)[0]
 
         this.onOutput && this.onOutput([[
           "Pilot [" + envoy.pilotPod + "] <-> Envoy Proxy ["+ envoy.title + "] Listeners Config Comparison"
-        ]], ActionOutputStyle.Log)
+        ]], ActionOutputStyle.Mono)
 
         const pilotListeners = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, envoy.pilotPod, envoy.title, EnvoyConfigType.Listeners)
+        this.sleep && await this.sleep(500)
         const envoyListeners = await EnvoyFunctions.getEnvoyListeners(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
 
         const output: ActionOutput = []

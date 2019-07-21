@@ -34,6 +34,7 @@ export enum ActionOutputStyle {
   TableWithHealth = "TableWithHealth",
   Compare = "Compare",
   Log = "Log",
+  Mono = "Mono",
   LogWithHealth = "LogWithHealth",
 }
 
@@ -85,11 +86,13 @@ export interface ActionSpec {
   onStreamOutput?: ActionStreamOutputCollector
   showChoices?: ActionOnChoice
   showInfo?: ActionOnInfo
+  setColumnWidths?: (...widths) => void
   setScrollMode?: (boolean) => void
   showOutputLoading?: (boolean) => void
   autoRefreshDelay?: number
   selectionType?: SelectionType
   hideFromContextMenu?: boolean
+  sleep?: (number) => void
   [x: string]: any
 }
 

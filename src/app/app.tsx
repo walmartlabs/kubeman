@@ -8,12 +8,13 @@ LICENSE file in the root directory of this source tree.
 import {ipcRenderer as ipc, webFrame, screen} from 'electron'
 import React, { Component } from 'react'
 import ReactDOM from 'react-dom'
-import { withStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
-import { CssBaseline } from '@material-ui/core'
+import { withStyles, WithStyles, MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles'
+import { CssBaseline, LinearProgress, Typography } from '@material-ui/core'
 import StyledWorkspace, {Workspace} from '../workspace/workspace'
 import {appTheme} from '../theme/theme'
-import 'roboto-fontface/css/roboto/roboto-fontface.css'
+import 'roboto-fontface/css/roboto-condensed/roboto-condensed-fontface.css'
 import 'typeface-roboto/index.css'
+import 'typeface-roboto-mono/index.css'
 import styles from './app.styles'
 
 
@@ -26,8 +27,9 @@ global['useDarkTheme'] = false
 
 interface IState {
   useDarkTheme: boolean,
+  openingNewWindow: boolean
 }
-interface IProps {
+interface IProps extends WithStyles<typeof styles> {
 }
 
 const App = withStyles(styles)(
@@ -35,8 +37,10 @@ class extends Component<IProps, IState> {
   workspace: Workspace|undefined
   state = {
     useDarkTheme: global['useDarkTheme'],
+    openingNewWindow: false,
   }
   ctrlPressed: boolean = false
+  cmdPressed: boolean = false
   zoomFactor: number = 1
 
 
@@ -83,31 +87,44 @@ class extends Component<IProps, IState> {
   onKeyDown = (event) => {
     switch(event.which) {
       case 17:
-      case 18:
-      case 91:
         this.ctrlPressed = true
         break
+      case 91:
+        this.cmdPressed = true
+        break
       case 187:
-        this.ctrlPressed && this.zoomIn()
+        (this.cmdPressed || this.ctrlPressed) && this.zoomIn()
         break
       case 189:
-        this.ctrlPressed && this.zoomOut()
+        (this.cmdPressed || this.ctrlPressed) && this.zoomOut()
         break
+      case 78:
+        if(this.cmdPressed) {
+          this.setState({openingNewWindow: true})
+          setTimeout(() => this.setState({openingNewWindow: false}), 8000)
+        }
+        break
+      default:
+          this.ctrlPressed = false
+          this.cmdPressed = false
     }
   }
 
   onKeyUp = (event) => {
     switch(event.which) {
       case 17:
-      case 18:
-      case 91:
         this.ctrlPressed = false
+        break
+      case 91:
+        this.cmdPressed = false
         break
     }
   }
 
   render() {
-    const {useDarkTheme} = this.state
+    const {useDarkTheme, openingNewWindow} = this.state
+    const {classes} = this.props
+
     return (
       <MuiThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
         <CssBaseline />
@@ -118,7 +135,15 @@ class extends Component<IProps, IState> {
               innerRef={ref => this.workspace=ref} 
               onChangeTheme={this.onChangeTheme}
           />
-        </div>  
+        </div>
+        {openingNewWindow && 
+          <div style={{zIndex: 1000}}>
+            <Typography variant="h5" gutterBottom className={classes.loadingMessage}>
+              Opening New Window...
+            </Typography>
+            <LinearProgress className={classes.loading} />
+          </div>
+        }
       </MuiThemeProvider>
     )
   }
@@ -128,5 +153,5 @@ ReactDOM.render(<App/>, document.getElementById("app"))
 
 window.addEventListener('contextmenu', (event) => {
   event.preventDefault()
-  ipc.send('showContextMenu', {x: event.x, y: event.y})
+  ipc.send('showContextMenu', {x: event.x+40, y: event.y+40})
 })

@@ -95,7 +95,7 @@ app.on('ready', function () {
   }
 })
 
-ipc.on('context', (event: Electron.Event, context: {clusters: string[], namespaces: any[]}) => {
+ipc.on('context', (event: Electron.Event, context: {clusters: any[], namespaces: any[]}) => {
   if(context.clusters && context.clusters.length > 0) {
     lastContext = context
   }

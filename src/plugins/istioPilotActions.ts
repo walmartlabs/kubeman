@@ -23,19 +23,23 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 15,
       loadingMessage: "Loading Pilot Pods...",
             
-      choose: IstioPluginHelper.choosePilotPods.bind(IstioPluginHelper, 1, 3),
+      choose: ChoiceManager.choosePilotPods.bind(ChoiceManager, 1, 3),
       
       async act(actionContext) {
-        this.onOutput && this.onOutput([["Pilot Metrics"]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Pilot Metrics"]], ActionOutputStyle.Mono)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const selections = await ChoiceManager.getPodSelections(actionContext, false)
         for(const selection of selections) {
           const output: ActionOutput = []
           output.push([">Pilot Pod: " + selection.podName + " @ Cluster: " + selection.cluster])
-          const result = await IstioFunctions.getPilotMetrics(selection.k8sClient, selection.podName)
-          result && result.split("\n").map(line => output.push([line]))
-          !result && output.push(["N/A"])
+          if(!selection.k8sClient.canPodExec) {
+            output.push(["Lacking pod command execution privileges"])
+          } else {
+            const result = await IstioFunctions.getPilotMetrics(selection.k8sClient, selection.podName)
+            result && result.split("\n").map(line => output.push([line]))
+            !result && output.push(["N/A"])
+          }
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)
@@ -61,15 +65,17 @@ const plugin : ActionGroupSpec = {
         const output: ActionOutput = []
         for(const selection of selections) {
           const cluster = actionContext.getClusters().filter(c => c.name === selection.cluster)[0]
-          if(cluster.hasIstio) {
+          if(!cluster.canPodExec) {
+            output.push(["Lacking pod command execution privileges"])
+          } else if(!cluster.hasIstio) {
+            output.push(["Istio not installed"])
+          } else {
             const service = selection.item as ServiceDetails
             const namespace = selection.namespace
             const endpoints = await IstioFunctions.getPilotEndpoints(cluster.k8sClient, service.name, namespace)
             output.push([">Service: " + service.name + ", Namespace: " + namespace + ", Cluster: " + cluster.name])
             endpoints.length === 0 && output.push(["No Endpoints Found"])
             endpoints.forEach(ep => output.push([">>"+ep.clusterName], [ep]))
-          } else {
-            output.push(["Istio not installed"])
           }
         }
         this.onStreamOutput && this.onStreamOutput(output)

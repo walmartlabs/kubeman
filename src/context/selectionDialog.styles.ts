@@ -22,6 +22,8 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     marginTop: '40%',
     marginLeft: 'auto',
     marginRight: 'auto',
+    color: palette.secondary.main,
+    animationDuration: '550ms',
     backgroundColor: 'transparent',
   },
   updating: {
@@ -30,6 +32,8 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     left: '50%',
     marginLeft: 'auto',
     marginRight: 'auto',
+    color: palette.secondary.main,
+    animationDuration: '550ms',
     backgroundColor: 'transparent',
   },
   floatLeft: {

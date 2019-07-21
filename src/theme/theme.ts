@@ -19,13 +19,15 @@ class AppTheme {
       type: 'dark',
       primary: indigo,
       error: red,
+      background: {
+        default: '#252a2b',
+        paper: '#202020',
+      },
     },
     typography: {
       fontFamily: [
-        '-apple-system',
-        'BlinkMacSystemFont',
-        '"Segoe UI"',
         'Roboto',
+        '"Segoe UI"',
         '"Helvetica Neue"',
         'Arial',
         'sans-serif',
@@ -39,13 +41,15 @@ class AppTheme {
     palette: {
       type: 'light',
       secondary: blue,
+      background: {
+        default: '#dae1ea',
+        paper: '#dae1ea',
+      },
     },
     typography: {
       fontFamily: [
-        '-apple-system',
-        'BlinkMacSystemFont',
-        '"Segoe UI"',
         'Roboto',
+        '"Segoe UI"',
         '"Helvetica Neue"',
         'Arial',
         'sans-serif',
@@ -119,7 +123,7 @@ class ActionsTheme {
       overrides: {
         MuiExpansionPanelSummary: {
           root: {
-            backgroundColor: '#003099',
+            backgroundColor: useDarkTheme ? '#003099' : '#003099',
             color: 'white !important',
             margin: 0,
             minHeight: '40px !important',
@@ -181,7 +185,7 @@ class ActionsTheme {
             backgroundColor: useDarkTheme ? '#1d2349'  : '#daddf1',
             boxShadow: useDarkTheme ? '0px 1px 1px 0px rgba(255, 255, 255, 0.5)' : '0px 1px 1px 0px rgba(0, 0, 255, 0.5)',
             '&:hover':{
-              color: 'black'
+              color: useDarkTheme ? 'white' : 'black'
             },
           }
         },

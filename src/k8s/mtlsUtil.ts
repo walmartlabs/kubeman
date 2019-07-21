@@ -365,7 +365,7 @@ export class MtlsUtil {
         serviceMtlsStatus[namespace]["namespaceDefaultMtlsMode"] = namespaceDefaultMtlsMode
       }
       const nsServices = services ? services.filter(s => s.namespace === namespace)
-                          : (await K8sFunctions.getServices('', namespace, k8sClient)) as ServiceDetails[]
+                          : (await K8sFunctions.getServicesWithDetails(namespace, k8sClient)) as ServiceDetails[]
       for(const service of nsServices) {
         const servicePoliciesMtlsStatus = MtlsUtil.getServicePoliciesMtlsStatus(
                 service, servicesWithMtlsPolicies, namespaceDefaultMtlsMode, globalMtlsStatus)

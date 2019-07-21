@@ -36,10 +36,12 @@ const plugin : ActionGroupSpec = {
         const cluster1 = actionContext.getClusters().filter(c => c.name === pod1.cluster)[0]
         const pod2 = selections[1]
         const cluster2 = actionContext.getClusters().filter(c => c.name === pod2.cluster)[0]
-
-        await compareTwoEnvoys(pod1.namespace, pod1.podName, "istio-proxy", cluster1.k8sClient,
+        if(!cluster1.canPodExec || !cluster1.canPodExec) {
+          this.onStreamOutput && this.onStreamOutput([["Lacking pod command execution privileges"]])
+        } else {
+          await compareTwoEnvoys(pod1.namespace, pod1.podName, "istio-proxy", cluster1.k8sClient,
                         pod2.namespace, pod2.podName, "istio-proxy", cluster2.k8sClient, this.onStreamOutput)
-
+        }
         this.showOutputLoading && this.showOutputLoading(false)
       },
       refresh(actionContext) {

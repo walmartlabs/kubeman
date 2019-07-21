@@ -47,21 +47,32 @@ export async function executeCommand(containerList: PodContainerInfo[], actionCo
       continue
     }
     onStreamOutput([[">Command: " + commandText]])
-    const command = ["sh", "-c", commandText]
+    const quotedCommand = "'" + commandText + "'"
     for(const c of containerList) {
-      const output: ActionOutput = []
+      const command = ["sh", "-c"]
+      command.push(c.k8sClient.cluster.hasKubectl ? quotedCommand : commandText)
       const title = c.container+"@"+c.pod+"."+c.namespace+" @ "+c.cluster
       try {
-        const result = await k8sFunctions.podExec(c.namespace, c.pod, 
-                              c.container, c.k8sClient, command)
+        const output: ActionOutput = []
         output.push([">>Container@Pod @ Cluster :  "+  title])
-        output.push(result.length > 0 ? [result] : ["No Results"])
+        if(!c.k8sClient.canPodExec) {
+          output.push(["Lacking pod command execution privileges"])
+        } else {
+          const result = await k8sFunctions.podExec(c.namespace, c.pod, 
+                                c.container, c.k8sClient, command)
+          let hasResult = false
+          if(result) {
+            hasResult = result.length ? result.length > 0 : typeof result === 'object' && Object.keys(result).length > 0
+          }
+          output.push(hasResult ? [result] : ["No Results"])
+        }
         onStreamOutput(output)
       } catch(error) {
         onStreamOutput([[
           "Error for container " + title + ": " + error.message
         ]])
       }
+      actionContext.sleep(200)
     }
   }
 }
@@ -83,19 +94,16 @@ const plugin : ActionGroupSpec = {
       
       async act(actionContext) {
         this.showOutputLoading && this.showOutputLoading(true)
-        this.podsList = []
-        const selections = await ChoiceManager.getPodSelections(actionContext)
-        this.podsList = this.podsList.concat(
-          selections.map(s => {
-            return {
-              container: s.containerName,
-              pod: s.podName,
-              namespace: s.namespace,
-              cluster: s.cluster,
-              k8sClient: s.k8sClient
-            }
-          }))
-
+        const selections = await ChoiceManager.getPodSelections(actionContext, false, true)
+        this.podsList = selections.map(s => {
+          return {
+            container: s.containerName,
+            pod: s.podName,
+            namespace: s.namespace,
+            cluster: s.cluster,
+            k8sClient: s.k8sClient
+          }
+        })
         this.clear && this.clear(actionContext)
         this.setScrollMode && this.setScrollMode(true)
         this.showOutputLoading && this.showOutputLoading(false)
@@ -112,7 +120,7 @@ const plugin : ActionGroupSpec = {
       clear() {
         this.onOutput && this.onOutput([[
           "Send Command To: " + this.podsList.map(p => " [ " + p.container+"@"+p.pod+"."+p.namespace+" @ "+p.cluster + " ] ").join(", ")
-        ]], ActionOutputStyle.Log)
+        ]], ActionOutputStyle.Mono)
       },
     }
   ]

@@ -24,7 +24,7 @@ const plugin : ActionGroupSpec = {
       choose: ChoiceManager.chooseService.bind(ChoiceManager, 1, 10),
 
       async act(actionContext) {
-        const selections = await ChoiceManager.getSelections(actionContext)
+        const selections = await ChoiceManager.getServiceSelections(actionContext)
         this.directAct && this.directAct(selections)
       },
 

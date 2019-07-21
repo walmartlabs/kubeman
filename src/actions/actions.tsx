@@ -39,6 +39,7 @@ interface IProps extends WithStyles<typeof styles> {
   onActionChoices: ActionChoiceMaker
   onCancelActionChoice: () => void
   onShowInfo: ActionOnInfo
+  onSetColumnWidths: (...widths) => void
   onSetScrollMode: (boolean) => void
   onAction: (BoundAction) => void
   onOutputLoading: (boolean) => void
@@ -67,7 +68,7 @@ export class Actions extends React.Component<IProps, IState> {
     ActionLoader.setOnOutput(props.onOutput, props.onStreamOutput)
     ActionLoader.setOnActionChoices(props.onActionInitChoices, props.onActionChoices, props.onCancelActionChoice)
     ActionLoader.setOnShowInfo(props.onShowInfo)
-    ActionLoader.setOnSetScrollMode(props.onSetScrollMode)
+    ActionLoader.setOnSetColumnWidths(props.onSetColumnWidths)
     ActionLoader.setOnOutputLoading(props.onOutputLoading)
   }
 
@@ -221,7 +222,7 @@ export class Actions extends React.Component<IProps, IState> {
             {actions.map(action => 
               <ListItem key={action.name} button disableGutters
               className={this.currentAction && action.name === this.currentAction.name 
-                          && action.context === this.currentAction.context ? classes.selectedAction : ''}>
+                          && action.context === this.currentAction.context ? classes.selectedMenuItem : classes.menuItem}>
                 <ListItemText className={classes.listText}
                       onClick={this.onAction.bind(this, action as BoundAction)}>
                   <Typography>{action.name}</Typography>

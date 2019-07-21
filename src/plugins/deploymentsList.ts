@@ -78,7 +78,7 @@ const plugin : ActionGroupSpec = {
           const namespace = selection.item as Namespace
           const deployments = await K8sFunctions.getNamespaceDeployments(cluster.name, namespace.name, cluster.k8sClient)
 
-          output.push([">Namespace " + namespace.name + ", Cluster: " + cluster.name])
+          output.push([">Namespace " + namespace.name + ", Cluster: " + cluster.name + " ("+deployments.length+" deployments)"])
           for(const deployment of deployments) {
             output.push([">>"+deployment.name], [deployment.yaml])
           }
@@ -145,7 +145,36 @@ const plugin : ActionGroupSpec = {
         generateDeploymentComparisonOutput(clusters, namespaces, deployments, this.onStreamOutput)
         this.showOutputLoading && this.showOutputLoading(false)
       },
-    }
+    },
+    {
+      name: "List StatefulSets for Namespaces",
+      order: 4,
+      loadingMessage: "Loading Namespaces...",
+      showJSON: true,
+
+      choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 5),
+
+      async act(actionContext: ActionContext) {
+        this.onOutput && this.onOutput([["StatefulSets List"]], ActionOutputStyle.Table)
+        this.showOutputLoading && this.showOutputLoading(true)
+        const clusters = actionContext.getClusters()
+        const selections = await ChoiceManager.getSelections(actionContext)
+        for(const selection of selections) {
+          const output: ActionOutput = []
+          const cluster = clusters.filter(c => c.name === selection.cluster)[0]
+          const namespace = selection.item as Namespace
+          const statefulSets = await K8sFunctions.getNamespaceStatefulSets(cluster.name, namespace.name, cluster.k8sClient)
+
+          output.push([">Namespace " + namespace.name + ", Cluster: " + cluster.name])
+          for(const statefulSet of statefulSets) {
+            output.push([">>"+statefulSet.name], [statefulSet.yaml])
+          }
+          statefulSets.length === 0 && output.push([">>>No StatefulSets"])
+          this.onStreamOutput && this.onStreamOutput(output)
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
+      }
+    },
   ]
 }
 

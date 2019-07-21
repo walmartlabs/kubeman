@@ -20,6 +20,7 @@ const plugin : ActionGroupSpec = {
       name: "Namespace Events",
       order: 1,
       autoRefreshDelay: 15,
+      loadingMessage: "Loading Namespaces...",
 
       choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 10),
       

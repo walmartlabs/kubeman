@@ -24,7 +24,7 @@ const plugin : ActionGroupSpec = {
       choose: ChoiceManager.chooseService.bind(ChoiceManager, 1, 5),
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await ChoiceManager.getSelections(actionContext)
+        const selections: ItemSelection[] = await ChoiceManager.getServiceSelections(actionContext)
         if(selections.length < 1) {
           this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
           return
@@ -51,7 +51,7 @@ const plugin : ActionGroupSpec = {
         this.act(actionContext)
       },
       clear() {
-        this.onOutput && this.onOutput([["Service Reachability From IngressGateway"]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Service Reachability From IngressGateway"]], ActionOutputStyle.LogWithHealth)
       },
     }
   ]

@@ -44,6 +44,7 @@ interface IState {
   showInfo: boolean
   infoTitle: string,
   info: any[]
+  columnWidths: any[]
   scrollMode: boolean
   outputRowLimit: number
   deferredAction?: BoundActionAct
@@ -78,6 +79,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     showInfo: false,
     infoTitle: '',
     info: [],
+    columnWidths: [],
     scrollMode: false,
     outputRowLimit: 0,
   }
@@ -89,10 +91,10 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   componentDidMount() {
     this.componentWillReceiveProps(this.props)
     const workspace = this
-    ipc.on('updateContext', async (event: Electron.Event, context: {clusters: string[], namespaces: any[]}) => {
+    ipc.on('updateContext', async (event: Electron.Event, context: {clusters: any[], namespaces: any[]}) => {
       if(Context.clusters.length === 0 && context && context.clusters && context.clusters.length > 0) {
         for(const c of context.clusters) {
-          await Context.addCluster(new Cluster(c))
+          await Context.addCluster(new Cluster(c.name, c.context))
         }
         if(context.namespaces && context.namespaces.length > 0) {
           context.namespaces.forEach(ns => {
@@ -118,6 +120,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
       scrollMode: false, 
       outputRowLimit: action.outputRowLimit || 0,
       output: [], 
+      columnWidths: [],
     })
   }
 
@@ -137,6 +140,10 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   showStreamOutput : ActionStreamOutputCollector = (output) => {
     this.tableBox && this.tableBox.appendOutput(output as ActionOutput)
+  }
+
+  setColumnWidths = (...columnWidths) => {
+    this.setState({columnWidths})
   }
 
   setScrollMode = (scrollMode: boolean) => {
@@ -175,6 +182,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   onRefreshActionChoices = () => {
     ChoiceManager.clear()
+    ChoiceManager.clearPreCache()
     Context.selections = []
     this.currentAction && this.currentAction.chooseAndAct()
   }
@@ -208,7 +216,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
     this.setState({showInfo: false})
   }
 
-  onActionTextInput = (text: string) => {
+  onActionInput = (text: string) => {
     if(this.currentAction && this.currentAction.react) {
       ActionLoader.actionContext.inputText = text
       this.currentAction.react()
@@ -232,12 +240,15 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
   onUpdateContext = () => {
     this.tableBox && this.tableBox.clearContent()
     ChoiceManager.clear()
+    ChoiceManager.startAsyncCacheLoader()
     Context.selections = []
     this.setState({output: []})
-    ipc.send('context', {clusters: Context.clusters.map(c => c.name), 
-          namespaces: Context.namespaces.map(ns => {
-            return {cluster: ns.cluster.name, namespace: ns.name}
-          })})
+    ipc.send('context', {
+      clusters: Context.clusters.map(c => {return {name: c.name, context: c.context}}), 
+      namespaces: Context.namespaces.map(ns => {
+        return {cluster: ns.cluster.name, namespace: ns.name}
+      })
+    })
   }
 
   runAction = (name, ...params) => {
@@ -246,13 +257,14 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
 
   render() {
     const { classes } = this.props;
-    const { output, outputStyle, loading, loadingMessage, scrollMode,
+    const { output, outputStyle, loading, loadingMessage, scrollMode, columnWidths,
           showActionInitChoices, showActionChoices, minChoices, maxChoices, 
           choiceTitle, choices, showChoiceSubItems, previousSelections,
           showInfo, infoTitle, info, outputRowLimit } = this.state;
 
     const showBlackBox = outputStyle === ActionOutputStyle.Text
-    const log = outputStyle === ActionOutputStyle.Log || outputStyle === ActionOutputStyle.LogWithHealth
+    const log = outputStyle === ActionOutputStyle.Log
+    const mono = outputStyle === ActionOutputStyle.Mono || outputStyle === ActionOutputStyle.LogWithHealth
     const health = outputStyle === ActionOutputStyle.TableWithHealth || outputStyle === ActionOutputStyle.LogWithHealth
     const compare = outputStyle === ActionOutputStyle.Compare
     const acceptInput = this.currentAction && this.currentAction.react ? true : false
@@ -281,6 +293,7 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                         onActionChoices={this.onActionChoices}
                         onCancelActionChoice={this.onCancelActionChoice}
                         onShowInfo={this.showInfo}
+                        onSetColumnWidths={this.setColumnWidths}
                         onSetScrollMode={this.setScrollMode}
                         onAction={this.onAction}
                         onOutputLoading={this.showOutputLoading}
@@ -304,12 +317,14 @@ export class Workspace extends React.Component<IProps, IState, IRefs> {
                                   output={output}
                                   compare={compare} 
                                   log={log}
+                                  mono={mono}
                                   health={health}
                                   rowLimit={outputRowLimit}
                                   acceptInput={acceptInput}
                                   allowRefresh={allowRefresh}
+                                  columnWidths={columnWidths}
                                   scrollMode={scrollMode}
-                                  onActionTextInput={this.onActionTextInput}
+                                  onActionInput={this.onActionInput}
                     />
                 }
               </TableCell>

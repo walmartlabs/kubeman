@@ -22,9 +22,10 @@ const plugin : ActionGroupSpec = {
 
   actions: [
     {
-      name: "Tail Pilot Logs",
+      name: "Check Pilot Logs",
       order: 2,
-      outputRowLimit: 100,
+      outputRowLimit: 1000,
+      loadingMessage: "Loading Clusters...",
 
       choose: ChoiceManager.chooseClusters.bind(ChoiceManager, 1, 1),
       
@@ -33,7 +34,33 @@ const plugin : ActionGroupSpec = {
         const cluster = ChoiceManager.getSelectedClusters(actionContext)[0]
         const ingressPods = (await IstioFunctions.getPilotPods(cluster.k8sClient, true))
                             .map(p => p.podDetails)
-        K8sPluginHelper.tailPodLogs(ingressPods, "discovery", cluster.k8sClient, this.outputRowLimit, this.onStreamOutput, this.showOutputLoading, this.setScrollMode)
+        K8sPluginHelper.getPodLogs(ingressPods, "discovery", cluster.k8sClient, false, 
+            this.outputRowLimit, this.outputRowLimit, this.onStreamOutput, this.showOutputLoading, this.setScrollMode)
+      },
+
+      stop(actionContext) {
+        StreamLogger.stop()
+      },
+
+      clear(actionContext) {
+        this.onOutput && this.onOutput([["Istio Pilot Discovery Logs (All Pods)", ""]], ActionOutputStyle.Log)
+      },
+    },
+    {
+      name: "Tail Pilot Logs",
+      order: 3,
+      outputRowLimit: 300,
+      loadingMessage: "Loading Clusters...",
+
+      choose: ChoiceManager.chooseClusters.bind(ChoiceManager, 1, 1),
+      
+      async act(actionContext) {
+        this.clear && this.clear(actionContext)
+        const cluster = ChoiceManager.getSelectedClusters(actionContext)[0]
+        const ingressPods = (await IstioFunctions.getPilotPods(cluster.k8sClient, true))
+                            .map(p => p.podDetails)
+        K8sPluginHelper.getPodLogs(ingressPods, "discovery", cluster.k8sClient, true, 
+            this.outputRowLimit, 200, this.onStreamOutput, this.showOutputLoading, this.setScrollMode)
       },
 
       stop(actionContext) {
@@ -46,10 +73,11 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Tail Filtered Pilot Logs",
-      order: 3,
-      outputRowLimit: 100,
+      order: 4,
+      outputRowLimit: 300,
       selectedCluster: undefined,
       filter: undefined,
+      loadingMessage: "Loading Clusters...",
 
       choose: ChoiceManager.chooseClusters.bind(ChoiceManager, 1, 1),
       
@@ -65,8 +93,8 @@ const plugin : ActionGroupSpec = {
         this.showOutputLoading && this.showOutputLoading(true)
         const ingressPods = (await IstioFunctions.getPilotPods(this.selectedCluster.k8sClient, true))
                             .map(p => p.podDetails)
-        K8sPluginHelper.tailPodLogs(ingressPods, "discovery", this.selectedCluster.k8sClient, 
-                    this.outputRowLimit, this.onStreamOutput, this.showOutputLoading, this.setScrollMode, this.filter)
+        K8sPluginHelper.getPodLogs(ingressPods, "discovery", this.selectedCluster.k8sClient, true,
+            this.outputRowLimit, 200, this.onStreamOutput, this.showOutputLoading, this.setScrollMode, this.filter)
         this.showOutputLoading && this.showOutputLoading(false)
       },
 

@@ -48,8 +48,8 @@ class FilterGroup {
   private matchItemToFilters(filters: string[], item: any, field?: string) {
     if(item instanceof Array) {
       const matchedFilters: Set<string> = new Set
-      item.forEach(i => {
-        const text = (field ? item[field] : item).toLowerCase()
+      item.forEach(cell => {
+        const text = (field ? cell[field] : cell).toLowerCase()
         filters.filter(filter => text.includes(filter)).forEach(filter => matchedFilters.add(filter))
       })
       return matchedFilters.size === filters.length
@@ -68,6 +68,10 @@ class FilterGroup {
     const nonNegativeItems = items.filter(item => !this.matchItemToFilters(this.negativeFilters, item, field))
     return nonNegativeItems.filter(item => this.matchItemToFilters(this.positiveFilters, item, field))
   }
+
+  get text() : string {
+    return this.positiveFilters.join(" ") + " ! " + this.negativeFilters.join(" ")
+  }
 }
 
 export class Filter {
@@ -76,6 +80,14 @@ export class Filter {
   filter(items: any[], field?: string) {
     return this.filterGroups.length === 0 ? items :
           items.filter(item => this.filterGroups.filter(filterGroup => filterGroup.matchItem(item, field)).length > 0)
+  }
+
+  get hasFilters(): boolean {
+    return this.filterGroups.length > 0
+  }
+
+  get text() : string {
+    return this.filterGroups.map(fg => fg.text).join(" ")
   }
 }
 

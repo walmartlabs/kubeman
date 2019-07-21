@@ -7,9 +7,9 @@ LICENSE file in the root directory of this source tree.
 
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, ActionOutput, ActionContextOrder} from '../actions/actionSpec'
 import K8sFunctions from '../k8s/k8sFunctions'
-import IstioFunctions from '../k8s/istioFunctions';
-import ChoiceManager from '../actions/choiceManager';
-import { K8sClient } from '../k8s/k8sClient';
+import IstioFunctions from '../k8s/istioFunctions'
+import ChoiceManager from '../actions/choiceManager'
+import { K8sClient } from '../k8s/k8sClient'
 
 export async function listResources(type: string, namespace: string, k8sClient: K8sClient,
               getResources: (namespace, k8sClient) => Promise<any[]>, onStreamOutput) {
@@ -51,6 +51,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "View All Resources in a Namespace",
       order: 20,
+      loadingMessage: "Loading Namespaces...",
 
       choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 3),
       
@@ -69,10 +70,13 @@ const plugin : ActionGroupSpec = {
           this.onStreamOutput && this.onStreamOutput([[">Namespace " + namespace.name + ", Cluster: " + cluster.name]])
 
           await listResources("Services", namespace.name, cluster.k8sClient, 
-                K8sFunctions.getServices.bind(K8sFunctions, cluster.name), this.onStreamOutput)
+                K8sFunctions.getServicesWithDetails.bind(K8sFunctions), this.onStreamOutput)
 
           await listResources("Deployments", namespace.name, cluster.k8sClient, 
                 K8sFunctions.getNamespaceDeployments.bind(K8sFunctions, cluster.name), this.onStreamOutput)
+
+          await listResources("StatefulSets", namespace.name, cluster.k8sClient, 
+                K8sFunctions.getNamespaceStatefulSets.bind(K8sFunctions, cluster.name), this.onStreamOutput)
 
           await listResources("Pods", namespace.name, cluster.k8sClient, 
                 K8sFunctions.getAllPodsForNamespace.bind(K8sFunctions), this.onStreamOutput)
@@ -126,6 +130,7 @@ const plugin : ActionGroupSpec = {
     {
       name: "View Namespace ConfigMaps",
       order: 21,
+      loadingMessage: "Loading Namespaces...",
 
       choose: ChoiceManager.chooseNamespaces.bind(ChoiceManager, false, 1, 1),
       

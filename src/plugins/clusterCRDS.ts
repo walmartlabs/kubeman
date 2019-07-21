@@ -21,6 +21,7 @@ const plugin : ActionGroupSpec = {
       order: 1,
       name: "List All CRDs",
       async act(actionContext) {
+        this.setColumnWidths && this.setColumnWidths("50%", "20%", "30%")
         this.onOutput && this.onOutput([["Labels", "Version", "Status"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
 
@@ -44,7 +45,8 @@ const plugin : ActionGroupSpec = {
     {
       order: 2,
       name: "Compare All CRDs",
-      
+      loadingMessage: "Loading Clusters...",
+
       choose: ChoiceManager.chooseClusters.bind(ChoiceManager, 1, 3),
 
       async act(actionContext) {

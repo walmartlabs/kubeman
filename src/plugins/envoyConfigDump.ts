@@ -12,6 +12,7 @@ import ActionContext from '../actions/actionContext';
 import JsonUtil from '../util/jsonUtil';
 import { EnvoyConfigType } from '../k8s/envoyFunctions';
 import EnvoyPluginHelper from '../k8s/envoyPluginHelper'
+import ChoiceManager from '../actions/choiceManager';
 
 
 export function outputConfig(onStreamOutput, configs: any[], dataField?: string, dataTitleField?: string) {
@@ -48,9 +49,14 @@ async function outputEnvoyConfig(action: ActionSpec, actionContext: ActionContex
   action.showOutputLoading && action.showOutputLoading(true)
 
   for(const envoy of envoys) {
-    action.onStreamOutput  && action.onStreamOutput([["^^", "Envoy Proxy: " + envoy.title + " @ Cluster: " + envoy.cluster]])
     const cluster = actionContext.getClusters().filter(c => c.name === envoy.cluster)[0]
+    if(!cluster.canPodExec) {
+      action.onStreamOutput  && action.onStreamOutput([["^^", "Envoy Proxy: " + envoy.title + " @ Cluster: " + envoy.cluster]])
+      action.onStreamOutput && action.onStreamOutput([["Lacking pod command execution privileges"]])
+      continue
+    }
     const configs = await configFn(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
+    action.onStreamOutput  && action.onStreamOutput([["^^", "Envoy Proxy: " + envoy.title + " @ Cluster: " + envoy.cluster + " ("+configs.length+" items)"]])
     switch(configType) {
       case EnvoyConfigType.Bootstrap:
         outputConfig(action.onStreamOutput, configs)
@@ -79,11 +85,11 @@ const plugin : ActionGroupSpec = {
       order: 21,
       loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 1),
       
       async act(actionContext) {
         await outputEnvoyConfig(this, actionContext, 
-          IstioPluginHelper.getSelectedEnvoyProxies(actionContext), 
+          ChoiceManager.getSelectedEnvoyProxies(actionContext), 
           EnvoyFunctions.getEnvoyBootstrapConfig, "BootstrapConfig")
       },
       refresh(actionContext) {
@@ -95,11 +101,11 @@ const plugin : ActionGroupSpec = {
       order: 22,
       loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 2),
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 2),
       
       async act(actionContext) {
         await outputEnvoyConfig(this, actionContext, 
-          IstioPluginHelper.getSelectedEnvoyProxies(actionContext), 
+          ChoiceManager.getSelectedEnvoyProxies(actionContext), 
           EnvoyFunctions.getEnvoyClusters, "ClustersConfig")
       },
       refresh(actionContext) {
@@ -111,11 +117,11 @@ const plugin : ActionGroupSpec = {
       order: 23,
       loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 2),
-      
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 2),
+
       async act(actionContext) {
         await outputEnvoyConfig(this, actionContext, 
-          IstioPluginHelper.getSelectedEnvoyProxies(actionContext), 
+          ChoiceManager.getSelectedEnvoyProxies(actionContext), 
           EnvoyFunctions.getEnvoyListeners, "ListenersConfig")
       },
       refresh(actionContext) {
@@ -127,11 +133,11 @@ const plugin : ActionGroupSpec = {
       order: 24,
       loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 2),
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 2),
       
       async act(actionContext) {
         await outputEnvoyConfig(this, actionContext, 
-          IstioPluginHelper.getSelectedEnvoyProxies(actionContext), 
+          ChoiceManager.getSelectedEnvoyProxies(actionContext), 
           EnvoyFunctions.getEnvoyRoutes, "RoutesConfig")
       },
       refresh(actionContext) {
@@ -144,15 +150,19 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 30,
       loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 2),
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 2),
       
       async act(actionContext) {
-        this.onOutput && this.onOutput([["Envoy Proxy Stats"]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Envoy Proxy Stats"]], ActionOutputStyle.Mono)
         this.showOutputLoading && this.showOutputLoading(true)
-        const envoys = IstioPluginHelper.getSelectedEnvoyProxies(actionContext)
+        const envoys = ChoiceManager.getSelectedEnvoyProxies(actionContext)
         for(const envoy of envoys) {
           this.onStreamOutput  && this.onStreamOutput([[">Envoy Proxy: " + envoy.title]])
           const cluster = actionContext.getClusters().filter(c => c.name === envoy.cluster)[0]
+          if(!cluster.canPodExec) {
+            this.onStreamOutput && this.onStreamOutput([["Lacking pod command execution privileges"]])
+            continue
+          }
           const stats = await EnvoyFunctions.getEnvoyStats(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
           this.onStreamOutput && this.onStreamOutput(stats.split("\n").map(line => [line]))
         }
@@ -168,15 +178,19 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 30,
       loadingMessage: "Loading Envoy Proxies...",
 
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 2),
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 2),
       
       async act(actionContext) {
-        this.onOutput && this.onOutput([["Envoy Proxy ServerInfo"]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Envoy Proxy ServerInfo"]], ActionOutputStyle.Mono)
         this.showOutputLoading && this.showOutputLoading(true)
-        const envoys = IstioPluginHelper.getSelectedEnvoyProxies(actionContext)
+        const envoys = ChoiceManager.getSelectedEnvoyProxies(actionContext)
         for(const envoy of envoys) {
           this.onStreamOutput  && this.onStreamOutput([[">Envoy Proxy: " + envoy.title]])
           const cluster = actionContext.getClusters().filter(c => c.name === envoy.cluster)[0]
+          if(!cluster.canPodExec) {
+            this.onStreamOutput && this.onStreamOutput([["Lacking pod command execution privileges"]])
+            continue
+          }
           const serverInfo = await EnvoyFunctions.getEnvoyServerInfo(cluster.k8sClient, envoy.namespace, envoy.pod, "istio-proxy")
           this.onStreamOutput && this.onStreamOutput([serverInfo])
         }

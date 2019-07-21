@@ -21,13 +21,17 @@ export interface KubeComponent {
 
 export class Cluster implements KubeComponent {
   name: string
+  context: string
   type: KubeComponentType = KubeComponentType.Cluster
   namespaces: Namespace[] = []
   k8sClient: k8s.K8sClient
   hasIstio: boolean = false
+  hasKubectl: boolean = false
+  canPodExec: boolean = false
 
-  constructor(name: string) {
+  constructor(name: string, context: string) {
     this.name = name
+    this.context = context
     this.k8sClient = {} as k8s.K8sClient
   }
   namespace(name: string) {
@@ -54,7 +58,7 @@ export class Namespace implements KubeComponent {
   cluster: Cluster
   constructor(name?: string, cluster?: Cluster) {
     this.name = name || ''
-    this.cluster = cluster || new Cluster('');
+    this.cluster = cluster || new Cluster('', '');
   }
   get group() {
     return "[" + this.cluster.name + "]"
@@ -168,6 +172,13 @@ export interface Port {
   nodePort?: number,
 }
 
+export interface ServiceInfo {
+  name: string
+  namespace: string
+  cluster: string
+  clusterIP: string
+  ports: string[]
+}
 export interface ServiceDetails extends Metadata {
   clusterIP: string,
   externalIPs?: any,

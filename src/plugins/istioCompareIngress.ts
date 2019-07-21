@@ -19,7 +19,8 @@ const plugin : ActionGroupSpec = {
       name: "Compare Ingress",
       order: 15,
       comparisonMap: {},
-      
+      loadingMessage: "Loading Clusters...",
+
       choose: ChoiceManager.chooseClusters.bind(ChoiceManager, 2, 2),
       
       async act(actionContext) {

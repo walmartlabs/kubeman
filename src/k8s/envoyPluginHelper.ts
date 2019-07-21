@@ -24,8 +24,8 @@ export default class EnvoyPluginHelper {
       clustersByType[cluster.type].push(config)
     })
     Object.keys(clustersByType).forEach(type => {
-      output.push([">Cluster Type: "+type])
       const clusterConfigsForType = clustersByType[type]
+      output.push([">Cluster Type: "+type + " ("+clusterConfigsForType.length+" items)"])
       clusterConfigsForType.forEach(config => {
         const cluster = config.cluster
         output.push([">>"+config.title])
@@ -48,7 +48,8 @@ export default class EnvoyPluginHelper {
     const output: ActionOutput = []
     configs.forEach(config => {
       const listener = config.listener
-      output.push([">"+config.title + " Last Updated: "+config.last_updated])
+      const fcCount = listener.filter_chains ? listener.filter_chains.length : 0
+      output.push([">"+config.title + " Last Updated: "+config.last_updated + " ("+fcCount+" filter chains)"])
       if(listener.address && listener.address.socket_address) {
         output.push([">>Socket Address"])
         output.push([listener.address.socket_address])
@@ -60,7 +61,7 @@ export default class EnvoyPluginHelper {
           const rdsRoute = httpConnectionManager && httpConnectionManager.config && httpConnectionManager.config.rds &&
                             httpConnectionManager.config.rds.route_config_name
           const fcTitle = "Filter Chain #" + (i+1) + 
-          (serverNames.length > 0 ? " [ "+serverNames.join(", ")+" ]" : "") + 
+          (serverNames && serverNames.length > 0 ? " [ "+serverNames.join(", ")+" ]" : "") + 
           (rdsRoute ? " -> RDS Route: [ "+rdsRoute+" ]" : "")
           output.push([">>"+fcTitle])
           if(fc.filter_chain_match) {
@@ -84,7 +85,7 @@ export default class EnvoyPluginHelper {
       output.push([">"+config.title + " Last Updated: "+config.last_updated])
       output.push([{"virtualHost.name": config.name, "virtualHost.domains": config.domains}])
       config.routes.forEach(r => {
-        output.push([">>"+r.route.cluster])
+        r.route && output.push([">>"+r.route.cluster])
         Object.keys(r).forEach(key => output.push([">>>"+key], [r[key]]))
       })
     })

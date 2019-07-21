@@ -23,6 +23,7 @@ export class ActionLoader {
   static onActionChoices: ActionChoiceMaker
   static onCancelActionChoice: () => void
   static onShowInfo: ActionOnInfo
+  static onSetColumnWidths: (...widths) => void
   static onSetScrollMode: (boolean) => void
   static onOutputLoading: (boolean) => void
   static actionContext: ActionContext = new ActionContext
@@ -48,6 +49,10 @@ export class ActionLoader {
 
   static setOnShowInfo(callback: ActionOnInfo) {
     this.onShowInfo = callback
+  }
+
+  static setOnSetColumnWidths(callback: (...widths) => void) {
+    this.onSetColumnWidths = callback
   }
 
   static setOnSetScrollMode(callback: (boolean) => void) {
@@ -116,13 +121,17 @@ export class ActionLoader {
         action.actionContext = this.actionContext
         action.onOutput = this.onOutput.bind(this, action)
         action.onStreamOutput = this.onStreamOutput.bind(this, action)
+        action.setColumnWidths = this.onSetColumnWidths
         action.setScrollMode = this.onSetScrollMode
         action.showOutputLoading = this.onOutputLoading
         action.showInfo = this.onShowInfo
+        action.sleep = async (ms) => await new Promise(resolve => setTimeout(resolve, ms))
         action.chooseAndAct = () => {
           Context.incrementOperation()
           OutputManager.clearContent()
           OutputManager.clearFilter()
+          OutputManager.setShowAllGroupsInSearch(false)
+          OutputManager.setShowAllSubGroupsInSearch(true)
           this.actionContext.inputText = undefined
           action.stopped = false
           if(this.checkSelections({
@@ -152,6 +161,7 @@ export class ActionLoader {
         action.stop = () => {
           action.stopped = true
           actionStop && actionStop()
+          this.onOutputLoading(false)
         }
 
         const actionClear = action.clear && action.clear.bind(action)

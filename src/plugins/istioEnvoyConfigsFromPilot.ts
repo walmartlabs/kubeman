@@ -31,16 +31,20 @@ function getConfigItems(configs, configType, titleField) {
 
 async function outputEnvoyConfig(action, actionContext, configType, titleField: string, 
                                     dataField?: string, dataTitleField?: string) {
-  const envoy = IstioPluginHelper.getSelectedEnvoyProxies(actionContext)[0]
+  const envoy = ChoiceManager.getSelectedEnvoyProxies(actionContext)[0]
   const title = configType.replace("Dump", "")
   action.showOutputLoading && action.showOutputLoading(true)
   const cluster = actionContext.getClusters().filter(c => c.name === envoy.cluster)[0]
-  action.onOutput && action.onOutput([["Envoy " + title + " from Pilot"]], ActionOutputStyle.Log)
+  action.onOutput && action.onOutput([["Envoy " + title + " from Pilot"]], ActionOutputStyle.Mono)
 
-  const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, envoy.pilotPod, envoy.title)
-  action.onStreamOutput && action.onStreamOutput([[">" + title + " for " + envoy.title]])
-  const configs = getConfigItems(pilotConfigs, configType, titleField)
-  outputConfig(action.onStreamOutput, configs, dataField, dataTitleField)
+  if(!cluster.canPodExec) {
+    action.onStreamOutput && action.onStreamOutput([["Lacking pod command execution privileges"]])
+  } else {
+    const pilotConfigs = await IstioFunctions.getPilotConfigDump(cluster.k8sClient, envoy.pilotPod, envoy.title)
+    action.onStreamOutput && action.onStreamOutput([[">" + title + " for " + envoy.title]])
+    const configs = getConfigItems(pilotConfigs, configType, titleField)
+    outputConfig(action.onStreamOutput, configs, dataField, dataTitleField)
+  }
   action.showOutputLoading && action.showOutputLoading(false)
 }
 
@@ -55,7 +59,7 @@ const plugin : ActionGroupSpec = {
       order: 50,
       loadingMessage: "Loading Envoy Proxies...",
       
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 1),
 
       async act(actionContext) {
         outputEnvoyConfig(this, actionContext, "ClustersConfigDump", "cluster.name")
@@ -66,7 +70,7 @@ const plugin : ActionGroupSpec = {
       order: 51,
       loadingMessage: "Loading Envoy Proxies...",
       
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 1),
 
       async act(actionContext) {
         outputEnvoyConfig(this, actionContext, "ListenersConfigDump", "listener.address.socketAddress.portValue")
@@ -77,7 +81,7 @@ const plugin : ActionGroupSpec = {
       order: 52,
       loadingMessage: "Loading Envoy Proxies...",
       
-      choose: IstioPluginHelper.chooseEnvoyProxy.bind(IstioPluginHelper, 1, 1),
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 1),
 
       async act(actionContext) {
         outputEnvoyConfig(this, actionContext, "RoutesConfigDump", 
@@ -90,18 +94,22 @@ const plugin : ActionGroupSpec = {
       autoRefreshDelay: 15,
       loadingMessage: "Loading Pilot Pods...",
             
-      choose: IstioPluginHelper.choosePilotPods.bind(IstioPluginHelper, 1, 3),
+      choose: ChoiceManager.choosePilotPods.bind(ChoiceManager, 1, 3),
 
       async act(actionContext) {
-        this.onOutput && this.onOutput([["Pilot-Sidecars Sync Status"]], ActionOutputStyle.Log)
+        this.onOutput && this.onOutput([["Pilot-Sidecars Sync Status"]], ActionOutputStyle.Mono)
         this.showOutputLoading && this.showOutputLoading(true)
 
         const selections = await ChoiceManager.getPodSelections(actionContext, false)
         for(const selection of selections) {
           const output: ActionOutput = []
           output.push([">Pilot Pod: " + selection.podName + " @ Cluster: " + selection.cluster])
-          const result = await IstioFunctions.getPilotSidecarSyncStatus(selection.k8sClient, selection.podName)
-          result.forEach(r => output.push([r], []))
+          if(!selection.k8sClient.canPodExec) {
+            output.push(["Lacking pod command execution privileges"])
+          } else {
+            const result = await IstioFunctions.getPilotSidecarSyncStatus(selection.k8sClient, selection.podName)
+            result.forEach(r => output.push([r], []))
+          }
           this.onStreamOutput && this.onStreamOutput(output)
         }
         this.showOutputLoading && this.showOutputLoading(false)

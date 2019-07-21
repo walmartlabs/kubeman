@@ -9,6 +9,8 @@ import _ from 'lodash'
 import {ActionGroupSpec, ActionContextType, ActionOutputStyle, } from '../actions/actionSpec'
 import IstioFunctions from '../k8s/istioFunctions'
 import {executeCommand} from './podExecCommand'
+import IstioPluginHelper from '../k8s/istioPluginHelper'
+import ChoiceManager from '../actions/choiceManager'
 
 const plugin : ActionGroupSpec = {
   context: ActionContextType.Istio,
@@ -16,32 +18,26 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Execute Command on Ingress Pods",
-      order: 5,
+      order: 6,
       autoRefreshDelay: 15,
+      loadingMessage: "Loading IngressGateway Pods...",
+
+      choose: ChoiceManager.chooseIngressGatewayPods.bind(ChoiceManager, 1, 5),
 
       ingressPods: [],
       
       async act(actionContext) {
         this.showOutputLoading && this.showOutputLoading(true)
-        this.ingressPods = []
-        const clusters = actionContext.getClusters()
-        for(const cluster of clusters) {
-          if(!cluster.hasIstio) {
-            this.onStreamOutput  && this.onStreamOutput([["Istio not installed"]])
-            continue
+        const selections = await ChoiceManager.getPodSelections(actionContext, false)
+        this.ingressPods = selections.map(s => {
+          return {
+            container: "istio-proxy",
+            pod: s.podName,
+            namespace: "istio-system",
+            cluster: s.cluster,
+            k8sClient: s.k8sClient
           }
-          const pods = await IstioFunctions.getIngressGatewayPods(cluster.k8sClient)
-          this.ingressPods = this.ingressPods.concat(
-            pods.map(p => {
-              return {
-                container: "istio-proxy",
-                pod: p.name,
-                namespace: "istio-system",
-                cluster: cluster.name,
-                k8sClient: cluster.k8sClient
-              }
-            }))
-        }
+        })
         this.clear && this.clear(actionContext)
         this.setScrollMode && this.setScrollMode(true)
         this.showOutputLoading && this.showOutputLoading(false)
@@ -60,7 +56,7 @@ const plugin : ActionGroupSpec = {
       clear(actionContext) {
         this.onOutput && this.onOutput([[
           "Send Command To " + this.ingressPods.length + " IngressGateway Pods across " + actionContext.getClusters().length + " Clusters"
-        ]], ActionOutputStyle.Log)
+        ]], ActionOutputStyle.Mono)
       },
     }
   ]

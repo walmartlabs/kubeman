@@ -25,7 +25,8 @@ const plugin : ActionGroupSpec = {
       },
 
       async act(actionContext) {
-        K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Secrets", "name")
+        K8sPluginHelper.generateComparisonOutput(this, actionContext, 
+          ChoiceManager.getSelections.bind(ChoiceManager), this.onOutput, this.onStreamOutput, "Secrets", "name")
       },
     },
     {
@@ -38,7 +39,8 @@ const plugin : ActionGroupSpec = {
       },
 
       async act(actionContext) {
-        K8sPluginHelper.generateComparisonOutput(actionContext, this.onOutput, "Config Maps")
+        K8sPluginHelper.generateComparisonOutput(this, actionContext, 
+          ChoiceManager.getSelections.bind(ChoiceManager), this.onOutput, this.onStreamOutput, "Config Maps")
       },
     }
   ]

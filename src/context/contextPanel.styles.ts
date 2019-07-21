@@ -13,7 +13,6 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     flexWrap: 'wrap',
     justifyContent: 'space-around',
     overflow: 'hidden',
-    backgroundColor: palette.type === 'dark' ? palette.background.paper : '#edeef8',
   },
   list: {
     maxHeight: '92%',
@@ -44,7 +43,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
   panel: {
     overflowX: 'auto',
     overflowY: 'hidden',
-    backgroundColor: palette.type === 'dark' ? palette.background.paper : '#daddf1',
+    backgroundColor: palette.background.paper,
   },
   grid: {
     height: 50,
@@ -98,7 +97,7 @@ const styles = ({ palette, spacing, typography }: Theme) => createStyles({
     width: '100%',
     height: '100%',
     fontSize: '1.1em',
-    backgroundColor: palette.type === 'dark' ? palette.background.paper : '#daddf1',
+    backgroundColor: palette.background.paper
   },
 })
 

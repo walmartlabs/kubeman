@@ -158,7 +158,7 @@ class ActionChoiceDialog extends React.Component<IProps, IState> {
       <Dialog open={open} classes={{paper: classes.dialog}}
               onClose={this.props.onCancel} >
         <DialogTitle className={classes.dialogTitle}>
-          <Typography className={classes.heading}>{title}</Typography>
+          <Typography className={classes.heading}>{title} ({filteredChoices.length} items)</Typography>
           <Input fullWidth autoFocus
                 placeholder="Type here to filter data from the results" 
                 onChange={this.onFilterChange}

@@ -12,7 +12,6 @@ import jp from 'jsonpath'
 import fs from 'fs'
 import * as k8s from 'kubernetes-client'
 import {Cluster, Namespace, PodTemplate} from "./k8sObjectTypes"
-import k8sFunctions from './k8sFunctions'
 
 const homedir = os.homedir();
 
@@ -28,9 +27,12 @@ function getUserKubeConfig() {
 export function getAllClusters() : Cluster[] {
   const kubeConfig = getUserKubeConfig()
   if(kubeConfig) {
-    return jp.query(kubeConfig, '$.contexts[*].context.cluster')
-                    .filter((item, index, arr) => arr.indexOf(item) === index)
-                    .map(name => new Cluster(name))
+    return kubeConfig.contexts.map(context => {
+      return {cluster: context.context.cluster, context: context.name}
+    })
+    .filter((item, index, arr) => arr.indexOf(item) === index)
+    .sort()
+    .map(item => new Cluster(item.cluster, item.context))
   } else {
     return []
   }
@@ -38,10 +40,10 @@ export function getAllClusters() : Cluster[] {
 
 function getClientForCluster(cluster: Cluster) {
   const kubeConfig = getUserKubeConfig()
-  const context = jp.query(kubeConfig, "$.contexts[?(@.context.cluster == '" + cluster.name + "')].name")
+  const context = jp.query(kubeConfig, "$.contexts[?(@.name == '" + cluster.context + "')].name")
   kubeConfig["current-context"] = context.length > 0 ? context[0] : ''
   const config = k8s.config.fromKubeconfig(kubeConfig)
-  return new k8s.Client1_10({config})
+  return new k8s.Client1_13({config})
 }
 
 export async function getNamespacesForCluster(cluster: Cluster) : Promise<Array<Namespace>> {

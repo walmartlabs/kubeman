@@ -57,7 +57,7 @@ const plugin : ActionGroupSpec = {
       choose: ChoiceManager.choosePods.bind(ChoiceManager, 1, 10, false, true),
 
       async act(actionContext) {
-        const selections = await ChoiceManager.getPodSelections(actionContext, false)
+        const selections = await ChoiceManager.getPodSelections(actionContext, true)
         this.directAct && this.directAct(selections)
       },
 

@@ -17,7 +17,7 @@ const plugin : ActionGroupSpec = {
   actions: [
     {
       name: "Find Overlapping Gateways",
-      order: 12,
+      order: 10,
       async act(actionContext) {
         this.onOutput && this.onOutput([["Overlapping Gateways"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)

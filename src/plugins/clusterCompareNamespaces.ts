@@ -19,7 +19,8 @@ const plugin : ActionGroupSpec = {
     {
       name: "Compare Cluster Namespaces",
       order: 11,
-      
+      loadingMessage: "Loading Clusters...",
+
       choose: ChoiceManager.chooseClusters.bind(ChoiceManager, 1, 3),
 
       async act(actionContext) {
