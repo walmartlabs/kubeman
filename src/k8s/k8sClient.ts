@@ -127,7 +127,7 @@ export async function getClientForCluster(cluster: Cluster) {
     console.log(error)
   }
   console.clear()
-  await KubectlClient.getPods(cluster, "kube-system")
+  await KubectlClient.getServices(cluster)
     .then(results => {
       cluster.hasKubectl = true
       console.log("kubectl is accessible")

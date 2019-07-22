@@ -32,7 +32,12 @@ export default class KubectlClient {
           if(finishTimer) {
             clearTimeout(finishTimer)
           }
-          buffer = buffer + (stdout || stderr || error && error.toString() || '')
+          if(error && error.toString().length > 0) {
+            console.log(error)
+            reject(error.toString())
+          } else {
+            buffer = buffer + (stdout || stderr || '')
+          }
           finishTimer = setTimeout(() => resolve(buffer), 1000)
         }
       )
