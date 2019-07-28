@@ -779,4 +779,47 @@ export default class K8sFunctions {
     }
     return undefined
   }
+
+  static async getPodConnections(namespace: string, pod: string, container: string, k8sClient: K8sClient) {
+    const commandText = "netstat -an"
+    const command = ["sh", "-c"]
+    command.push(k8sClient.cluster.hasKubectl ? "'" + commandText + "'" : commandText)
+    return K8sFunctions.podExec(namespace, pod, container, k8sClient, command)
+  }
+
+
+  static async getPodTCPConnectionsInfo(namespace: string, pod: string, container: string, k8sClient: K8sClient) {
+    const output = await K8sFunctions.getPodConnections(namespace, pod, container, k8sClient)
+    const lines = output.split("\n").filter((line, index) => line.length > 0)
+    const tcpLines = lines.filter(line => line.includes("tcp"))
+    const listenLines = tcpLines.filter(line => line.includes("LISTEN"))
+    const listenCount = listenLines.length
+    const establishedLines = tcpLines.filter(line => line.includes("ESTABLISHED"))
+    const establishedCount = establishedLines.length
+    const timeWaitLines = tcpLines.filter(line => line.includes("TIME_WAIT"))
+    const timeWaitCount = timeWaitLines.length
+
+    const listenAddresses = listenLines.map(line => line.split(" ").filter(field => field.length > 0)[3])
+
+    const getRemoteConnectionInfo = (lines, obj) => {
+      lines.map(line => line.split(" ").filter(field => field.length > 0)[4])
+            .forEach(a => {
+              const ipPort = a.split(":")
+              obj[ipPort[0]] = obj[ipPort[0]] || []
+              obj[ipPort[0]].push(ipPort[1])
+            })
+      Object.keys(obj).forEach(key => obj[key] = obj[key].sort().join(", "))
+    }
+
+    const remoteEstablished = {}
+    getRemoteConnectionInfo(establishedLines, remoteEstablished)
+
+    const remoteTimeWait = {}
+    getRemoteConnectionInfo(timeWaitLines, remoteTimeWait)
+
+    return {
+      listenCount, establishedCount, timeWaitCount, 
+      listenAddresses, remoteEstablished, remoteTimeWait
+    }
+  }
 }

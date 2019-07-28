@@ -241,25 +241,27 @@ export default class IstioFunctions {
     const portsOutput = {}
     if(k8sClient.istio) {
       const matchRoutePorts = (port, routeConfigs) => {
-        const matchPorts = _.flatten(routeConfigs.map(rc => rc.match ? rc.match.map(m => m.port) : [])).filter(p => p)
-        const matchesMatchPort = matchPorts.includes(port)
-        const destinationPorts = _.flatten(routeConfigs.map(rc => rc.route ? rc.route.map(r => 
-                r.destination && r.destination.port && r.destination.port.number) : [])).filter(p => p)
-        const matchesDestPort = destinationPorts.includes(port)
-
-        if(matchesDestPort) {
-          portsOutput[port].matchPorts = _.uniqBy(portsOutput[port].matchPorts.concat(matchPorts))
-          if(!portsOutput[port].destinationPorts.includes(port)) {
-            portsOutput[port].destinationPorts.push(port)
+        portsOutput[port].matchPorts = portsOutput[port].matchPorts || []
+        portsOutput[port].destinationPorts = portsOutput[port].destinationPorts || []
+        routeConfigs.forEach(rc => {
+          const rcMatchPorts = rc.match ? rc.match.filter(m => m.port).map(m => m.port) : []
+          const rcDestPorts = (rc.route ? rc.route.map(r => r.destination && r.destination.port && r.destination.port.number) : []).filter(p => p)
+          const matchesMatchPort = rcMatchPorts.includes(port)
+          const matchesDestPort = rcDestPorts.includes(port)
+          if(matchesDestPort) {
+            portsOutput[port].matchPorts = _.uniqBy(portsOutput[port].matchPorts.concat(rcMatchPorts))
+            if(!portsOutput[port].destinationPorts.includes(port)) {
+              portsOutput[port].destinationPorts.push(port)
+            }
           }
-        }
-        if(matchesMatchPort) {
-          portsOutput[port].destinationPorts = _.uniqBy(portsOutput[port].destinationPorts.concat(destinationPorts))
-          if(!portsOutput[port].matchPorts.includes(port)) {
-            portsOutput[port].matchPorts.push(port)
+          if(matchesMatchPort) {
+            portsOutput[port].destinationPorts = _.uniqBy(portsOutput[port].destinationPorts.concat(rcDestPorts))
+            if(!portsOutput[port].matchPorts.includes(port)) {
+              portsOutput[port].matchPorts.push(port)
+            }
           }
-        }
-        return matchesMatchPort || matchesDestPort
+        })
+        return portsOutput[port].matchPorts.length > 0 || portsOutput[port].destinationPorts.length > 0
       }
 
       const allVirtualServices = await IstioFunctions.listAllVirtualServices(k8sClient, false)

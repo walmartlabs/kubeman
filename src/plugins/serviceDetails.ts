@@ -130,7 +130,7 @@ const plugin : ActionGroupSpec = {
     },
     {
       name: "Compare Two Services",
-      order: 30,
+      order: 21,
       loadingMessage: "Loading Services...",
 
       choose: ChoiceManager.chooseService.bind(ChoiceManager, 2, 2),
