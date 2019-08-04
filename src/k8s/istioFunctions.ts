@@ -692,14 +692,22 @@ export default class IstioFunctions {
     return await EnvoyFunctions.getEnvoyServerInfo(k8sClient, "istio-system", pod, "istio-proxy")
   }
 
+  static async getIngressPodEnvoyConfigsForService(ingressPod: string, service: ServiceDetails, k8sClient: K8sClient) {
+    return EnvoyFunctions.getEnvoyConfigsForService(service.name, service.namespace,
+                            "istio-system", ingressPod, "istio-proxy", k8sClient)
+  }
+
   static async getIngressEnvoyConfigsForService(service: ServiceDetails, k8sClient: K8sClient) {
     const ingressPods = await IstioFunctions.getIngressGatewayPods(k8sClient)
     if(!ingressPods || ingressPods.length === 0) {
       console.log("IngressGateway not found")
       return []
     }
-    return EnvoyFunctions.getEnvoyConfigsForService(service.name, service.namespace,
-                            "istio-system", ingressPods[0].name, "istio-proxy", k8sClient)
+    return IstioFunctions.getIngressPodEnvoyConfigsForService(ingressPods[0].name, service, k8sClient)
+  }
+
+  static async getIngressPodEnvoyConfigsForFqdn(ingressPod: string, fqdn: string, k8sClient: K8sClient) {
+    return await EnvoyFunctions.getEnvoyConfigsForFqdn(fqdn, "istio-system", ingressPod, "istio-proxy", k8sClient)
   }
 
   static async getIngressEnvoyConfigsForFqdn(fqdn: string, k8sClient: K8sClient) {
@@ -710,7 +718,7 @@ export default class IstioFunctions {
     }
     const results: any[] = []
     for(const pod of ingressPods) {
-      const configs = await EnvoyFunctions.getEnvoyConfigsForFqdn(fqdn, "istio-system", pod.name, "istio-proxy", k8sClient)
+      const configs = await IstioFunctions.getIngressPodEnvoyConfigsForFqdn(pod.name, fqdn, k8sClient)
       results.push({pod: pod.name, configs})
     }
     return results

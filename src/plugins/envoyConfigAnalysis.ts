@@ -91,6 +91,62 @@ const plugin : ActionGroupSpec = {
       },
       onActionOption(actionContext, option) {
       }
+    },
+    {
+      name: "Envoy Sidecar Config for Fqdn",
+      order: 41,
+      loadingMessage: "Loading Envoy Proxies...",
+
+      choose: ChoiceManager.chooseEnvoyProxy.bind(ChoiceManager, 1, 3),
+
+      async act(actionContext) {
+        this.clear && this.clear(actionContext)
+      },
+
+      clear() {
+        this.onOutput && this.onOutput([["Enter /<fqdn> as command to check sidecar config",]], ActionOutputStyle.Table)
+      },
+
+      async react(actionContext) {
+        const sidecars = ChoiceManager.getSelectedEnvoyProxies(actionContext)
+        if(sidecars.length < 1) {
+          this.onOutput && this.onOutput([["No sidecar selected"]], ActionOutputStyle.Text)
+          return
+        }
+        const input = actionContext.inputText && actionContext.inputText.trim()
+        this.onOutput && this.onOutput([[
+          input ? "Sidecar config for FQDN: " + input : "No FQDN entered"
+        ]], ActionOutputStyle.Table)
+        if(!input) return
+
+        this.showOutputLoading && this.showOutputLoading(true)
+        const fqdns = input.split(",").map(s => s.trim()).filter(s => s.length > 0)
+
+        for(const sidecar of sidecars) {
+          const cluster = actionContext.getClusters().filter(c => c.name === sidecar.cluster)[0]
+          for(const fqdn of fqdns) {
+            const output: ActionOutput = []
+            output.push([">Fqdn: " + fqdn + " @ Envoy Sidecar: " + sidecar.pod + "." + sidecar.namespace + " @ Cluster: " + sidecar.cluster])
+            if(!cluster.canPodExec) {
+              output.push(["Lacking pod command execution privileges"])
+            } else {
+              const configsByType = await EnvoyFunctions.getEnvoyConfigsForFqdn(fqdn, 
+                      sidecar.namespace, sidecar.pod, "istio-proxy", cluster.k8sClient)
+              Object.keys(configsByType).forEach(configType => {
+                const items = configsByType[configType]
+                output.push([">>" + configType])
+                items.length === 0 && output.push(["No matching data found"])
+                items.length > 0 && items.forEach(item => output.push([">>>"+ item.title], [item]))
+              })
+            }
+            this.onStreamOutput && this.onStreamOutput(output)
+          }
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
     }
   ]
 }

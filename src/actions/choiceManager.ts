@@ -505,6 +505,16 @@ export default class ChoiceManager {
     )
   }
 
+  static async chooseServiceAndIngressPod(action, actionContext: ActionContext, maxService: number = 2, maxIngressPods: number = 2) {
+    await ChoiceManager.doubleChoices(action, actionContext,
+      await ChoiceManager.chooseService.bind(ChoiceManager, 1, maxService, actionContext),
+      await ChoiceManager.getServiceSelections.bind(ChoiceManager, actionContext),
+      async serviceSelection => {
+        await ChoiceManager.chooseClusterIngressGatewayPods(serviceSelection.data[0].cluster, 1, maxIngressPods, actionContext)
+      },
+      await ChoiceManager.getPodSelections.bind(ChoiceManager, actionContext, false, false)
+    )
+  }
   static async doubleChoices(action, actionContext, choose1, getSelections1, choose2, getSelections2) {
     let selections: any[] = []
     const choice2SelectionHandler = async (...args) => {
@@ -550,6 +560,13 @@ export default class ChoiceManager {
       s.item.cluster = s.cluster
       return s.item
     })
+  }
+
+  static async chooseClusterIngressGatewayPods(targetCluster: string, min: number = 1, max: number = 1, actionContext: ActionContext) {
+    ChoiceManager.prepareCachedChoices(actionContext, 
+      async (cluster, namespace, k8sClient) => {
+        return cluster === targetCluster ? await IstioFunctions.getIngressGatewayPodsList(k8sClient) : []
+      }, "IngressGateway Pods", min, max, false, "name")
   }
 
   static async chooseIngressGatewayPods(min: number = 1, max: number = 1, actionContext: ActionContext) {

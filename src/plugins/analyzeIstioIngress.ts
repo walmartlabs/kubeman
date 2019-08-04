@@ -95,43 +95,99 @@ const plugin : ActionGroupSpec = {
       order: 40,
       loadingMessage: "Loading Services...",
 
-      choose: ChoiceManager.chooseService.bind(ChoiceManager, 1, 3),
+      choose(actionContext) {
+        ChoiceManager.chooseServiceAndIngressPod(this, actionContext)
+      },
 
       async act(actionContext) {
-        const selections: ItemSelection[] = await ChoiceManager.getServiceSelections(actionContext)
-        if(selections.length < 1) {
-          this.onOutput && this.onOutput([["No service selected"]], ActionOutputStyle.Text)
-          return
-        }
+        const selections = await ChoiceManager.getDoubleSelections(actionContext)
+        const svcSelections = selections[0]
+        const podSelections = selections[1]
         this.onOutput && this.onOutput([["IngressGateway Envoy Config for Service"]], ActionOutputStyle.Table)
         this.showOutputLoading && this.showOutputLoading(true)
         
-        for(const selection of selections) {
-          const service = selection.item
-          const namespace = selection.namespace
-          const cluster = actionContext.getClusters().filter(c => c.name === selection.cluster)[0]
+        for(const svcSelection of svcSelections) {
+          const service = svcSelection.item
+          const namespace = svcSelection.namespace
+          const cluster = actionContext.getClusters().filter(c => c.name === svcSelection.cluster)[0]
           if(!cluster.canPodExec) {
             this.onStreamOutput && this.onStreamOutput([["Lacking pod command execution privileges"]])
             continue
           }
 
-          const output: ActionOutput = []
-
+          let output: ActionOutput = []
           output.push([">Service: " + service.name + "." + namespace + " @ " + cluster.name])
-
           await outputIngressVirtualServicesAndGatewaysForService(service.name, service.namespace, cluster.k8sClient, output)
+          this.onStreamOutput && this.onStreamOutput(output)
 
-          const configsByType = await IstioFunctions.getIngressEnvoyConfigsForService(service, cluster.k8sClient)
-          Object.keys(configsByType).forEach(configType => {
-            output.push([">>IngressGateway " + configType + " configs relevant to this service"])
-            const configs = configsByType[configType]
-            configs.length === 0 && output.push(["No " + configType + " configs"])
-            configs.forEach(c => {
-              output.push([">>>"+c.title])
-              output.push([c])
+          for(const podSelection of podSelections) {
+            output = []
+            const configsByType = await IstioFunctions.getIngressPodEnvoyConfigsForService(podSelection.podName, service, cluster.k8sClient)
+            Object.keys(configsByType).forEach(configType => {
+              output.push([">>Relevant IngressGateway " + configType + " from pod " + podSelection.podName])
+              const configs = configsByType[configType]
+              configs.length === 0 && output.push(["No " + configType + " configs"])
+              configs.forEach(c => {
+                output.push([">>>"+c.title])
+                output.push([c])
+              })
             })
-          })
-          this.onStreamOutput && this.onStreamOutput(output) 
+            this.onStreamOutput && this.onStreamOutput(output)
+          }
+        }
+        this.showOutputLoading && this.showOutputLoading(false)
+      },
+      refresh(actionContext) {
+        this.act(actionContext)
+      }
+    },
+    {
+      name: "IngressGateway Envoy Config for FQDN",
+      order: 41,
+
+      choose: ChoiceManager.chooseIngressGatewayPods.bind(ChoiceManager, 1, 2),
+
+      async act(actionContext) {
+        this.clear && this.clear(actionContext)
+      },
+
+      clear() {
+        this.onOutput && this.onOutput([["Enter /<fqdn> as command to check IngressGateway Envoy config",]], ActionOutputStyle.Table)
+      },
+
+      async react(actionContext) {
+        const input = actionContext.inputText && actionContext.inputText.trim()
+        this.onOutput && this.onOutput([[
+          input ? "IngressGateway Envoy config for FQDN: " + input : "No FQDN entered"
+        ]], ActionOutputStyle.Table)
+        if(!input) return
+
+        this.showOutputLoading && this.showOutputLoading(true)
+        const fqdns = input.split(",").map(s => s.trim()).filter(s => s.length > 0)
+        const podSelections = await ChoiceManager.getPodSelections(actionContext, false)
+
+        for(const fqdn of fqdns) {
+          for(const podSelection of podSelections) {
+            const output: ActionOutput = []
+            output.push([">Fqdn: " + fqdn + ", Ingress Pod: " + podSelection.podName])
+            if(!podSelection.k8sClient.canPodExec) {
+              output.push(["Lacking pod command execution privileges"])
+            } else {
+              await outputIngressVirtualServicesAndGatewaysForFqdn(fqdn, podSelection.k8sClient, output)
+
+              const configs = await IstioFunctions.getIngressPodEnvoyConfigsForFqdn(podSelection.podName, fqdn, podSelection.k8sClient)
+              Object.keys(configs).forEach(configType => {
+                output.push([">>Relevant " + configType + " from IngressGateway Pod: " + podSelection.podName])
+                const config = configs[configType]
+                config.length === 0 && output.push(["No " + configType + " configs"])
+                config.forEach(c => {
+                  output.push([">>>"+c.title])
+                  output.push([c])
+                })
+              })
+            }
+            this.onStreamOutput && this.onStreamOutput(output)
+          }
         }
         this.showOutputLoading && this.showOutputLoading(false)
       },
