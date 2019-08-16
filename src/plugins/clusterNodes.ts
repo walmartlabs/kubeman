@@ -74,9 +74,13 @@ const plugin : ActionGroupSpec = {
           const cluster = clusters[i]
           output.push([">Cluster: " + cluster.name])
           if(cluster.hasKubectl) {
-            const results = await KubectlClient.getTopNodes(cluster)
-            results.forEach(item => output.push(["<<", ...item]))
-            results.length === 0 && output.push(["<<", "Couldn't get top nodes"])
+            try {
+              const results = await KubectlClient.getTopNodes(cluster)
+              results.forEach(item => output.push(["<<", ...item]))
+              results.length === 0 && output.push(["<<", "Couldn't get top nodes"])
+            } catch(error) {
+              output.push([error])
+            }
           } else {
             output.push(["No kubectl access"])
           }

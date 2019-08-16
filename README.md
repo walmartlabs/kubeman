@@ -3,15 +3,20 @@
 Slack Channel: #kubeman
 
 ## What's Kubeman?
-Kubeman is a tool that aims to provide an easy way to view information in Kubernetes clusters and investigate issues related to Kubernetes and Istio. 
-
-## How does it work?
-Kubeman is offered as a desktop application that relies on your local saved kubernetes contexts (in kube config) to let you connect to up to 3 kubernetes clusters. Once connected to a cluster, you can view information from all namespaces that are available to your user account. Kubeman offers several recipes that can be executed against a cluster to view related information or perform certain investigation.
+Kubeman is a tool that attempts to make it easier to find information from Kubernetes clusters, and to investigate issues related to Kubernetes and Istio.
 
 ## Why Kubeman?
-Prior to Kubeman, there was no comprehensive tool available in the Kubernetes community to perform complex investigation against Kubernetes and Istio clusters. User would have to rely on terminal utilities like kubectl and istioctl to read information from clusters and connect the dots oneself. Investigating any non-trivial issue would result in running 10s of commands and cross-referencing information from multiple commands. Kubeman simplifies such investigation tasks by performing relevant cross-referencing and analysis of related information. Such pre-defined analysis tasks are offered as recipes.
+While kubectl is a must-have utility for working with Kubernetes clusters, it leaves a lot to the user when it comes to investigating complex issues related to Kubernetes and Istio.
+Investigating any non-trivial issue may involve running dozens of commands and cross-referencing information from multiple commands, retaining a lot of context and connecting the dots in one's head. Kubeman simplifies such investigation tasks by performing relevant cross-referencing and analysis of related information, so that the user doesn't have to do the heavy-lifting. Such pre-defined analysis tasks are offered as recipes.
+
+## How does it work?
+Kubeman is offered as a desktop application that uses your local kube config to connect to clusters of your choice. Once connected, you can view and analyze information from all namespaces that are available to your user account. Kubeman offers various recipes ranging from those that can give you a summary overview of a cluster, to those that can analyze and correlate configurations across multiple clusters.
 
 ## How to use it?
+### Installation
+You can either choose to download a pre-built binary from the github releases, or build the application yourself (see below). Pre-built binaries are available for Mac (dmg), Win64 (exe) and Linux (appimage) platforms.
+
+### Usage
 See: [Kubeman User Guide](/userGuide.md)
 
 ## To build and run the app

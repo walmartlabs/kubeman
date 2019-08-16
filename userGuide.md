@@ -1,5 +1,5 @@
 ## Kubeman User Guide
-1. Either download the application binary (currently pre-built binaries are offered for Mac and Win-64 OS), or get the source code and build it yourself (instructions at the bottom)
+1. Either download the application binary, or get the source code and build it yourself.
 2. Use kuebctl (or another tool) to connect to a cluster, so that the cluster context gets saved in your local kube config.
 3. Run Kubeman application
    ![Kubeman Application](/static/kubeman-application.png)
