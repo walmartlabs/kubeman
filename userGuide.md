@@ -1,6 +1,6 @@
 ## Kubeman User Guide
 1. Either download the application binary, or get the source code and build it yourself.
-2. Use kuebctl (or another tool) to connect to a cluster, so that the cluster context gets saved in your local kube config.
+2. Use kubectl (or another tool) to connect to a cluster, so that the cluster context gets saved in your local kube config.
 3. Run Kubeman application
    ![Kubeman Application](/static/kubeman-application.png)
 4. Click on "Select Cluster" button to select up to 3 clusters. You can optionally select one or more namespaces from the cluster selection dialog to limit your session to those namespaces for certain recipes.
